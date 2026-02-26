@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import GuestRoute from './components/GuestRoute'; // <-- Ajout ici
-import Navbar from './components/Navbar';
+import GuestRoute from './components/GuestRoute';
+import DashboardLayout from './components/DashboardLayout'; // <-- Ajout du Layout
 
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
@@ -13,50 +13,37 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Navbar /> 
-        
-        <Routes>
-          {/* 🔴 Route publique STRICTE (bloquée si connecté) */}
-          <Route 
-            path="/login" 
-            element={
-              <GuestRoute>
-                <Login />
-              </GuestRoute>
-            } 
-          />
-          
-          {/* 🟢 Routes Protégées selon le rôle */}
-          <Route 
-            path="/admin" 
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/client" 
-            element={
-              <ProtectedRoute allowedRoles={['client']}>
-                <ClientDashboard />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/designer" 
-            element={
-              <ProtectedRoute allowedRoles={['designer']}>
-                <DesignerDashboard />
-              </ProtectedRoute>
-            } 
-          />
+        {/* Le Layout enveloppe toutes nos routes */}
+        <DashboardLayout>
+          <Routes>
+            {/* Route Login */}
+            <Route 
+              path="/login" 
+              element={<GuestRoute><Login /></GuestRoute>} 
+            />
+            
+            {/* Routes Admin */}
+            <Route 
+              path="/admin" 
+              element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} 
+            />
+            
+            {/* Routes Client */}
+            <Route 
+              path="/client" 
+              element={<ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>} 
+            />
+            
+            {/* Routes Designer */}
+            <Route 
+              path="/designer" 
+              element={<ProtectedRoute allowedRoles={['designer']}><DesignerDashboard /></ProtectedRoute>} 
+            />
 
-          {/* Redirection par défaut : renvoie à l'accueil selon statut */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+            {/* Redirection */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </DashboardLayout>
       </AuthProvider>
     </Router>
   );
