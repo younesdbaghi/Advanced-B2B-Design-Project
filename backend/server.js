@@ -344,6 +344,72 @@ apiRouter.post("/utilisateurs", verifyToken, checkRole(['admin']), async (req, r
   }
 });
 
+apiRouter.get("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const utilisateur = await Utilisateur.findById(id).select("-mot_de_passe");
+    if (!utilisateur) {
+      return res.status(404).json({ message: "Utilisateur non trouvé." });
+    }
+    res.status(200).json(utilisateur);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de la récupération de l'utilisateur", error: error.message });
+  }
+});
+
+apiRouter.delete("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Empêcher la suppression de soi-même (optionnel mais recommandé)
+    if (id === req.user.id) {
+      return res.status(400).json({ message: "Vous ne pouvez pas supprimer votre propre compte." });
+    }
+
+    const utilisateurSupprime = await Utilisateur.findByIdAndDelete(id);
+    if (!utilisateurSupprime) {
+      return res.status(404).json({ message: "Utilisateur non trouvé." });
+    }
+
+    res.status(200).json({ message: "Utilisateur supprimé avec succès." });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de la suppression", error: error.message });
+  }
+});
+
+
+apiRouter.put("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nom, email, rôle } = req.body;
+
+    // Vérifier si l'email est déjà utilisé par un autre utilisateur
+    if (email) {
+      const existingUser = await Utilisateur.findOne({ email, _id: { $ne: id } });
+      if (existingUser) {
+        return res.status(400).json({ message: "Cet email est déjà utilisé par un autre compte." });
+      }
+    }
+
+    const utilisateurMisAJour = await Utilisateur.findByIdAndUpdate(
+      id,
+      { nom, email, rôle },
+      { new: true, runValidators: true }
+    ).select("-mot_de_passe");
+
+    if (!utilisateurMisAJour) {
+      return res.status(404).json({ message: "Utilisateur non trouvé." });
+    }
+
+    res.status(200).json({
+      message: "Utilisateur mis à jour avec succès.",
+      utilisateur: utilisateurMisAJour,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de la mise à jour", error: error.message });
+  }
+});
+
 // --- Routes PROJET ---
 
 // GET /Api_B2B/projets (Protégé : il faut être connecté, tous les rôles y ont accès)
