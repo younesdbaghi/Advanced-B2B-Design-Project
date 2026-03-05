@@ -7,20 +7,14 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 
 dotenv.config();
-
 const app = express();
-
-// ==========================================
-// 1) MIDDLEWARES
-// ==========================================
 app.use(cors());
 app.use(express.json());
 
 // ==========================================
-// 2) SCHÉMAS MONGODB (MODÈLES)
+// SCHÉMAS MONGODB
 // ==========================================
 
-// 1. UTILISATEUR
 const utilisateurSchema = new mongoose.Schema({
   nom: { type: String, required: true, maxlength: 100 },
   email: { type: String, required: true, unique: true, maxlength: 150 },
@@ -31,7 +25,6 @@ const utilisateurSchema = new mongoose.Schema({
 });
 const Utilisateur = mongoose.model("Utilisateur", utilisateurSchema);
 
-// 2. PROJET
 const projetSchema = new mongoose.Schema(
   {
     nom: { type: String, required: true, maxlength: 150 },
@@ -40,235 +33,130 @@ const projetSchema = new mongoose.Schema(
     date_fin: { type: Date, required: true },
     statut: {
       type: String,
-      enum:["En cours", "En révision", "Validé", "Refusé", "Terminé"],
+      enum: ["En cours", "En révision", "Validé", "Refusé", "Terminé", "En attente"],
       required: true,
       default: "En cours",
     },
-    id_client: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Utilisateur",
-      required: true,
-    },
-    id_admin_createur: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Utilisateur",
-      required: true,
-    },
+    id_client: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
+    id_admin_createur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
+    demanded: { type: Boolean, default: false }, // Indique si le projet est une demande client
   },
-  {
-    timestamps: { createdAt: "date_creation", updatedAt: "date_modification" },
-  }
+  { timestamps: { createdAt: "date_creation", updatedAt: "date_modification" } }
 );
 const Projet = mongoose.model("Projet", projetSchema);
 
-// 3. AFFECTATION (Projet ⇄ Designer)
 const affectationSchema = new mongoose.Schema({
-  id_projet: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Projet",
-    required: true,
-  },
-  id_designer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Utilisateur",
-    required: true,
-  },
+  id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
+  id_designer: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
   date_affectation: { type: Date, default: Date.now },
 });
 affectationSchema.index({ id_projet: 1, id_designer: 1 }, { unique: true });
 const Affectation = mongoose.model("Affectation", affectationSchema);
 
-// 4. MAQUETTE
 const maquetteSchema = new mongoose.Schema(
   {
     nom: { type: String, required: true, maxlength: 150 },
     description: { type: String },
-    id_projet: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Projet",
-      required: true,
-    },
-    id_createur: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Utilisateur",
-      required: true,
-    },
+    id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
+    id_createur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
   },
-  {
-    timestamps: { createdAt: "date_creation", updatedAt: "date_modification" },
-  }
+  { timestamps: { createdAt: "date_creation", updatedAt: "date_modification" } }
 );
 const Maquette = mongoose.model("Maquette", maquetteSchema);
 
-// 5. VERSION
 const versionSchema = new mongoose.Schema(
   {
     numéro_version: { type: Number, required: true },
     contenu: { type: mongoose.Schema.Types.Mixed, required: true },
     commentaire: { type: String },
-    id_maquette: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Maquette",
-      required: true,
-    },
+    id_maquette: { type: mongoose.Schema.Types.ObjectId, ref: "Maquette", required: true },
   },
-  {
-    timestamps: { createdAt: "date_creation", updatedAt: false },
-  }
+  { timestamps: { createdAt: "date_creation", updatedAt: false } }
 );
 const Version = mongoose.model("Version", versionSchema);
 
-// 6. FEEDBACK
 const feedbackSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ["Com", "Val", "Refus"], required: true },
     commentaire: { type: String, required: true },
     justification: { type: String },
-    id_version: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Version",
-      required: true,
-    },
-    id_auteur: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Utilisateur",
-      required: true,
-    },
+    id_version: { type: mongoose.Schema.Types.ObjectId, ref: "Version", required: true },
+    id_auteur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
   },
-  {
-    timestamps: { createdAt: "date_creation", updatedAt: false },
-  }
+  { timestamps: { createdAt: "date_creation", updatedAt: false } }
 );
 const Feedback = mongoose.model("Feedback", feedbackSchema);
 
-// 7. RAPPORT_QUOTIDIEN
 const rapportQuotidienSchema = new mongoose.Schema({
   date: { type: Date, required: true },
   travail_effectué: { type: String, required: true },
   tâches_restantes: { type: String, required: true },
   blocages: { type: String },
   date_soumission: { type: Date, default: Date.now },
-  id_projet: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Projet",
-    required: true,
-  },
-  id_designer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Utilisateur",
-    required: true,
-  },
+  id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
+  id_designer: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
 });
-const RapportQuotidien = mongoose.model(
-  "RapportQuotidien",
-  rapportQuotidienSchema
-);
+const RapportQuotidien = mongoose.model("RapportQuotidien", rapportQuotidienSchema);
 
-// 8. CONNEXION_LOG
 const connexionLogSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
   adresse_IP: { type: String, required: true },
-  id_utilisateur: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Utilisateur",
-    required: true,
-  },
+  id_utilisateur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
 });
 const ConnexionLog = mongoose.model("ConnexionLog", connexionLogSchema);
 
 // ==========================================
-// 2.5) UTILS ET MIDDLEWARES (AUTH & MAIL)
+// FONCTIONS UTILES & MIDDLEWARES
 // ==========================================
 
-// Fonction d'envoi d'email
 const envoyerEmailBienvenue = async (email, nom, motDePasse) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    },
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
   });
-
-  const mailOptions = {
+  await transporter.sendMail({
     from: process.env.EMAIL_USER,
     to: email,
-    subject: "Bienvenue sur DevPortal B2B - Vos identifiants",
-    html: `
-      <h2>Bonjour ${nom},</h2>
-      <p>Votre compte a été créé avec succès sur notre plateforme.</p>
-      <p>Voici vos identifiants de connexion :</p>
-      <ul>
-        <li><strong>Email :</strong> ${email}</li>
-        <li><strong>Mot de passe temporaire :</strong> ${motDePasse}</li>
-      </ul>
-      <p>Nous vous conseillons de le modifier dès votre première connexion.</p>
-      <p>L'équipe DevPortal</p>
-    `,
-  };
-
-  await transporter.sendMail(mailOptions);
+    subject: "Bienvenue sur DevPortal B2B",
+    html: `<h2>Bonjour ${nom},</h2><p>Votre compte a été créé. Voici votre mot de passe temporaire : <strong>${motDePasse}</strong></p>`,
+  });
 };
 
-// Middleware : Vérifier le Token JWT
 const verifyToken = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-  if (!token)
-    return res
-      .status(401)
-      .json({ message: "Accès refusé. Aucun token fourni." });
-
+  if (!token) return res.status(401).json({ message: "Accès refusé. Aucun token fourni." });
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "fallback_secret_key"
-    );
-    req.user = decoded; // Ajoute les infos de l'utilisateur à la requête (id, rôle)
+    req.user = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret_key");
     next();
-  } catch (error) {
+  } catch {
     res.status(401).json({ message: "Token invalide ou expiré." });
   }
 };
 
-// Middleware : Vérifier dynamiquement les rôles autorisés
-const checkRole = (rolesAutorises) => {
-  return (req, res, next) => {
-    // req.user vient du middleware verifyToken appelé juste avant
-    if (!rolesAutorises.includes(req.user.rôle)) {
-      return res.status(403).json({ 
-        message: "Accès interdit. Vous n'avez pas les droits pour effectuer cette action." 
-      });
-    }
-    next();
-  };
+const checkRole = (rolesAutorises) => (req, res, next) => {
+  if (!rolesAutorises.includes(req.user.rôle))
+    return res.status(403).json({ message: "Accès interdit." });
+  next();
 };
 
 // ==========================================
-// 3) ROUTES API (Préfixe : /Api_B2B)
+// ROUTES API (préfixe /Api_B2B)
 // ==========================================
 const apiRouter = express.Router();
 
-// --- AUTHENTIFICATION ---
-
-// POST /Api_B2B/auth/login
+// ---- AUTH ----
 apiRouter.post("/auth/login", async (req, res) => {
   try {
     const { email, mot_de_passe } = req.body;
-
     const user = await Utilisateur.findOne({ email });
-    if (!user)
-      return res.status(404).json({ message: "Utilisateur non trouvé." });
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé." });
 
-    // Vérification du mot de passe
     const isMatch = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
-    if (!isMatch)
-      return res.status(400).json({ message: "Mot de passe incorrect." });
+    if (!isMatch) return res.status(400).json({ message: "Mot de passe incorrect." });
 
-    // Mise à jour de la dernière connexion
     user.dernier_connexion = Date.now();
     await user.save();
 
-    // Génération du token
     const token = jwt.sign(
       { id: user._id, rôle: user.rôle },
       process.env.JWT_SECRET || "fallback_secret_key",
@@ -284,135 +172,92 @@ apiRouter.post("/auth/login", async (req, res) => {
   }
 });
 
-// --- Routes UTILISATEUR ---
-
-// GET /Api_B2B/utilisateurs (Protégé : Admin uniquement)
+// ---- UTILISATEURS ----
 apiRouter.get("/utilisateurs", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const utilisateurs = await Utilisateur.find().select("-mot_de_passe");
     res.status(200).json(utilisateurs);
   } catch (error) {
-    res.status(500).json({ message: "Erreur lors de la récupération des utilisateurs", error });
+    res.status(500).json({ message: "Erreur récupération utilisateurs", error });
   }
 });
 
-// POST /Api_B2B/utilisateurs (Création de User par l'Admin avec mot de passe généré et email)
 apiRouter.post("/utilisateurs", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const { nom, email, rôle } = req.body;
-
-    // 1. Vérifier si l'email existe
-    const existingUser = await Utilisateur.findOne({ email });
-    if (existingUser)
+    if (await Utilisateur.findOne({ email }))
       return res.status(400).json({ message: "Cet email est déjà utilisé." });
 
-    // 2. Générer un mot de passe aléatoire de 8 caractères
     const motDePasseClair = Math.random().toString(36).slice(-8);
+    const motDePasseHash = await bcrypt.hash(motDePasseClair, await bcrypt.genSalt(10));
 
-    // 3. Hasher le mot de passe
-    const salt = await bcrypt.genSalt(10);
-    const motDePasseHash = await bcrypt.hash(motDePasseClair, salt);
-
-    // 4. Créer et sauvegarder l'utilisateur
-    const nouvelUtilisateur = new Utilisateur({
-      nom,
-      email,
-      rôle,
-      mot_de_passe: motDePasseHash,
-    });
+    const nouvelUtilisateur = new Utilisateur({ nom, email, rôle, mot_de_passe: motDePasseHash });
     const utilisateurSauvegarde = await nouvelUtilisateur.save();
 
-    // 5. Envoyer l'email (désactivé s'il y a une erreur de configuration mail, mais ne bloque pas la création)
     try {
       await envoyerEmailBienvenue(email, nom, motDePasseClair);
+      res.status(201).json({
+        message: "Utilisateur créé et email envoyé.",
+        utilisateur: { _id: utilisateurSauvegarde._id, nom, email, rôle },
+      });
     } catch (mailError) {
-      console.log("Erreur envoi email : ", mailError.message);
-      // On retourne quand même le succès avec un warning
-      return res.status(201).json({
-        message: "Utilisateur créé, mais l'email n'a pas pu être envoyé (vérifiez config .env).",
-        mot_de_passe_temp: motDePasseClair, // Affiché pour que l'admin puisse le copier si le mail échoue
+      console.log("Erreur envoi email :", mailError.message);
+      res.status(201).json({
+        message: "Utilisateur créé (email non envoyé).",
+        mot_de_passe_temp: motDePasseClair,
         utilisateur: { _id: utilisateurSauvegarde._id, nom, email, rôle },
       });
     }
-
-    res.status(201).json({
-      message: "Utilisateur créé et email envoyé avec succès.",
-      utilisateur: { _id: utilisateurSauvegarde._id, nom, email, rôle },
-    });
   } catch (error) {
-    res.status(500).json({ message: "Erreur lors de la création de l'utilisateur", error: error.message });
+    res.status(500).json({ message: "Erreur création utilisateur", error: error.message });
   }
 });
 
 apiRouter.get("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
-    const utilisateur = await Utilisateur.findById(id).select("-mot_de_passe");
-    if (!utilisateur) {
-      return res.status(404).json({ message: "Utilisateur non trouvé." });
-    }
+    const utilisateur = await Utilisateur.findById(req.params.id).select("-mot_de_passe");
+    if (!utilisateur) return res.status(404).json({ message: "Utilisateur non trouvé." });
     res.status(200).json(utilisateur);
   } catch (error) {
-    res.status(500).json({ message: "Erreur lors de la récupération de l'utilisateur", error: error.message });
+    res.status(500).json({ message: "Erreur récupération utilisateur", error: error.message });
+  }
+});
+
+apiRouter.put("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const { nom, email, rôle } = req.body;
+    if (email) {
+      const existing = await Utilisateur.findOne({ email, _id: { $ne: req.params.id } });
+      if (existing) return res.status(400).json({ message: "Email déjà utilisé par un autre compte." });
+    }
+    const updated = await Utilisateur.findByIdAndUpdate(
+      req.params.id,
+      { nom, email, rôle },
+      { new: true, runValidators: true }
+    ).select("-mot_de_passe");
+    if (!updated) return res.status(404).json({ message: "Utilisateur non trouvé." });
+    res.status(200).json({ message: "Utilisateur mis à jour.", utilisateur: updated });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur modification utilisateur", error: error.message });
   }
 });
 
 apiRouter.delete("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
-
-    // Empêcher la suppression de soi-même (optionnel mais recommandé)
-    if (id === req.user.id) {
+    if (req.params.id === req.user.id)
       return res.status(400).json({ message: "Vous ne pouvez pas supprimer votre propre compte." });
-    }
 
-    const utilisateurSupprime = await Utilisateur.findByIdAndDelete(id);
-    if (!utilisateurSupprime) {
-      return res.status(404).json({ message: "Utilisateur non trouvé." });
-    }
-
-    res.status(200).json({ message: "Utilisateur supprimé avec succès." });
+    const deleted = await Utilisateur.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Utilisateur non trouvé." });
+    res.status(200).json({ message: "Utilisateur supprimé." });
   } catch (error) {
-    res.status(500).json({ message: "Erreur lors de la suppression", error: error.message });
+    res.status(500).json({ message: "Erreur suppression", error: error.message });
   }
 });
 
+// ---- PROJETS (ordre important : spécifiques avant /:id) ----
 
-apiRouter.put("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nom, email, rôle } = req.body;
-
-    // Vérifier si l'email est déjà utilisé par un autre utilisateur
-    if (email) {
-      const existingUser = await Utilisateur.findOne({ email, _id: { $ne: id } });
-      if (existingUser) {
-        return res.status(400).json({ message: "Cet email est déjà utilisé par un autre compte." });
-      }
-    }
-
-    const utilisateurMisAJour = await Utilisateur.findByIdAndUpdate(
-      id,
-      { nom, email, rôle },
-      { new: true, runValidators: true }
-    ).select("-mot_de_passe");
-
-    if (!utilisateurMisAJour) {
-      return res.status(404).json({ message: "Utilisateur non trouvé." });
-    }
-
-    res.status(200).json({
-      message: "Utilisateur mis à jour avec succès.",
-      utilisateur: utilisateurMisAJour,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Erreur lors de la mise à jour", error: error.message });
-  }
-});
-
-// --- Routes PROJET ---
-
-// GET /Api_B2B/projets (Protégé : il faut être connecté, tous les rôles y ont accès)
+// GET tous les projets
 apiRouter.get("/projets", verifyToken, async (req, res) => {
   try {
     const projets = await Projet.find()
@@ -420,99 +265,137 @@ apiRouter.get("/projets", verifyToken, async (req, res) => {
       .populate("id_admin_createur", "nom email");
     res.status(200).json(projets);
   } catch (error) {
-    res.status(500).json({ message: "Erreur lors de la récupération des projets", error });
+    res.status(500).json({ message: "Erreur récupération projets", error });
   }
 });
 
-// POST /Api_B2B/projets (Protégé : Admin uniquement)
+// Demande de projet par un client
+apiRouter.post("/projets/demande", verifyToken, checkRole(['client']), async (req, res) => {
+  try {
+    const { nom, description, date_début, date_fin } = req.body;
+    if (!nom || !date_début || !date_fin)
+      return res.status(400).json({ message: "Nom, date_début et date_fin sont requis." });
+
+    const admin = await Utilisateur.findOne({ rôle: "admin" });
+    if (!admin) return res.status(500).json({ message: "Aucun administrateur trouvé." });
+
+    const demande = await Projet.create({
+      nom,
+      description: description || "",
+      date_début,
+      date_fin,
+      statut: "En attente",
+      demanded: true,
+      id_client: req.user.id,
+      id_admin_createur: admin._id,
+    });
+    res.status(201).json({ message: "Demande envoyée.", demande });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur création demande", error: error.message });
+  }
+});
+
+// Création directe par admin
 apiRouter.post("/projets", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
-    // Injecter l'id de l'admin créateur directement depuis le token
-    const nouveauProjet = new Projet({
-      ...req.body,
-      id_admin_createur: req.user.id,
-    });
-    const projetSauvegarde = await nouveauProjet.save();
-    res.status(201).json(projetSauvegarde);
+    const projet = new Projet({ ...req.body, id_admin_createur: req.user.id });
+    await projet.save();
+    res.status(201).json(projet);
   } catch (error) {
-    res.status(400).json({ message: "Erreur lors de la création du projet", error });
+    res.status(400).json({ message: "Erreur création projet", error });
   }
 });
 
-// --- Autres routes (Exemples utilisant checkRole) ---
+// Accepter une demande (admin)
+apiRouter.patch("/projets/:id/accepter", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const projet = await Projet.findByIdAndUpdate(
+      req.params.id,
+      { statut: "En cours" },
+      { new: true }
+    ).populate("id_client", "nom email");
+    if (!projet) return res.status(404).json({ message: "Projet introuvable." });
+    res.status(200).json({ message: "Projet accepté.", projet });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur acceptation", error: error.message });
+  }
+});
 
-// Seuls le Designer et l'Admin peuvent poster des Maquettes
+// Refuser une demande (admin)
+apiRouter.patch("/projets/:id/refuser", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const projet = await Projet.findByIdAndUpdate(
+      req.params.id,
+      { statut: "Refusé" },
+      { new: true }
+    );
+    if (!projet) return res.status(404).json({ message: "Projet introuvable." });
+    res.status(200).json({ message: "Demande refusée.", projet });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur refus", error: error.message });
+  }
+});
+
+// (Optionnel) Route générique pour un projet spécifique (à placer après les routes spécifiques)
+apiRouter.get("/projets/:id", verifyToken, async (req, res) => {
+  try {
+    const projet = await Projet.findById(req.params.id)
+      .populate("id_client", "nom email")
+      .populate("id_admin_createur", "nom email");
+    if (!projet) return res.status(404).json({ message: "Projet introuvable." });
+    res.status(200).json(projet);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur récupération projet", error: error.message });
+  }
+});
+
+// ---- AUTRES ROUTES (exemples) ----
 apiRouter.post("/maquettes", verifyToken, checkRole(['designer', 'admin']), (req, res) => {
-  res.send("Création de maquette B2B - Autorisé pour Designer et Admin");
+  res.send("Création maquette OK");
 });
-
-// Seul le Client peut valider un projet
 apiRouter.put("/projets/valider", verifyToken, checkRole(['client']), (req, res) => {
-  res.send("Validation de projet - Autorisé uniquement pour le Client");
+  res.send("Validation projet OK");
 });
-
-// Squelettes basiques
 apiRouter.get("/affectations", verifyToken, (req, res) => res.send("Route Affectations B2B"));
 apiRouter.get("/maquettes", verifyToken, (req, res) => res.send("Route Maquettes B2B"));
 apiRouter.get("/versions", verifyToken, (req, res) => res.send("Route Versions B2B"));
 apiRouter.get("/feedbacks", verifyToken, (req, res) => res.send("Route Feedbacks B2B"));
 apiRouter.get("/rapports", verifyToken, (req, res) => res.send("Route Rapports B2B"));
 
-// Toutes les routes définies dans apiRouter seront accessibles via /Api_B2B/...
+// Montage du routeur
 app.use("/Api_B2B", apiRouter);
 
-
 // ==========================================
-// BASE DE DONNÉES & SERVEUR - INTOUCHABLE //
+// INITIALISATION BASE DE DONNÉES & SERVEUR
 // ==========================================
-
-// Fonction pour créer l'admin par défaut
 const initAdmin = async () => {
   try {
     const adminExists = await Utilisateur.findOne({ rôle: "admin" });
     if (!adminExists) {
-      const salt = await bcrypt.genSalt(10);
-      const hashPassword = await bcrypt.hash("admin", salt); // Mot de passe : admin
-
-      await Utilisateur.create({
-        nom: "admin",
-        email: "admin", // Identifiant de connexion ("username")
-        mot_de_passe: hashPassword,
-        rôle: "admin",
-      });
-      console.log("✅ Compte Admin par défaut créé avec succès (email: admin / mdp: admin)");
+      const hash = await bcrypt.hash("admin", await bcrypt.genSalt(10));
+      await Utilisateur.create({ nom: "admin", email: "admin", mot_de_passe: hash, rôle: "admin" });
+      console.log("✅ Compte admin par défaut créé (email: admin / mdp: admin)");
     } else {
-      console.log("⚡ Compte Admin déjà existant.");
+      console.log("⚡ Compte admin déjà existant.");
     }
   } catch (error) {
-    console.error("❌ Erreur lors de la création de l'admin par défaut :", error.message);
+    console.error("❌ Erreur init admin :", error.message);
   }
 };
 
-// Connexion MongoDB
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("✅ MongoDB connecté");
-
-    // Appel de la création automatique après la connexion réussie
     await initAdmin();
   } catch (error) {
     console.error("❌ Erreur MongoDB :", error.message);
     process.exit(1);
   }
 };
-
 connectDB();
 
-// Route de test (optionnelle mais pratique pour vérifier que l'API tourne)
-app.get("/", (req, res) => {
-  res.send("API Project Management est en ligne...");
-});
+app.get("/", (req, res) => res.send("API Project Management est en ligne..."));
 
-// Définition du Port et lancement du serveur
 const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur en cours d'exécution sur le port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));

@@ -8,6 +8,9 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import ClientDashboard from './pages/ClientDashboard';
 import DesignerDashboard from './pages/DesignerDashboard';
+import AdminUsers   from './pages/AdminUsers';
+import AdminProjets from './pages/AdminProjets';
+import AdminDemandes from './pages/AdminDemandes';
 
 function App() {
   return (
@@ -23,10 +26,10 @@ function App() {
             />
             
             {/* Routes Admin */}
-            <Route 
-              path="/admin" 
-              element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} 
-            />
+            <Route path="/admin"             element={<Navigate to="/admin/utilisateurs" replace />} />
+            <Route path="/admin/utilisateurs" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin/projets"      element={<ProtectedRoute allowedRoles={['admin']}><AdminProjets /></ProtectedRoute>} />
+            <Route path="/admin/demandes" element={<ProtectedRoute allowedRoles={['admin']}><AdminDemandes /></ProtectedRoute>} />
             
             {/* Routes Client */}
             <Route 
