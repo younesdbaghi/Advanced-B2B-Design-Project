@@ -9,7 +9,8 @@ const nodemailer = require("nodemailer");
 dotenv.config();
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ==========================================
 // SCHÉMAS MONGODB
@@ -59,6 +60,7 @@ const maquetteSchema = new mongoose.Schema(
     description: { type: String },
     id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
     id_createur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
+    image_fond: { type: String } 
   },
   { timestamps: { createdAt: "date_creation", updatedAt: "date_modification" } }
 );
@@ -349,21 +351,118 @@ apiRouter.get("/projets/:id", verifyToken, async (req, res) => {
   }
 });
 
-// ---- AUTRES ROUTES (exemples) ----
-apiRouter.post("/maquettes", verifyToken, checkRole(['designer', 'admin']), (req, res) => {
-  res.send("Création maquette OK");
-});
+
 apiRouter.put("/projets/valider", verifyToken, checkRole(['client']), (req, res) => {
   res.send("Validation projet OK");
 });
 apiRouter.get("/affectations", verifyToken, (req, res) => res.send("Route Affectations B2B"));
-apiRouter.get("/maquettes", verifyToken, (req, res) => res.send("Route Maquettes B2B"));
 apiRouter.get("/versions", verifyToken, (req, res) => res.send("Route Versions B2B"));
 apiRouter.get("/feedbacks", verifyToken, (req, res) => res.send("Route Feedbacks B2B"));
 apiRouter.get("/rapports", verifyToken, (req, res) => res.send("Route Rapports B2B"));
 
 // Montage du routeur
 app.use("/Api_B2B", apiRouter);
+
+
+// ==========================================
+// ROUTES MAQUETTES & ÉDITEUR DESIGN (à ajouter)
+// ==========================================
+
+// 1. OBTENIR TOUTES LES MAQUETTES
+apiRouter.get("/maquettes", verifyToken, async (req, res) => {
+  try {
+    const maquettes = await Maquette.find().populate("id_projet", "nom").sort({ date_creation: -1 });
+    res.status(200).json(maquettes);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur récupération maquettes" });
+  }
+});
+
+// 2. OBTENIR UNE SEULE MAQUETTE (Nécessaire pour l'éditeur)
+apiRouter.get("/maquettes/:id", verifyToken, async (req, res) => {
+  try {
+    const maquette = await Maquette.findById(req.params.id);
+    res.status(200).json(maquette);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. CREER UNE MAQUETTE ET SA PREMIERE VERSION VIDE
+apiRouter.post("/maquettes", verifyToken, async (req, res) => {
+  try {
+    const { nom, description, id_projet, image_fond } = req.body;
+
+    const nouvelleMaquette = await Maquette.create({
+      nom, description, id_projet, id_createur: req.user.id, image_fond
+    });
+
+    // On crée toujours un canvas VIDE au départ. C'est le Frontend qui insérera l'image_fond proprement.
+    const contenuInitial = { version: "5.3.0", objects:[] }; 
+    const nouvelleVersion = await Version.create({
+      numéro_version: 1, contenu: contenuInitial, id_maquette: nouvelleMaquette._id
+    });
+
+    res.status(201).json({ maquette: nouvelleMaquette, version: nouvelleVersion });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur de création." });
+  }
+});
+
+// MODIFIER LES INFOS D'UNE MAQUETTE (Nom, Description, Projet)
+apiRouter.put("/maquettes/:id", verifyToken, async (req, res) => {
+  try {
+    const { nom, description, id_projet } = req.body;
+    const maquetteMaj = await Maquette.findByIdAndUpdate(
+      req.params.id,
+      { nom, description, id_projet },
+      { new: true } // Renvoie le nouveau document
+    ).populate("id_projet", "nom");
+    
+    res.status(200).json(maquetteMaj);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. SUPPRIMER UNE MAQUETTE
+apiRouter.delete("/maquettes/:id", verifyToken, async (req, res) => {
+  try {
+    await Maquette.findByIdAndDelete(req.params.id);
+    await Version.deleteMany({ id_maquette: req.params.id }); // Supprime aussi les versions liées
+    res.status(200).json({ message: "Maquette supprimée" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. Récupérer la dernière version d'une maquette
+apiRouter.get("/maquettes/:id/latest-version", verifyToken, async (req, res) => {
+  try {
+    const version = await Version.findOne({ id_maquette: req.params.id })
+                                 .sort({ numéro_version: -1 }); // Récupère la plus récente
+    if (!version) return res.status(404).json({ message: "Version introuvable." });
+    
+    res.status(200).json(version);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur récupération version.", error: error.message });
+  }
+});
+
+// 6. Sauvegarde automatique (Auto-save) : Mettre à jour le contenu d'une version
+apiRouter.put("/versions/:id", verifyToken, async (req, res) => {
+  try {
+    const { contenu } = req.body;
+    const versionUpdate = await Version.findByIdAndUpdate(
+      req.params.id,
+      { contenu },
+      { new: true }
+    );
+    res.status(200).json({ message: "Design sauvegardé", version: versionUpdate });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de la sauvegarde.", error: error.message });
+  }
+});
 
 // ==========================================
 // INITIALISATION BASE DE DONNÉES & SERVEUR

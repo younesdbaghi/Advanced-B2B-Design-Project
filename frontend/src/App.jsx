@@ -11,6 +11,7 @@ import DesignerDashboard from './pages/DesignerDashboard';
 import AdminUsers   from './pages/AdminUsers';
 import AdminProjets from './pages/AdminProjets';
 import AdminDemandes from './pages/AdminDemandes';
+import DesignEditor from './pages/DesignEditor';
 
 function App() {
   return (
@@ -38,6 +39,11 @@ function App() {
             />
             
             {/* Routes Designer */}
+            <Route 
+              path="/designer/editeur/:id" 
+              element={<ProtectedRoute allowedRoles={['designer']}><DesignEditor /></ProtectedRoute>} 
+            />
+
             <Route 
               path="/designer" 
               element={<ProtectedRoute allowedRoles={['designer']}><DesignerDashboard /></ProtectedRoute>} 
