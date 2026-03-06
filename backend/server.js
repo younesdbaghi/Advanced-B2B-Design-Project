@@ -46,9 +46,10 @@ const projetSchema = new mongoose.Schema(
 const Projet = mongoose.model("Projet", projetSchema);
 
 const affectationSchema = new mongoose.Schema({
-  id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
-  id_designer: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
+  id_projet:        { type: mongoose.Schema.Types.ObjectId, ref: "Projet",      required: true },
+  id_designer:      { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
   date_affectation: { type: Date, default: Date.now },
+  lu:               { type: Boolean, default: false }, // ← designer a confirmé la lecture
 });
 affectationSchema.index({ id_projet: 1, id_designer: 1 }, { unique: true });
 const Affectation = mongoose.model("Affectation", affectationSchema);
@@ -106,7 +107,7 @@ const connexionLogSchema = new mongoose.Schema({
 const ConnexionLog = mongoose.model("ConnexionLog", connexionLogSchema);
 
 // ==========================================
-// FONCTIONS UTILES & MIDDLEWARES
+// MIDDLEWARES
 // ==========================================
 
 const envoyerEmailBienvenue = async (email, nom, motDePasse) => {
@@ -140,7 +141,7 @@ const checkRole = (rolesAutorises) => (req, res, next) => {
 };
 
 // ==========================================
-// ROUTES API (préfixe /Api_B2B)
+// ROUTES API
 // ==========================================
 const apiRouter = express.Router();
 
@@ -237,19 +238,13 @@ apiRouter.delete("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (
 });
 
 // ---- DESIGNERS DISPONIBLES ----
-
-// GET designers disponibles (non assignés à aucun projet actif)
 apiRouter.get("/designers", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
-    // Trouve tous les designers déjà assignés à un projet
     const affectations = await Affectation.find().distinct("id_designer");
-    
-    // Retourne les designers qui ne sont PAS dans cette liste
     const designers = await Utilisateur.find({
       rôle: "designer",
       _id: { $nin: affectations }
     }).select("-mot_de_passe");
-    
     res.status(200).json(designers);
   } catch (error) {
     res.status(500).json({ message: "Erreur récupération designers", error: error.message });
@@ -257,7 +252,6 @@ apiRouter.get("/designers", verifyToken, checkRole(['admin']), async (req, res) 
 });
 
 // ---- PROJETS ----
-
 apiRouter.get("/projets", verifyToken, async (req, res) => {
   try {
     const projets = await Projet.find()
@@ -358,7 +352,7 @@ apiRouter.delete("/projets/:id", verifyToken, async (req, res) => {
 
 // ---- AFFECTATIONS ----
 
-// GET affectations d'un projet (admin)
+// GET affectations d'un projet — champ lu inclus automatiquement
 apiRouter.get("/affectations/projet/:id_projet", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const affectations = await Affectation.find({ id_projet: req.params.id_projet })
@@ -383,21 +377,31 @@ apiRouter.get("/affectations/mes-projets", verifyToken, checkRole(['designer']),
   }
 });
 
+// PATCH marquer affectation comme lue (designer uniquement)
+apiRouter.patch("/affectations/:id/lire", verifyToken, checkRole(['designer']), async (req, res) => {
+  try {
+    const affectation = await Affectation.findByIdAndUpdate(
+      req.params.id,
+      { lu: true },
+      { new: true }
+    );
+    if (!affectation) return res.status(404).json({ message: "Affectation introuvable." });
+    res.status(200).json({ message: "Affectation marquée comme lue.", affectation });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur", error: error.message });
+  }
+});
+
 // POST assigner un designer à un projet (admin)
 apiRouter.post("/affectations", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const { id_projet, id_designer } = req.body;
     if (!id_projet || !id_designer)
       return res.status(400).json({ message: "id_projet et id_designer sont requis." });
-
-    // Vérifier que le designer existe
     const designer = await Utilisateur.findOne({ _id: id_designer, rôle: "designer" });
     if (!designer) return res.status(404).json({ message: "Designer introuvable." });
-
-    // Vérifier que le projet existe
     const projet = await Projet.findById(id_projet);
     if (!projet) return res.status(404).json({ message: "Projet introuvable." });
-
     const affectation = await Affectation.create({ id_projet, id_designer });
     await affectation.populate("id_designer", "nom email");
     res.status(201).json({ message: "Designer assigné avec succès.", affectation });
@@ -429,7 +433,7 @@ apiRouter.get("/rapports", verifyToken, (req, res) => res.send("Route Rapports B
 app.use("/Api_B2B", apiRouter);
 
 // ==========================================
-// INITIALISATION BASE DE DONNÉES & SERVEUR
+// INITIALISATION
 // ==========================================
 const initAdmin = async () => {
   try {
