@@ -17,6 +17,8 @@ function History() {
         tâches_restantes: "",
         blocages: ""
     });
+    const user = JSON.parse(localStorage.getItem("user"));
+    console.log("User object:", user.rôle);
 
     // HANDLE INPUT CHANGE
     const handleChange = (e) => {
@@ -146,10 +148,10 @@ function History() {
                                         style={{ cursor: "pointer", color: "blue", marginRight: 10 }}
                                     />
 
-                                    <Edit
+                                    {user.rôle === "designer" && <Edit
                                         onClick={() => handleUpdate(p)}
                                         style={{ cursor: "pointer", color: "green", marginRight: 10 }}
-                                    />
+                                    />}
 
                                     <Trash
                                         onClick={() => handleDelete(p._id)}

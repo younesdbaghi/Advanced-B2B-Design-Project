@@ -73,9 +73,10 @@ function Rapport() {
         }
     }
 
+
+
     return (
         <div className='containerRapport'>
-            {console.log(formData)}
             <div className='header'>
                 <ArrowLeft
                     style={{ cursor: "pointer", marginTop: "8px" }}

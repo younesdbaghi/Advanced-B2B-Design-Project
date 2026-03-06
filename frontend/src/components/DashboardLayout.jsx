@@ -14,6 +14,7 @@ const DashboardLayout = ({ children }) => {
       { path: '/admin/utilisateurs', icon: <Users size={20} />, label: 'Utilisateurs' },
       { path: '/admin/projets', icon: <FolderOpen size={20} />, label: 'Projets' },
       { path: '/admin/demandes', icon: <Bell size={20} />, label: 'Demandes' },
+      { path: '/admin/history', icon: <History size={20} />, label: 'Rapport Historique' },
     ],
     client: [
       { path: '/client', icon: <Briefcase size={20} />, label: 'Mes Projets' },
