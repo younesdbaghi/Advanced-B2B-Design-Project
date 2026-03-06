@@ -1,23 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
-import { Plus, X, Upload, Loader, Image as ImageIcon, Edit3, Trash2, Eye } from 'lucide-react';
+import { Plus, X, Notebook, Upload, Loader, Image as ImageIcon, Edit3, Trash2, Eye } from 'lucide-react';
 
 const DesignerDashboard = () => {
   const navigate = useNavigate();
   const [maquettes, setMaquettes] = useState([]);
-  const[projets, setProjets] = useState([]);
+  const [projets, setProjets] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // States Popup Création
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const[formData, setFormData] = useState({ nom: '', description: '', id_projet: '', image_fond: '' });
+  const [formData, setFormData] = useState({ nom: '', description: '', id_projet: '', image_fond: '' });
   const [isCreating, setIsCreating] = useState(false);
 
   // States Popup Modification
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const[editData, setEditData] = useState({ _id: '', nom: '', description: '', id_projet: '' });
-  const[isUpdating, setIsUpdating] = useState(false);
+  const [editData, setEditData] = useState({ _id: '', nom: '', description: '', id_projet: '' });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -34,7 +34,7 @@ const DesignerDashboard = () => {
     }
   };
 
-  useEffect(() => { fetchData(); },[]);
+  useEffect(() => { fetchData(); }, []);
 
   // --- CRÉATION ---
   const handleImageChange = (e) => {
@@ -61,11 +61,11 @@ const DesignerDashboard = () => {
   // --- MODIFICATION INFOS ---
   const openEditModal = (maq) => {
     // On pré-remplit les champs avec la maquette sélectionnée
-    setEditData({ 
-      _id: maq._id, 
-      nom: maq.nom, 
-      description: maq.description || '', 
-      id_projet: maq.id_projet?._id || '' 
+    setEditData({
+      _id: maq._id,
+      nom: maq.nom,
+      description: maq.description || '',
+      id_projet: maq.id_projet?._id || ''
     });
     setIsEditModalOpen(true);
   };
@@ -120,7 +120,7 @@ const DesignerDashboard = () => {
                   <div className="no-image"><ImageIcon size={40} color="#ccc" /></div>
                 )}
               </div>
-              
+
               {/* Infos & Actions */}
               <div className="maquette-info">
                 <div style={{ flex: 1 }}>
@@ -151,8 +151,8 @@ const DesignerDashboard = () => {
               <X cursor="pointer" onClick={() => setIsModalOpen(false)} />
             </div>
             <form onSubmit={startDesign} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <input type="text" placeholder="Nom..." required className="custom-input" onChange={e => setFormData({...formData, nom: e.target.value})} />
-              <select required className="custom-input" onChange={e => setFormData({...formData, id_projet: e.target.value})}>
+              <input type="text" placeholder="Nom..." required className="custom-input" onChange={e => setFormData({ ...formData, nom: e.target.value })} />
+              <select required className="custom-input" onChange={e => setFormData({ ...formData, id_projet: e.target.value })}>
                 <option value="">-- Assigner à un projet --</option>
                 {projets.map(p => <option key={p._id} value={p._id}>{p.nom}</option>)}
               </select>
@@ -178,9 +178,9 @@ const DesignerDashboard = () => {
               <X cursor="pointer" onClick={() => setIsEditModalOpen(false)} />
             </div>
             <form onSubmit={updateInfo} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <input type="text" value={editData.nom} required className="custom-input" onChange={e => setEditData({...editData, nom: e.target.value})} />
-              <textarea value={editData.description} placeholder="Description" className="custom-input" onChange={e => setEditData({...editData, description: e.target.value})} />
-              <select value={editData.id_projet} required className="custom-input" onChange={e => setEditData({...editData, id_projet: e.target.value})}>
+              <input type="text" value={editData.nom} required className="custom-input" onChange={e => setEditData({ ...editData, nom: e.target.value })} />
+              <textarea value={editData.description} placeholder="Description" className="custom-input" onChange={e => setEditData({ ...editData, description: e.target.value })} />
+              <select value={editData.id_projet} required className="custom-input" onChange={e => setEditData({ ...editData, id_projet: e.target.value })}>
                 <option value="">-- Assigner à un projet --</option>
                 {projets.map(p => <option key={p._id} value={p._id}>{p.nom}</option>)}
               </select>
@@ -191,6 +191,17 @@ const DesignerDashboard = () => {
           </div>
         </div>
       )}
+
+      {maquettes.length > 0 && <div className='rapport'>
+        <div className='journal flex' onClick={() => { navigate("/rapport") }}>
+          <Notebook style={{ marginTop: "8px" }} />
+          <div >
+            <h4>journal quotidiénne</h4>
+            <p>créer un journal quotidien</p>
+          </div>
+
+        </div>
+      </div>}
 
       {/* CSS INTÉGRÉ */}
       <style>{`
@@ -211,6 +222,25 @@ const DesignerDashboard = () => {
         .upload-box { border: 2px dashed #ccc; border-radius: 8px; padding: 20px; text-align: center; position: relative; background: #f9f9fc; }
         .upload-box input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         .spin { animation: spin 1s linear infinite; }
+        .rapport{
+                border:1px solid #ccc;
+                background-color:white;
+                padding:20px;
+                width:95%;
+                height:150px;
+                margin-top:20px;
+                border-radius:15px;
+                }
+        .journal{
+              display:flex;
+              gap:10px;
+              margin-top:15px;
+              width:40%;
+              border:1px solid #ccc;
+              padding:15px 5px;
+              border-radius:15px;
+              cursor:pointer;
+        }
         @keyframes spin { 100% { transform: rotate(360deg); } }
       `}</style>
     </div>

@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { LogOut, UserCircle, Briefcase,FileSignature,Layers,Users,FolderOpen,Bell} from 'lucide-react';
+import { LogOut, History, UserCircle, Briefcase, FileSignature, Layers, Users, FolderOpen, Bell } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const DashboardLayout = ({ children }) => {
@@ -11,8 +11,8 @@ const DashboardLayout = ({ children }) => {
 
   const menuItems = {
     admin: [
-      { path: '/admin/utilisateurs', icon: <Users size={20} />,      label: 'Utilisateurs' },
-      { path: '/admin/projets',      icon: <FolderOpen size={20} />, label: 'Projets' },
+      { path: '/admin/utilisateurs', icon: <Users size={20} />, label: 'Utilisateurs' },
+      { path: '/admin/projets', icon: <FolderOpen size={20} />, label: 'Projets' },
       { path: '/admin/demandes', icon: <Bell size={20} />, label: 'Demandes' },
     ],
     client: [
@@ -20,6 +20,7 @@ const DashboardLayout = ({ children }) => {
     ],
     designer: [
       { path: '/designer', icon: <FileSignature size={20} />, label: 'Mes Maquettes' },
+      { path: '/designer/history', icon: <History size={20} />, label: 'Rapport Historique' },
     ],
   };
 

@@ -39,20 +39,20 @@ const AdminDashboard = () => {
 
   // État pour la visualisation
   const [viewingUser, setViewingUser] = useState(null);
-  const[showViewModal, setShowViewModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   // État pour la confirmation de suppression
-  const[deleteTarget, setDeleteTarget] = useState(null); // { id, nom }
-  const[showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, nom }
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // ── Projets ────────────────────────────────────────────────
   const [projets, setProjets] = useState([]);
   const [fetchingProjets, setFetchingProjets] = useState(true);
   const [showProjetForm, setShowProjetForm] = useState(false);
   const [projetLoading, setProjetLoading] = useState(false);
-  const[projetMsg, setProjetMsg] = useState({ type: '', text: '' });
+  const [projetMsg, setProjetMsg] = useState({ type: '', text: '' });
 
-  const[projetForm, setProjetForm] = useState({
+  const [projetForm, setProjetForm] = useState({
     nom: '',
     description: '',
     date_début: '',
@@ -80,18 +80,18 @@ const AdminDashboard = () => {
     setFetchingProjets(true);
     try {
       const { data } = await API.get("/projets");
-      setProjets(Array.isArray(data) ? data :[]);
+      setProjets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Erreur lors de la récupération des projets", error);
-    } finally { 
-      setFetchingProjets(false); 
+    } finally {
+      setFetchingProjets(false);
     }
   };
 
-  useEffect(() => { 
-    fetchUsers(); 
-    fetchProjets(); 
-  },[]);
+  useEffect(() => {
+    fetchUsers();
+    fetchProjets();
+  }, []);
 
   // ── Méthodes Utilisateurs ──────────────────────────────────
   const handleCreateUser = async (e) => {
@@ -204,32 +204,33 @@ const AdminDashboard = () => {
     try {
       await API.post("/projets", projetForm);
       setProjetMsg({ type: 'success', text: '✅ Projet créé avec succès !' });
-      setProjetForm({ nom:'', description:'', date_début:'', date_fin:'', statut:'En cours', id_client:'', demanded: false });
+      setProjetForm({ nom: '', description: '', date_début: '', date_fin: '', statut: 'En cours', id_client: '', demanded: false });
       setShowProjetForm(false);
       fetchProjets();
     } catch (error) {
       setProjetMsg({ type: 'error', text: `❌ ${error.response?.data?.message || "Erreur création projet"}` });
-    } finally { 
-      setProjetLoading(false); 
+    } finally {
+      setProjetLoading(false);
     }
   };
 
   // ── Helpers ────────────────────────────────────────────────
   const getRoleIcon = (role) => {
-    switch(role) {
+    switch (role) {
       case 'admin': return <Briefcase size={16} />;
       case 'designer': return <Palette size={16} />;
       default: return <User size={16} />;
     }
   };
 
+
   const getStatutColor = (statut) => {
     const map = {
-      'En cours':    { color: '#2563EB', bg: 'rgba(37,99,235,0.1)' },
+      'En cours': { color: '#2563EB', bg: 'rgba(37,99,235,0.1)' },
       'En révision': { color: '#D97706', bg: 'rgba(217,119,6,0.1)' },
-      'Validé':      { color: '#059669', bg: 'rgba(5,150,105,0.1)' },
-      'Refusé':      { color: '#DC2626', bg: 'rgba(220,38,38,0.1)' },
-      'Terminé':     { color: '#7C3AED', bg: 'rgba(124,58,237,0.1)' },
+      'Validé': { color: '#059669', bg: 'rgba(5,150,105,0.1)' },
+      'Refusé': { color: '#DC2626', bg: 'rgba(220,38,38,0.1)' },
+      'Terminé': { color: '#7C3AED', bg: 'rgba(124,58,237,0.1)' },
     };
     return map[statut] || { color: '#64748B', bg: 'rgba(100,116,139,0.1)' };
   };
@@ -621,9 +622,9 @@ const AdminDashboard = () => {
                         </td>
                         <td>{u.email}</td>
                         <td>
-                          <span className="badge" style={{ 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
+                          <span className="badge" style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
                             gap: '4px',
                             backgroundColor: u.rôle === 'admin' ? 'rgba(233, 57, 70, 0.1)' : undefined,
                             color: u.rôle === 'admin' ? 'var(--danger)' : undefined
@@ -675,7 +676,7 @@ const AdminDashboard = () => {
       {/* ════════════════════════════════════════════
           MODALES UTILISATEURS
       ════════════════════════════════════════════ */}
-      
+
       {/* Modal de visualisation */}
       {showViewModal && viewingUser && (
         <div className="modal-overlay" onClick={closeViewModal}>

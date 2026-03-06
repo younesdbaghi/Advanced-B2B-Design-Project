@@ -9,7 +9,7 @@ const nodemailer = require("nodemailer");
 dotenv.config();
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); 
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ==========================================
@@ -60,7 +60,7 @@ const maquetteSchema = new mongoose.Schema(
     description: { type: String },
     id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
     id_createur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
-    image_fond: { type: String } 
+    image_fond: { type: String }
   },
   { timestamps: { createdAt: "date_creation", updatedAt: "date_modification" } }
 );
@@ -398,7 +398,7 @@ apiRouter.post("/maquettes", verifyToken, async (req, res) => {
     });
 
     // On crée toujours un canvas VIDE au départ. C'est le Frontend qui insérera l'image_fond proprement.
-    const contenuInitial = { version: "5.3.0", objects:[] }; 
+    const contenuInitial = { version: "5.3.0", objects: [] };
     const nouvelleVersion = await Version.create({
       numéro_version: 1, contenu: contenuInitial, id_maquette: nouvelleMaquette._id
     });
@@ -418,7 +418,7 @@ apiRouter.put("/maquettes/:id", verifyToken, async (req, res) => {
       { nom, description, id_projet },
       { new: true } // Renvoie le nouveau document
     ).populate("id_projet", "nom");
-    
+
     res.status(200).json(maquetteMaj);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -440,9 +440,9 @@ apiRouter.delete("/maquettes/:id", verifyToken, async (req, res) => {
 apiRouter.get("/maquettes/:id/latest-version", verifyToken, async (req, res) => {
   try {
     const version = await Version.findOne({ id_maquette: req.params.id })
-                                 .sort({ numéro_version: -1 }); // Récupère la plus récente
+      .sort({ numéro_version: -1 }); // Récupère la plus récente
     if (!version) return res.status(404).json({ message: "Version introuvable." });
-    
+
     res.status(200).json(version);
   } catch (error) {
     res.status(500).json({ message: "Erreur récupération version.", error: error.message });
@@ -464,6 +464,88 @@ apiRouter.put("/versions/:id", verifyToken, async (req, res) => {
   }
 });
 
+
+//rapport
+apiRouter.post("/rapport", verifyToken, async (req, res) => {
+  try {
+    let { date, id_projet, travail_effectué, tâches_restantes, blocages } = req.body;
+    let rapport = await RapportQuotidien.create({
+      date,
+      travail_effectué,
+      tâches_restantes,
+      blocages,
+      id_projet,
+      id_designer: req.user.id,
+    });
+    console.log(rapport)
+    if (rapport) {
+      return res.status(200).json({ msg: "rapport écrit avec succés" })
+    }
+    else {
+      return res.status(400).json({ msg: "rapport non écrit" })
+    }
+  }
+  catch (e) {
+    console.log("err : ", e)
+  }
+})
+
+
+apiRouter.get("/rapport", verifyToken, async (req, res) => {
+  try {
+    let rapports = await RapportQuotidien.find();
+    console.log("fetching rapports", rapports)
+    if (rapports) {
+      return res.status(201).json({ msg: "data ftched successfuly", rapports })
+    } else {
+      return res.status(400).json({ msg: "data fetch failed" })
+    }
+  }
+  catch (e) {
+    console.log("err fetch rappor", e)
+  }
+})
+
+apiRouter.get("/rapport/:id", verifyToken, async (req, res) => {
+  try {
+    let { id } = req.params;
+    let rapport = await RapportQuotidien.findById(id);
+    if (rapport) {
+      return res.status(200).json({ msg: "rapport fetch sussefully", rapport })
+    }
+    else {
+      return res.status(400).json({ msg: "fetch rapport failed" })
+    }
+  } catch (e) {
+    console.log("err : ", e)
+  }
+})
+
+apiRouter.delete("/rapport/:id", verifyToken, async (req, res) => {
+  try {
+    let { id } = req.params;
+    await RapportQuotidien.findByIdAndDelete(id)
+    res.status(200).json({ msg: "delete successfully" })
+
+  } catch (e) {
+    console.log("err delete : ", e)
+  }
+})
+
+apiRouter.put("/rapport/:id", verifyToken, checkRole(["designer"]), async (req, res) => {
+  try {
+    let data = req.body;
+    let updatedRapport = await RapportQuotidien.findByIdAndUpdate(req.params.id, data, { new: true })
+    if (updatedRapport) {
+      return res.status(200).json({ msg: "updated successfully" })
+    }
+    else {
+      return res.status(400).json({ msg: "updated successfully" })
+    }
+  } catch (e) {
+    console.log("err uodated : ", e)
+  }
+})
 // ==========================================
 // INITIALISATION BASE DE DONNÉES & SERVEUR
 // ==========================================
