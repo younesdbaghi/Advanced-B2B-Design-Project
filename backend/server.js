@@ -39,7 +39,7 @@ const projetSchema = new mongoose.Schema(
     },
     id_client: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
     id_admin_createur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
-    demanded: { type: Boolean, default: false }, // Indique si le projet est une demande client
+    demanded: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: "date_creation", updatedAt: "date_modification" } }
 );
@@ -150,19 +150,15 @@ apiRouter.post("/auth/login", async (req, res) => {
     const { email, mot_de_passe } = req.body;
     const user = await Utilisateur.findOne({ email });
     if (!user) return res.status(404).json({ message: "Utilisateur non trouvé." });
-
     const isMatch = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
     if (!isMatch) return res.status(400).json({ message: "Mot de passe incorrect." });
-
     user.dernier_connexion = Date.now();
     await user.save();
-
     const token = jwt.sign(
       { id: user._id, rôle: user.rôle },
       process.env.JWT_SECRET || "fallback_secret_key",
       { expiresIn: "24h" }
     );
-
     res.status(200).json({
       token,
       user: { id: user._id, nom: user.nom, email: user.email, rôle: user.rôle },
@@ -175,8 +171,7 @@ apiRouter.post("/auth/login", async (req, res) => {
 // ---- UTILISATEURS ----
 apiRouter.get("/utilisateurs", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
-    const utilisateurs = await Utilisateur.find().select("-mot_de_passe");
-    res.status(200).json(utilisateurs);
+    res.status(200).json(await Utilisateur.find().select("-mot_de_passe"));
   } catch (error) {
     res.status(500).json({ message: "Erreur récupération utilisateurs", error });
   }
@@ -187,26 +182,15 @@ apiRouter.post("/utilisateurs", verifyToken, checkRole(['admin']), async (req, r
     const { nom, email, rôle } = req.body;
     if (await Utilisateur.findOne({ email }))
       return res.status(400).json({ message: "Cet email est déjà utilisé." });
-
     const motDePasseClair = Math.random().toString(36).slice(-8);
     const motDePasseHash = await bcrypt.hash(motDePasseClair, await bcrypt.genSalt(10));
-
-    const nouvelUtilisateur = new Utilisateur({ nom, email, rôle, mot_de_passe: motDePasseHash });
-    const utilisateurSauvegarde = await nouvelUtilisateur.save();
-
+    const u = await new Utilisateur({ nom, email, rôle, mot_de_passe: motDePasseHash }).save();
     try {
       await envoyerEmailBienvenue(email, nom, motDePasseClair);
-      res.status(201).json({
-        message: "Utilisateur créé et email envoyé.",
-        utilisateur: { _id: utilisateurSauvegarde._id, nom, email, rôle },
-      });
+      res.status(201).json({ message: "Utilisateur créé et email envoyé.", utilisateur: { _id: u._id, nom, email, rôle } });
     } catch (mailError) {
       console.log("Erreur envoi email :", mailError.message);
-      res.status(201).json({
-        message: "Utilisateur créé (email non envoyé).",
-        mot_de_passe_temp: motDePasseClair,
-        utilisateur: { _id: utilisateurSauvegarde._id, nom, email, rôle },
-      });
+      res.status(201).json({ message: "Utilisateur créé (email non envoyé).", mot_de_passe_temp: motDePasseClair, utilisateur: { _id: u._id, nom, email, rôle } });
     }
   } catch (error) {
     res.status(500).json({ message: "Erreur création utilisateur", error: error.message });
@@ -231,9 +215,7 @@ apiRouter.put("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (req
       if (existing) return res.status(400).json({ message: "Email déjà utilisé par un autre compte." });
     }
     const updated = await Utilisateur.findByIdAndUpdate(
-      req.params.id,
-      { nom, email, rôle },
-      { new: true, runValidators: true }
+      req.params.id, { nom, email, rôle }, { new: true, runValidators: true }
     ).select("-mot_de_passe");
     if (!updated) return res.status(404).json({ message: "Utilisateur non trouvé." });
     res.status(200).json({ message: "Utilisateur mis à jour.", utilisateur: updated });
@@ -246,7 +228,6 @@ apiRouter.delete("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (
   try {
     if (req.params.id === req.user.id)
       return res.status(400).json({ message: "Vous ne pouvez pas supprimer votre propre compte." });
-
     const deleted = await Utilisateur.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Utilisateur non trouvé." });
     res.status(200).json({ message: "Utilisateur supprimé." });
@@ -255,9 +236,28 @@ apiRouter.delete("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (
   }
 });
 
-// ---- PROJETS (ordre important : spécifiques avant /:id) ----
+// ---- DESIGNERS DISPONIBLES ----
 
-// GET tous les projets
+// GET designers disponibles (non assignés à aucun projet actif)
+apiRouter.get("/designers", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    // Trouve tous les designers déjà assignés à un projet
+    const affectations = await Affectation.find().distinct("id_designer");
+    
+    // Retourne les designers qui ne sont PAS dans cette liste
+    const designers = await Utilisateur.find({
+      rôle: "designer",
+      _id: { $nin: affectations }
+    }).select("-mot_de_passe");
+    
+    res.status(200).json(designers);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur récupération designers", error: error.message });
+  }
+});
+
+// ---- PROJETS ----
+
 apiRouter.get("/projets", verifyToken, async (req, res) => {
   try {
     const projets = await Projet.find()
@@ -269,25 +269,18 @@ apiRouter.get("/projets", verifyToken, async (req, res) => {
   }
 });
 
-// Demande de projet par un client
 apiRouter.post("/projets/demande", verifyToken, checkRole(['client']), async (req, res) => {
   try {
     const { nom, description, date_début, date_fin } = req.body;
     if (!nom || !date_début || !date_fin)
       return res.status(400).json({ message: "Nom, date_début et date_fin sont requis." });
-
     const admin = await Utilisateur.findOne({ rôle: "admin" });
     if (!admin) return res.status(500).json({ message: "Aucun administrateur trouvé." });
-
     const demande = await Projet.create({
-      nom,
-      description: description || "",
-      date_début,
-      date_fin,
-      statut: "En attente",
-      demanded: true,
-      id_client: req.user.id,
-      id_admin_createur: admin._id,
+      nom, description: description || "",
+      date_début, date_fin,
+      statut: "En attente", demanded: true,
+      id_client: req.user.id, id_admin_createur: admin._id,
     });
     res.status(201).json({ message: "Demande envoyée.", demande });
   } catch (error) {
@@ -295,7 +288,6 @@ apiRouter.post("/projets/demande", verifyToken, checkRole(['client']), async (re
   }
 });
 
-// Création directe par admin
 apiRouter.post("/projets", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const projet = new Projet({ ...req.body, id_admin_createur: req.user.id });
@@ -306,13 +298,10 @@ apiRouter.post("/projets", verifyToken, checkRole(['admin']), async (req, res) =
   }
 });
 
-// Accepter une demande (admin)
 apiRouter.patch("/projets/:id/accepter", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const projet = await Projet.findByIdAndUpdate(
-      req.params.id,
-      { statut: "En cours" },
-      { new: true }
+      req.params.id, { statut: "En cours" }, { new: true }
     ).populate("id_client", "nom email");
     if (!projet) return res.status(404).json({ message: "Projet introuvable." });
     res.status(200).json({ message: "Projet accepté.", projet });
@@ -321,13 +310,10 @@ apiRouter.patch("/projets/:id/accepter", verifyToken, checkRole(['admin']), asyn
   }
 });
 
-// Refuser une demande (admin)
 apiRouter.patch("/projets/:id/refuser", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const projet = await Projet.findByIdAndUpdate(
-      req.params.id,
-      { statut: "Refusé" },
-      { new: true }
+      req.params.id, { statut: "Refusé" }, { new: true }
     );
     if (!projet) return res.status(404).json({ message: "Projet introuvable." });
     res.status(200).json({ message: "Demande refusée.", projet });
@@ -336,7 +322,6 @@ apiRouter.patch("/projets/:id/refuser", verifyToken, checkRole(['admin']), async
   }
 });
 
-// (Optionnel) Route générique pour un projet spécifique (à placer après les routes spécifiques)
 apiRouter.get("/projets/:id", verifyToken, async (req, res) => {
   try {
     const projet = await Projet.findById(req.params.id)
@@ -349,20 +334,98 @@ apiRouter.get("/projets/:id", verifyToken, async (req, res) => {
   }
 });
 
-// ---- AUTRES ROUTES (exemples) ----
-apiRouter.post("/maquettes", verifyToken, checkRole(['designer', 'admin']), (req, res) => {
-  res.send("Création maquette OK");
+apiRouter.put("/projets/:id", verifyToken, async (req, res) => {
+  try {
+    const projet = await Projet.findByIdAndUpdate(
+      req.params.id, { ...req.body }, { new: true }
+    ).populate("id_client", "nom email");
+    if (!projet) return res.status(404).json({ message: "Projet introuvable." });
+    res.status(200).json({ message: "Projet modifié.", projet });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur modification", error: error.message });
+  }
 });
-apiRouter.put("/projets/valider", verifyToken, checkRole(['client']), (req, res) => {
-  res.send("Validation projet OK");
+
+apiRouter.delete("/projets/:id", verifyToken, async (req, res) => {
+  try {
+    const projet = await Projet.findByIdAndDelete(req.params.id);
+    if (!projet) return res.status(404).json({ message: "Projet introuvable." });
+    res.status(200).json({ message: "Projet supprimé." });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur suppression", error: error.message });
+  }
 });
-apiRouter.get("/affectations", verifyToken, (req, res) => res.send("Route Affectations B2B"));
+
+// ---- AFFECTATIONS ----
+
+// GET affectations d'un projet (admin)
+apiRouter.get("/affectations/projet/:id_projet", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const affectations = await Affectation.find({ id_projet: req.params.id_projet })
+      .populate("id_designer", "nom email");
+    res.status(200).json(affectations);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur récupération affectations", error: error.message });
+  }
+});
+
+// GET projets du designer connecté
+apiRouter.get("/affectations/mes-projets", verifyToken, checkRole(['designer']), async (req, res) => {
+  try {
+    const affectations = await Affectation.find({ id_designer: req.user.id })
+      .populate({
+        path: "id_projet",
+        populate: { path: "id_client", select: "nom email" }
+      });
+    res.status(200).json(affectations);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur récupération projets designer", error: error.message });
+  }
+});
+
+// POST assigner un designer à un projet (admin)
+apiRouter.post("/affectations", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const { id_projet, id_designer } = req.body;
+    if (!id_projet || !id_designer)
+      return res.status(400).json({ message: "id_projet et id_designer sont requis." });
+
+    // Vérifier que le designer existe
+    const designer = await Utilisateur.findOne({ _id: id_designer, rôle: "designer" });
+    if (!designer) return res.status(404).json({ message: "Designer introuvable." });
+
+    // Vérifier que le projet existe
+    const projet = await Projet.findById(id_projet);
+    if (!projet) return res.status(404).json({ message: "Projet introuvable." });
+
+    const affectation = await Affectation.create({ id_projet, id_designer });
+    await affectation.populate("id_designer", "nom email");
+    res.status(201).json({ message: "Designer assigné avec succès.", affectation });
+  } catch (error) {
+    if (error.code === 11000)
+      return res.status(400).json({ message: "Ce designer est déjà assigné à ce projet." });
+    res.status(500).json({ message: "Erreur assignation", error: error.message });
+  }
+});
+
+// DELETE retirer un designer d'un projet (admin)
+apiRouter.delete("/affectations/:id", verifyToken, checkRole(['admin']), async (req, res) => {
+  try {
+    const affectation = await Affectation.findByIdAndDelete(req.params.id);
+    if (!affectation) return res.status(404).json({ message: "Affectation introuvable." });
+    res.status(200).json({ message: "Designer retiré du projet." });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur suppression affectation", error: error.message });
+  }
+});
+
+// ---- AUTRES ROUTES ----
+apiRouter.post("/maquettes", verifyToken, checkRole(['designer', 'admin']), (req, res) => res.send("Création maquette OK"));
 apiRouter.get("/maquettes", verifyToken, (req, res) => res.send("Route Maquettes B2B"));
 apiRouter.get("/versions", verifyToken, (req, res) => res.send("Route Versions B2B"));
 apiRouter.get("/feedbacks", verifyToken, (req, res) => res.send("Route Feedbacks B2B"));
 apiRouter.get("/rapports", verifyToken, (req, res) => res.send("Route Rapports B2B"));
 
-// Montage du routeur
 app.use("/Api_B2B", apiRouter);
 
 // ==========================================
@@ -396,6 +459,5 @@ const connectDB = async () => {
 connectDB();
 
 app.get("/", (req, res) => res.send("API Project Management est en ligne..."));
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));
