@@ -44,7 +44,7 @@ const projetSchema = new mongoose.Schema(
         "En attente",
       ],
       required: true,
-      default: "En cours",
+      default: "En attente",
     },
     id_client: {
       type: mongoose.Schema.Types.ObjectId,
