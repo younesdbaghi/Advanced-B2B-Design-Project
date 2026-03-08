@@ -3,21 +3,24 @@ import API from "../api";
 import { UserPlus, Mail, User, Briefcase, Palette, Trash2, Edit, Loader, CheckCircle, AlertCircle, X, Save } from 'lucide-react';
 
 const AdminUsers = () => {
-  const [users, setUsers]     = useState([]);
-  const [nom, setNom]         = useState("");
-  const [email, setEmail]     = useState("");
-  const [role, setRole]       = useState("client");
+
+  const [users, setUsers] = useState([]);
+  const [nom, setNom] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("client");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   // Edit modal state
-  const [editUser, setEditUser]   = useState(null); // user being edited
-  const [editNom, setEditNom]     = useState("");
+  const [editUser, setEditUser] = useState(null); // user being edited
+  const [editNom, setEditNom] = useState("");
   const [editEmail, setEditEmail] = useState("");
-  const [editRole, setEditRole]   = useState("client");
+  const [editRole, setEditRole] = useState("client");
   const [editLoading, setEditLoading] = useState(false);
 
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const fetchUsers = async () => {
     setFetching(true);
     try {
@@ -81,11 +84,21 @@ const AdminUsers = () => {
   };
 
   const getRoleIcon = (r) => {
-    if (r === 'admin')    return <Briefcase size={14} />;
+    if (r === 'admin') return <Briefcase size={14} />;
     if (r === 'designer') return <Palette size={14} />;
     return <User size={14} />;
   };
+  let usersF = users.filter(u => u.rôle !== "admin")
+  const filteredUsers = usersF.filter(u => {
+    const matchSearch =
+      u.nom.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase());
 
+    const matchRole =
+      roleFilter === "all" || u.rôle === roleFilter;
+
+    return matchSearch && matchRole;
+  });
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 24 }}>Gestion des utilisateurs</h1>
@@ -95,10 +108,10 @@ const AdminUsers = () => {
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '12px 16px', borderRadius: 10, marginBottom: 20,
           background: message.type === 'success' ? '#F0FDF4' : '#FEF2F2',
-          color:       message.type === 'success' ? '#059669' : '#DC2626',
+          color: message.type === 'success' ? '#059669' : '#DC2626',
           border: `1px solid ${message.type === 'success' ? '#BBF7D0' : '#FECACA'}`,
         }}>
-          {message.type === 'success' ? <CheckCircle size={16}/> : <AlertCircle size={16}/>}
+          {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
           {message.text}
         </div>
       )}
@@ -117,7 +130,7 @@ const AdminUsers = () => {
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Modifier l'utilisateur</h3>
               <button onClick={() => setEditUser(null)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}>
-                <X size={20}/>
+                <X size={20} />
               </button>
             </div>
             <form onSubmit={handleEditUser}>
@@ -136,7 +149,6 @@ const AdminUsers = () => {
                 <select value={editRole} onChange={e => setEditRole(e.target.value)} style={inp}>
                   <option value="client">Client</option>
                   <option value="designer">Designer</option>
-                  <option value="admin">Admin</option>
                 </select>
               </div>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -152,7 +164,7 @@ const AdminUsers = () => {
                   border: 'none', borderRadius: 10, padding: '10px 20px',
                   cursor: editLoading ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 14,
                 }}>
-                  {editLoading ? <Loader size={16}/> : <Save size={16}/>}
+                  {editLoading ? <Loader size={16} /> : <Save size={16} />}
                   {editLoading ? 'Enregistrement...' : 'Enregistrer'}
                 </button>
               </div>
@@ -194,18 +206,36 @@ const AdminUsers = () => {
             border: 'none', borderRadius: 10, padding: '12px 24px',
             cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 14,
           }}>
-            {loading ? <Loader size={16}/> : <UserPlus size={16}/>}
+            {loading ? <Loader size={16} /> : <UserPlus size={16} />}
             {loading ? 'Création...' : "Créer l'utilisateur"}
           </button>
         </form>
       </div>
 
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <input
+          type="text"
+          placeholder="Rechercher par nom ou email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={inp}
+        />
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          style={inp}
+        >
+          <option value="all">Tous les rôles</option>
+          <option value="client">Client</option>
+          <option value="designer">Designer</option>
+        </select>
+      </div>
       {/* Liste */}
       <div className="card">
         <h3 style={{ marginBottom: 20 }}>Liste des utilisateurs ({users.length})</h3>
         {fetching ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-            <Loader size={32} color="#2563EB"/>
+            <Loader size={32} color="#2563EB" />
           </div>
         ) : (
           <div className="table-container">
@@ -219,7 +249,7 @@ const AdminUsers = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => (
+                {filteredUsers.map(u => (
                   <tr key={u._id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -242,11 +272,11 @@ const AdminUsers = () => {
                     <td style={{ textAlign: 'center' }}>
                       <button onClick={() => openEdit(u)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563EB', marginRight: 8 }}>
-                        <Edit size={16}/>
+                        <Edit size={16} />
                       </button>
                       <button onClick={() => handleDeleteUser(u._id)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}>
-                        <Trash2 size={16}/>
+                        <Trash2 size={16} />
                       </button>
                     </td>
                   </tr>

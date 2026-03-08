@@ -239,6 +239,7 @@ const AdminDashboard = () => {
 
   return (
     <div>
+      {console.log("hello world")}
       <h1 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '24px' }}>
         Dashboard Admin
       </h1>
@@ -612,6 +613,7 @@ const AdminDashboard = () => {
                   <tbody>
                     {users.map((u) => (
                       <tr key={u._id}>
+
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div className="user-avatar" style={{ width: '32px', height: '32px', fontSize: '14px' }}>
@@ -620,7 +622,7 @@ const AdminDashboard = () => {
                             {u.nom}
                           </div>
                         </td>
-                        <td>{u.email}</td>
+                        <td>{u.email} </td>
                         <td>
                           <span className="badge" style={{
                             display: 'inline-flex',
