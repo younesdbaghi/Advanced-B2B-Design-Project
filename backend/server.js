@@ -5,7 +5,7 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-const pdfDocument = require("pdfkit")
+const pdfDocument = require("pdfkit");
 
 dotenv.config();
 const app = express();
@@ -212,6 +212,11 @@ const checkRole = (rolesAutorises) => (req, res, next) => {
 // ==========================================
 const apiRouter = express.Router();
 
+// ---- HEALTH CHECK ----
+apiRouter.get("/", (req, res) => {
+  res.send("Serveur actif et prêt !");
+});
+
 // ---- AUTH ----
 apiRouter.post("/auth/login", async (req, res) => {
   try {
@@ -304,9 +309,7 @@ apiRouter.post(
     }
   }
 );
-apiRouter.get("/", (req, res) => {
-  res.send("Serveur actif et prêt !");
-});
+
 apiRouter.get(
   "/utilisateurs/:id",
   verifyToken,
@@ -405,7 +408,6 @@ apiRouter.get(
         rôle: "designer",
         _id: { $nin: affectations },
       }).select("-mot_de_passe");
-
       res.status(200).json(designers);
     } catch (error) {
       res
@@ -489,6 +491,7 @@ apiRouter.post(
   }
 );
 
+// Validation projet client (placeholder)
 apiRouter.put(
   "/projets/valider",
   verifyToken,
@@ -558,9 +561,26 @@ apiRouter.get("/projets/:id", verifyToken, async (req, res) => {
   }
 });
 
-// Modifier un projet complet
+// Modifier un projet (client peut modifier sa demande si En attente)
 apiRouter.put("/projets/:id", verifyToken, async (req, res) => {
   try {
+    // Si c'est un client, il ne peut modifier que ses propres demandes En attente
+    if (req.user.rôle === "client") {
+      const projet = await Projet.findById(req.params.id);
+      if (!projet)
+        return res.status(404).json({ message: "Projet introuvable." });
+      if (String(projet.id_client) !== String(req.user.id))
+        return res
+          .status(403)
+          .json({ message: "Vous ne pouvez pas modifier ce projet." });
+      if (projet.statut !== "En attente")
+        return res
+          .status(400)
+          .json({
+            message: "Vous ne pouvez modifier que les demandes En attente.",
+          });
+    }
+
     const projet = await Projet.findByIdAndUpdate(
       req.params.id,
       { ...req.body },
@@ -576,9 +596,26 @@ apiRouter.put("/projets/:id", verifyToken, async (req, res) => {
   }
 });
 
-// Supprimer un projet
+// Supprimer / annuler un projet (client peut annuler ses demandes En attente)
 apiRouter.delete("/projets/:id", verifyToken, async (req, res) => {
   try {
+    // Si c'est un client, il ne peut annuler que ses propres demandes En attente
+    if (req.user.rôle === "client") {
+      const projet = await Projet.findById(req.params.id);
+      if (!projet)
+        return res.status(404).json({ message: "Projet introuvable." });
+      if (String(projet.id_client) !== String(req.user.id))
+        return res
+          .status(403)
+          .json({ message: "Vous ne pouvez pas annuler ce projet." });
+      if (projet.statut !== "En attente")
+        return res
+          .status(400)
+          .json({
+            message: "Vous ne pouvez annuler que les demandes En attente.",
+          });
+    }
+
     const projet = await Projet.findByIdAndDelete(req.params.id);
     if (!projet)
       return res.status(404).json({ message: "Projet introuvable." });
@@ -700,6 +737,7 @@ apiRouter.delete(
 
 // ---- MAQUETTES & ÉDITEUR DESIGN ----
 
+// Toutes les maquettes
 apiRouter.get("/maquettes", verifyToken, async (req, res) => {
   try {
     const maquettes = await Maquette.find()
@@ -711,6 +749,32 @@ apiRouter.get("/maquettes", verifyToken, async (req, res) => {
   }
 });
 
+// Récupérer la maquette d'un projet spécifique (utilisée par ClientDashboard)
+apiRouter.get("/maquettes/projet/:id_projet", verifyToken, async (req, res) => {
+  try {
+    // Retourne la maquette la plus récente liée à ce projet
+    const maquette = await Maquette.findOne({ id_projet: req.params.id_projet })
+      .sort({ date_creation: -1 })
+      .populate("id_projet", "nom")
+      .populate("id_createur", "nom");
+
+    if (!maquette) {
+      // Pas encore de maquette — répondre null sans erreur
+      return res.status(200).json({ maquette: null });
+    }
+
+    res.status(200).json({ maquette });
+  } catch (error) {
+    res
+      .status(500)
+      .json({
+        message: "Erreur récupération maquette du projet",
+        error: error.message,
+      });
+  }
+});
+
+// Récupérer une maquette par ID
 apiRouter.get("/maquettes/:id", verifyToken, async (req, res) => {
   try {
     const maquette = await Maquette.findById(req.params.id);
@@ -720,6 +784,7 @@ apiRouter.get("/maquettes/:id", verifyToken, async (req, res) => {
   }
 });
 
+// Créer une maquette
 apiRouter.post("/maquettes", verifyToken, async (req, res) => {
   try {
     const { nom, description, id_projet, image_fond } = req.body;
@@ -747,6 +812,7 @@ apiRouter.post("/maquettes", verifyToken, async (req, res) => {
   }
 });
 
+// Modifier une maquette
 apiRouter.put("/maquettes/:id", verifyToken, async (req, res) => {
   try {
     const { nom, description, id_projet } = req.body;
@@ -755,13 +821,13 @@ apiRouter.put("/maquettes/:id", verifyToken, async (req, res) => {
       { nom, description, id_projet },
       { new: true }
     ).populate("id_projet", "nom");
-
     res.status(200).json(maquetteMaj);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+// Supprimer une maquette
 apiRouter.delete("/maquettes/:id", verifyToken, async (req, res) => {
   try {
     await Maquette.findByIdAndDelete(req.params.id);
@@ -783,7 +849,6 @@ apiRouter.get(
       }).sort({ numéro_version: -1 });
       if (!version)
         return res.status(404).json({ message: "Version introuvable." });
-
       res.status(200).json(version);
     } catch (error) {
       res
@@ -819,9 +884,9 @@ apiRouter.put("/versions/:id", verifyToken, async (req, res) => {
 
 apiRouter.post("/rapport", verifyToken, async (req, res) => {
   try {
-    let { date, id_projet, travail_effectué, tâches_restantes, blocages } =
+    const { date, id_projet, travail_effectué, tâches_restantes, blocages } =
       req.body;
-    let rapport = await RapportQuotidien.create({
+    const rapport = await RapportQuotidien.create({
       date,
       travail_effectué,
       tâches_restantes,
@@ -829,13 +894,11 @@ apiRouter.post("/rapport", verifyToken, async (req, res) => {
       id_projet,
       id_designer: req.user.id,
     });
-    if (rapport) {
+    if (rapport)
       return res
         .status(200)
-        .json({ msg: "rapport écrit avec succés", rapport });
-    } else {
-      return res.status(400).json({ msg: "rapport non écrit" });
-    }
+        .json({ msg: "rapport écrit avec succès", rapport });
+    return res.status(400).json({ msg: "rapport non écrit" });
   } catch (e) {
     console.log("err : ", e);
     res.status(500).json({ error: e.message });
@@ -844,14 +907,12 @@ apiRouter.post("/rapport", verifyToken, async (req, res) => {
 
 apiRouter.get("/rapport", verifyToken, async (req, res) => {
   try {
-    let rapports = await RapportQuotidien.find();
-    if (rapports) {
+    const rapports = await RapportQuotidien.find();
+    if (rapports)
       return res
         .status(201)
         .json({ msg: "data fetched successfully", rapports });
-    } else {
-      return res.status(400).json({ msg: "data fetch failed" });
-    }
+    return res.status(400).json({ msg: "data fetch failed" });
   } catch (e) {
     console.log("err fetch rapport", e);
     res.status(500).json({ error: e.message });
@@ -860,15 +921,12 @@ apiRouter.get("/rapport", verifyToken, async (req, res) => {
 
 apiRouter.get("/rapport/:id", verifyToken, async (req, res) => {
   try {
-    let { id } = req.params;
-    let rapport = await RapportQuotidien.findById(id);
-    if (rapport) {
+    const rapport = await RapportQuotidien.findById(req.params.id);
+    if (rapport)
       return res
         .status(200)
         .json({ msg: "rapport fetch successfully", rapport });
-    } else {
-      return res.status(400).json({ msg: "fetch rapport failed" });
-    }
+    return res.status(400).json({ msg: "fetch rapport failed" });
   } catch (e) {
     console.log("err : ", e);
     res.status(500).json({ error: e.message });
@@ -877,8 +935,7 @@ apiRouter.get("/rapport/:id", verifyToken, async (req, res) => {
 
 apiRouter.delete("/rapport/:id", verifyToken, async (req, res) => {
   try {
-    let { id } = req.params;
-    await RapportQuotidien.findByIdAndDelete(id);
+    await RapportQuotidien.findByIdAndDelete(req.params.id);
     res.status(200).json({ msg: "delete successfully" });
   } catch (e) {
     console.log("err delete : ", e);
@@ -892,19 +949,16 @@ apiRouter.put(
   checkRole(["designer"]),
   async (req, res) => {
     try {
-      let data = req.body;
-      let updatedRapport = await RapportQuotidien.findByIdAndUpdate(
+      const updatedRapport = await RapportQuotidien.findByIdAndUpdate(
         req.params.id,
-        data,
+        req.body,
         { new: true }
       );
-      if (updatedRapport) {
+      if (updatedRapport)
         return res
           .status(200)
           .json({ msg: "updated successfully", rapport: updatedRapport });
-      } else {
-        return res.status(400).json({ msg: "update failed" });
-      }
+      return res.status(400).json({ msg: "update failed" });
     } catch (e) {
       console.log("err updated : ", e);
       res.status(500).json({ error: e.message });
@@ -912,76 +966,63 @@ apiRouter.put(
   }
 );
 
-
+// Générer un PDF d'un rapport quotidien
 apiRouter.post("/rapportPDF/:id", verifyToken, async (req, res) => {
   try {
-    let { date,
-      travail_effectué,
-      tâches_restantes,
-      blocages } = await RapportQuotidien.findById(req.params.id)
+    const { date, travail_effectué, tâches_restantes, blocages } =
+      await RapportQuotidien.findById(req.params.id);
 
-    const doc = new pdfDocument({ margin: 50 })
-    res.setHeader("Content-Type", "application/pdf")
-    res.setHeader("Content-Disposition", "attachment; filename=rapport.pdf")
-    doc.pipe(res)
+    const doc = new pdfDocument({ margin: 50 });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=rapport.pdf");
+    doc.pipe(res);
+
     doc
       .fontSize(30)
       .fillColor("#2c3e50")
-      .text("Rapport Journalier", { align: "center" })
-    doc.moveDown()
+      .text("Rapport Journalier", { align: "center" });
+    doc.moveDown();
     doc
       .strokeColor("#aaaaaa")
       .lineWidth(1)
       .moveTo(50, doc.y)
       .lineTo(550, doc.y)
-      .stroke()
-    doc.moveDown(1)
+      .stroke();
+    doc.moveDown(1);
     doc
       .fontSize(14)
       .fillColor("black")
-      .text(`Date : ${date.toISOString().split("T")[0]}`)
-    doc.moveDown()
-    doc
-      .fontSize(16)
-      .fillColor("#34495e")
-      .text("Travail effectué : ")
-    doc.moveDown(0.5)
-    doc
-      .fontSize(12)
-      .fillColor("black")
-      .text(travail_effectué)
-    doc.moveDown()
-    doc
-      .fontSize(16)
-      .fillColor("#34495e")
-      .text("Tâches restantes : ")
-    doc.moveDown(0.5)
+      .text(`Date : ${date.toISOString().split("T")[0]}`);
+    doc.moveDown();
+    doc.fontSize(16).fillColor("#34495e").text("Travail effectué : ");
+    doc.moveDown(0.5);
+    doc.fontSize(12).fillColor("black").text(travail_effectué);
+    doc.moveDown();
+    doc.fontSize(16).fillColor("#34495e").text("Tâches restantes : ");
+    doc.moveDown(0.5);
+    doc.fontSize(12).fillColor("black").text(tâches_restantes);
+    doc.moveDown();
+    doc.fontSize(16).fillColor("#34495e").text("Blocages : ");
+    doc.moveDown(0.5);
     doc
       .fontSize(12)
       .fillColor("black")
-      .text(tâches_restantes)
-
-    doc.moveDown()
-    doc
-      .fontSize(16)
-      .fillColor("#34495e")
-      .text("Blocages : ")
-    doc.moveDown(0.5)
-    doc
-      .fontSize(12)
-      .fillColor("black")
-      .text(blocages)
-    doc.end()
+      .text(blocages || "Aucun");
+    doc.end();
   } catch (e) {
-    console.log("err : ", e)
+    console.log("err rapportPDF : ", e);
+    res.status(500).json({ error: e.message });
   }
-})
-// Route générique pour le feedback à construire par la suite
+});
+
+// ---- FEEDBACKS ----
 apiRouter.get("/feedbacks", verifyToken, (req, res) =>
   res.send("Route Feedbacks B2B à implémenter")
 );
 
-// Montage final du routeur
+// ==========================================
+// MONTAGE FINAL DU ROUTEUR
+// ==========================================
 app.use("/Api_B2B", apiRouter);
 
 // ==========================================
