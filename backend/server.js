@@ -5,6 +5,7 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const pdfDocument = require("pdfkit")
 
 dotenv.config();
 const app = express();
@@ -303,7 +304,9 @@ apiRouter.post(
     }
   }
 );
-
+apiRouter.get("/", (req, res) => {
+  res.send("Serveur actif et prêt !");
+});
 apiRouter.get(
   "/utilisateurs/:id",
   verifyToken,
@@ -909,6 +912,70 @@ apiRouter.put(
   }
 );
 
+
+apiRouter.post("/rapportPDF/:id", verifyToken, async (req, res) => {
+  try {
+    let { date,
+      travail_effectué,
+      tâches_restantes,
+      blocages } = await RapportQuotidien.findById(req.params.id)
+
+    const doc = new pdfDocument({ margin: 50 })
+    res.setHeader("Content-Type", "application/pdf")
+    res.setHeader("Content-Disposition", "attachment; filename=rapport.pdf")
+    doc.pipe(res)
+    doc
+      .fontSize(30)
+      .fillColor("#2c3e50")
+      .text("Rapport Journalier", { align: "center" })
+    doc.moveDown()
+    doc
+      .strokeColor("#aaaaaa")
+      .lineWidth(1)
+      .moveTo(50, doc.y)
+      .lineTo(550, doc.y)
+      .stroke()
+    doc.moveDown(1)
+    doc
+      .fontSize(14)
+      .fillColor("black")
+      .text(`Date : ${date.toISOString().split("T")[0]}`)
+    doc.moveDown()
+    doc
+      .fontSize(16)
+      .fillColor("#34495e")
+      .text("Travail effectué : ")
+    doc.moveDown(0.5)
+    doc
+      .fontSize(12)
+      .fillColor("black")
+      .text(travail_effectué)
+    doc.moveDown()
+    doc
+      .fontSize(16)
+      .fillColor("#34495e")
+      .text("Tâches restantes : ")
+    doc.moveDown(0.5)
+    doc
+      .fontSize(12)
+      .fillColor("black")
+      .text(tâches_restantes)
+
+    doc.moveDown()
+    doc
+      .fontSize(16)
+      .fillColor("#34495e")
+      .text("Blocages : ")
+    doc.moveDown(0.5)
+    doc
+      .fontSize(12)
+      .fillColor("black")
+      .text(blocages)
+    doc.end()
+  } catch (e) {
+    console.log("err : ", e)
+  }
+})
 // Route générique pour le feedback à construire par la suite
 apiRouter.get("/feedbacks", verifyToken, (req, res) =>
   res.send("Route Feedbacks B2B à implémenter")

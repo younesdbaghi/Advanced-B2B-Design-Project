@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import API from "../api";
-import { Trash2, Eye, Edit3, X, FileText, Calendar, Loader, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Trash2, Eye, Edit3, X, Download, FileText, Calendar, Loader, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import axios from "axios";
 
 function History() {
   const [rapports, setRapports] = useState([]);
@@ -78,6 +79,36 @@ function History() {
     } catch (e) { console.log("delete err", e); }
   };
 
+  const downloadPDF = async (id) => {
+    try {
+
+      const token = localStorage.getItem("token");
+
+      const response = await axios.post(
+        `http://localhost:5000/Api_B2B/rapportPDF/${id}`,
+        {},
+        {
+          responseType: "blob",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "rapport.pdf";
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+    } catch (e) {
+      console.log("err download pdf ", e);
+    }
+  };
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
@@ -146,6 +177,8 @@ function History() {
                     </td>
                     <td>
                       <div className="actions-cell">
+                        <button className="icon-btn down-c" onClick={() => downloadPDF(p._id)}>
+                          <Download size={15} /></button>
                         <button className="icon-btn eye-c" onClick={() => handleView(p._id)} title="Voir">
                           <Eye size={15} />
                         </button>
@@ -337,6 +370,7 @@ function History() {
         .eye-c  { color: #2a9d8f; background: rgba(42,157,143,0.1); }
         .edit-c { color: #6366F1;  background: rgba(99,102,241,0.1); }
         .del-c  { color: #e63946;  background: rgba(230,57,70,0.1); }
+        .down-c {color: #35e611}
         .icon-btn:hover { filter: brightness(1.1); transform: scale(1.1); }
 
         /* ── Overlay & Modal ── */
