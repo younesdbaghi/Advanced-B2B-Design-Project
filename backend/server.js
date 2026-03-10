@@ -907,7 +907,8 @@ apiRouter.post("/rapport", verifyToken, async (req, res) => {
 
 apiRouter.get("/rapport", verifyToken, async (req, res) => {
   try {
-    const rapports = await RapportQuotidien.find();
+    const rapports = await RapportQuotidien.find()
+      .populate("id_designer id_projet");
     if (rapports)
       return res
         .status(201)
@@ -969,8 +970,9 @@ apiRouter.put(
 // Générer un PDF d'un rapport quotidien
 apiRouter.post("/rapportPDF/:id", verifyToken, async (req, res) => {
   try {
-    const { date, travail_effectué, tâches_restantes, blocages } =
-      await RapportQuotidien.findById(req.params.id);
+    const { date, travail_effectué, tâches_restantes, blocages, id_designer, id_projet } =
+      await RapportQuotidien.findById(req.params.id)
+        .populate("id_projet id_designer");
 
     const doc = new pdfDocument({ margin: 50 });
     res.setHeader("Content-Type", "application/pdf");
@@ -993,6 +995,14 @@ apiRouter.post("/rapportPDF/:id", verifyToken, async (req, res) => {
       .fontSize(14)
       .fillColor("black")
       .text(`Date : ${date.toISOString().split("T")[0]}`);
+    doc.moveDown();
+    doc.fontSize(16).fillColor("#34495e").text("Nom de designer : ");
+    doc.moveDown(0.5);
+    doc.fontSize(12).fillColor("black").text(id_designer.nom);
+    doc.moveDown();
+    doc.fontSize(16).fillColor("#34495e").text("Nom de projet : ");
+    doc.moveDown(0.5);
+    doc.fontSize(12).fillColor("black").text(id_projet.nom);
     doc.moveDown();
     doc.fontSize(16).fillColor("#34495e").text("Travail effectué : ");
     doc.moveDown(0.5);

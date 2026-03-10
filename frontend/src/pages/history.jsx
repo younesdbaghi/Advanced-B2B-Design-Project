@@ -116,7 +116,7 @@ function History() {
 
   return (
     <div className="h-root">
-
+      {console.log(rapports)}
       {/* ── Header ── */}
       <div className="h-header">
         <div>
@@ -148,6 +148,8 @@ function History() {
               <thead>
                 <tr>
                   <th>Date</th>
+                  <th>nom de designer</th>
+                  <th>nom de projet</th>
                   <th>Travail effectué</th>
                   <th>Tâches restantes</th>
                   <th>Blocages</th>
@@ -162,6 +164,12 @@ function History() {
                         <Calendar size={13} color="#6366F1" />
                         <span>{formatDate(p.date)}</span>
                       </div>
+                    </td>
+                    <td>
+                      <span className="truncate">{p.id_designer.nom}</span>
+                    </td>
+                    <td>
+                      <span className="truncate">{p.id_projet.nom}</span>
                     </td>
                     <td>
                       <span className="truncate">{p.travail_effectué}</span>
