@@ -178,8 +178,7 @@ const ClientDashboard = () => {
   // ── Validation dates — retourne { date_début, date_fin } ────
   const validerDates = (debut, fin) => {
     const errors = { date_début: "", date_fin: "" };
-    if (debut && debut < today)
-      errors.date_début = "La date de début ne peut pas être dans le passé.";
+    
     if (debut && fin && fin < debut)
       errors.date_fin = "La date de fin ne peut pas être avant la date de début.";
     return errors;

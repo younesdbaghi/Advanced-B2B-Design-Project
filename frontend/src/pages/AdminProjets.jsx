@@ -17,6 +17,34 @@ import {
   Users,
 } from "lucide-react";
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+const today = new Date().toISOString().slice(0, 10);
+
+const validerDates = (debut, fin) => {
+  const errors = { date_début: "", date_fin: "" };
+  if (debut && fin && fin < debut)
+    errors.date_fin = "La date de fin ne peut pas être avant la date de début.";
+  return errors;
+};
+
+const FieldError = ({ msg }) =>
+  msg ? (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        marginTop: 5,
+        color: "#DC2626",
+        fontSize: 12,
+      }}
+    >
+      <AlertCircle size={12} />
+      {msg}
+    </div>
+  ) : null;
+
+// ── Modal shell ───────────────────────────────────────────────────────────────
 const Modal = ({ title, onClose, children, maxWidth = 560 }) => (
   <div
     style={{
@@ -74,7 +102,7 @@ const Modal = ({ title, onClose, children, maxWidth = 560 }) => (
   </div>
 );
 
-// Dropdown Assigner inline dans la table
+// ── AssignerDropdown ──────────────────────────────────────────────────────────
 const AssignerDropdown = ({ projet, onAssigned }) => {
   const [open, setOpen] = useState(false);
   const [designers, setDesigners] = useState([]);
@@ -266,6 +294,7 @@ const AssignerDropdown = ({ projet, onAssigned }) => {
   );
 };
 
+// ── DetailModal ───────────────────────────────────────────────────────────────
 const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
   const sc = getStatutColor(projet.statut);
   const [affectations, setAffectations] = useState([]);
@@ -540,6 +569,7 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
   );
 };
 
+// ── EditModal ─────────────────────────────────────────────────────────────────
 const EditModal = ({ projet, users, onClose, onSaved, setMsg }) => {
   const [form, setForm] = useState({
     nom: projet.nom || "",
@@ -549,10 +579,28 @@ const EditModal = ({ projet, users, onClose, onSaved, setMsg }) => {
     statut: projet.statut || "En cours",
     id_client: projet.id_client?._id || projet.id_client || "",
   });
+  const [formErrors, setFormErrors] = useState({
+    date_début: "",
+    date_fin: "",
+  });
   const [saving, setSaving] = useState(false);
   const clients = users.filter((u) => u.rôle === "client");
+
+  // Validate on every date change
+  const handleDateChange = (field, value) => {
+    const updated = { ...form, [field]: value };
+    setForm(updated);
+    setFormErrors(validerDates(updated.date_début, updated.date_fin));
+  };
+
+  const hasDateErrors = formErrors.date_début || formErrors.date_fin;
+
   const handleSave = async (e) => {
     e.preventDefault();
+    const errors = validerDates(form.date_début, form.date_fin);
+    setFormErrors(errors);
+    if (errors.date_début || errors.date_fin) return;
+
     setSaving(true);
     try {
       await API.put(`/projets/${projet._id}`, form);
@@ -567,6 +615,7 @@ const EditModal = ({ projet, users, onClose, onSaved, setMsg }) => {
       setSaving(false);
     }
   };
+
   return (
     <Modal title="Modifier le projet" onClose={onClose}>
       <form onSubmit={handleSave}>
@@ -623,20 +672,28 @@ const EditModal = ({ projet, users, onClose, onSaved, setMsg }) => {
             <input
               type="date"
               value={form.date_début}
-              onChange={(e) => setForm({ ...form, date_début: e.target.value })}
+              onChange={(e) => handleDateChange("date_début", e.target.value)}
               required
-              style={inp}
+              style={{
+                ...inp,
+                borderColor: formErrors.date_début ? "#DC2626" : "#E2E8F0",
+              }}
             />
+            <FieldError msg={formErrors.date_début} />
           </div>
           <div>
             <label style={lbl}>Date fin *</label>
             <input
               type="date"
               value={form.date_fin}
-              onChange={(e) => setForm({ ...form, date_fin: e.target.value })}
+              onChange={(e) => handleDateChange("date_fin", e.target.value)}
               required
-              style={inp}
+              style={{
+                ...inp,
+                borderColor: formErrors.date_fin ? "#DC2626" : "#E2E8F0",
+              }}
             />
+            <FieldError msg={formErrors.date_fin} />
           </div>
           <div style={{ gridColumn: "1/-1" }}>
             <label style={lbl}>Description</label>
@@ -656,8 +713,12 @@ const EditModal = ({ projet, users, onClose, onSaved, setMsg }) => {
           </button>
           <button
             type="submit"
-            disabled={saving}
-            style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}
+            disabled={saving || !!hasDateErrors}
+            style={{
+              ...btnPrimary,
+              opacity: saving || hasDateErrors ? 0.7 : 1,
+              cursor: saving || hasDateErrors ? "not-allowed" : "pointer",
+            }}
           >
             {saving ? <Loader size={15} /> : <Save size={15} />}
             {saving ? "..." : "Enregistrer"}
@@ -668,6 +729,7 @@ const EditModal = ({ projet, users, onClose, onSaved, setMsg }) => {
   );
 };
 
+// ── DeleteModal ───────────────────────────────────────────────────────────────
 const DeleteModal = ({ projet, onClose, onConfirm, deleting }) => (
   <Modal title="Supprimer le projet" onClose={onClose}>
     <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
@@ -718,6 +780,7 @@ const DeleteModal = ({ projet, onClose, onConfirm, deleting }) => (
   </Modal>
 );
 
+// ── AdminProjets ──────────────────────────────────────────────────────────────
 const AdminProjets = () => {
   const [projets, setProjets] = useState([]);
   const [users, setUsers] = useState([]);
@@ -734,6 +797,12 @@ const AdminProjets = () => {
     id_client: "",
     demanded: false,
   });
+  // ← date validation errors for the create form
+  const [formErrors, setFormErrors] = useState({
+    date_début: "",
+    date_fin: "",
+  });
+
   const [detailProjet, setDetailProjet] = useState(null);
   const [editProjet, setEditProjet] = useState(null);
   const [deleteProjet, setDeleteProjet] = useState(null);
@@ -753,20 +822,35 @@ const AdminProjets = () => {
       setFetching(false);
     }
   };
+
   useEffect(() => {
     fetchProjets();
     API.get("/utilisateurs")
       .then((r) => setUsers(r.data))
       .catch(() => {});
   }, []);
+
   useEffect(() => {
     if (!msg.text) return;
     const t = setTimeout(() => setMsg({ type: "", text: "" }), 4000);
     return () => clearTimeout(t);
   }, [msg]);
 
+  // Live validation as user types dates in create form
+  const handleDateChange = (field, value) => {
+    const updated = { ...form, [field]: value };
+    setForm(updated);
+    setFormErrors(validerDates(updated.date_début, updated.date_fin));
+  };
+
+  const hasCreateDateErrors = formErrors.date_début || formErrors.date_fin;
+
   const handleCreate = async (e) => {
     e.preventDefault();
+    const errors = validerDates(form.date_début, form.date_fin);
+    setFormErrors(errors);
+    if (errors.date_début || errors.date_fin) return;
+
     if (!form.nom || !form.id_client || !form.date_début || !form.date_fin) {
       setMsg({ type: "error", text: "❌ Champs obligatoires manquants." });
       return;
@@ -784,6 +868,7 @@ const AdminProjets = () => {
         id_client: "",
         demanded: false,
       });
+      setFormErrors({ date_début: "", date_fin: "" });
       setShowForm(false);
       fetchProjets();
     } catch (e) {
@@ -903,7 +988,10 @@ const AdminProjets = () => {
           Tous les projets ({projets.length})
         </h2>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            setShowForm(!showForm);
+            setFormErrors({ date_début: "", date_fin: "" });
+          }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -978,74 +1066,30 @@ const AdminProjets = () => {
                   type="date"
                   value={form.date_début}
                   onChange={(e) =>
-                    setForm({ ...form, date_début: e.target.value })
+                    handleDateChange("date_début", e.target.value)
                   }
                   required
-                  style={inp}
+                  style={{
+                    ...inp,
+                    borderColor: formErrors.date_début ? "#DC2626" : "#E2E8F0",
+                  }}
                 />
+                <FieldError msg={formErrors.date_début} />
               </div>
               <div>
                 <label style={lbl}>Date fin *</label>
                 <input
                   type="date"
                   value={form.date_fin}
-                  onChange={(e) =>
-                    setForm({ ...form, date_fin: e.target.value })
-                  }
+                  onChange={(e) => handleDateChange("date_fin", e.target.value)}
                   required
-                  style={inp}
+                  style={{
+                    ...inp,
+                    borderColor: formErrors.date_fin ? "#DC2626" : "#E2E8F0",
+                  }}
                 />
+                <FieldError msg={formErrors.date_fin} />
               </div>
-              {/* <div>
-                <label style={lbl}>Statut</label>
-                <select
-                  value={form.statut}
-                  onChange={(e) => setForm({ ...form, statut: e.target.value })}
-                  style={inp}
-                >
-                  {[
-                    "En cours",
-                    "En révision",
-                    "Validé",
-                    "Refusé",
-                    "Terminé",
-                  ].map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Demandé par client</label>
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  {[true, false].map((val) => (
-                    <button
-                      key={String(val)}
-                      type="button"
-                      onClick={() => setForm({ ...form, demanded: val })}
-                      style={{
-                        flex: 1,
-                        padding: "10px",
-                        border: "2px solid",
-                        borderColor:
-                          form.demanded === val ? "#2563EB" : "#E2E8F0",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        fontSize: 13,
-                        background:
-                          form.demanded === val
-                            ? "rgba(37,99,235,0.08)"
-                            : "white",
-                        color: form.demanded === val ? "#2563EB" : "#64748B",
-                      }}
-                    >
-                      {val ? "✅ Oui" : "❌ Non"}
-                    </button>
-                  ))}
-                </div>
-              </div> */}
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Description</label>
                 <textarea
@@ -1060,17 +1104,21 @@ const AdminProjets = () => {
             </div>
             <button
               type="submit"
-              disabled={projetLoading}
+              disabled={projetLoading || !!hasCreateDateErrors}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                background: projetLoading ? "#93C5FD" : "#2563EB",
+                background:
+                  projetLoading || hasCreateDateErrors ? "#93C5FD" : "#2563EB",
                 color: "white",
                 border: "none",
                 borderRadius: 10,
                 padding: "12px 28px",
-                cursor: projetLoading ? "not-allowed" : "pointer",
+                cursor:
+                  projetLoading || hasCreateDateErrors
+                    ? "not-allowed"
+                    : "pointer",
                 fontWeight: 600,
               }}
             >
@@ -1264,6 +1312,7 @@ const AdminProjets = () => {
   );
 };
 
+// ── shared styles ─────────────────────────────────────────────────────────────
 const lbl = {
   display: "block",
   fontSize: 13,
