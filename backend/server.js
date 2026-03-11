@@ -797,7 +797,7 @@ apiRouter.post("/maquettes", verifyToken, async (req, res) => {
       image_fond,
     });
 
-    const contenuInitial = { version: "5.3.0", objects: [] };
+    const contenuInitial = { version: "5.3.0", objects: [], initialized: false };
     const nouvelleVersion = await Version.create({
       numéro_version: 1,
       contenu: contenuInitial,
@@ -846,7 +846,7 @@ apiRouter.get(
     try {
       const version = await Version.findOne({
         id_maquette: req.params.id,
-      }).sort({ numéro_version: -1 });
+      }).sort({ date_creation: -1 });
       if (!version)
         return res.status(404).json({ message: "Version introuvable." });
       res.status(200).json(version);
