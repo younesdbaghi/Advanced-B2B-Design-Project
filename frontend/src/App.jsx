@@ -37,12 +37,20 @@ function App() {
               path='/admin/history'
               element={<ProtectedRoute allowedRoles={["admin"]}><History /></ProtectedRoute>}
             />
+            <Route
+              path="/admin/editeur/:id"
+              element={<ProtectedRoute allowedRoles={['admin']}><DesignEditor /></ProtectedRoute>}
+            />
+
             {/* Routes Client */}
             <Route
               path="/client"
               element={<ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>}
             />
-
+            <Route
+              path="/client/editeur/:id"
+              element={<ProtectedRoute allowedRoles={['client']}><DesignEditor /></ProtectedRoute>}
+            />
             {/* Routes Designer */}
             <Route
               path="/designer/editeur/:id"

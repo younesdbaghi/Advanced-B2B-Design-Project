@@ -4,8 +4,9 @@ import { AuthContext } from "../context/AuthContext";
 import {
   Briefcase, Clock, CheckCircle, AlertCircle,
   FileText, Loader, PlusCircle, Send,
-  Edit2, X, Image, ExternalLink,
+  Edit2, X, Image, ExternalLink, ChevronRight
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const loadFabric = () =>
   new Promise((resolve) => {
@@ -114,7 +115,6 @@ const MaquetteCanvas = ({ maquette }) => {
   );
 };
 
-// ── Petit composant erreur sous un input ─────────────────────
 const FieldError = ({ msg }) =>
   msg ? (
     <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 5, color: "#DC2626", fontSize: 12 }}>
@@ -125,6 +125,7 @@ const FieldError = ({ msg }) =>
 
 const ClientDashboard = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const [projects, setProjects] = useState([]);
   const [maquettesMap, setMaquettesMap] = useState({});
@@ -135,17 +136,14 @@ const ClientDashboard = () => {
   const [maquetteModal, setMaquetteModal] = useState({ open: false, projet: null, maquette: null });
 
   const [form, setForm] = useState({ nom: "", description: "", date_début: "", date_fin: "" });
-  // Erreurs inline pour le formulaire de création
   const [formErrors, setFormErrors] = useState({ date_début: "", date_fin: "" });
 
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  // Erreurs inline pour le formulaire d'édition
   const [editErrors, setEditErrors] = useState({ date_début: "", date_fin: "" });
 
   const today = new Date().toISOString().split("T")[0];
 
-  // ── Charger projets + maquettes ─────────────────────────────
   const fetchProjects = async () => {
     setLoading(true);
     try {
@@ -158,8 +156,10 @@ const ClientDashboard = () => {
       const entries = await Promise.all(
         mesProjets.map(async (p) => {
           try {
-            const { data: res } = await API.get(`/maquettes/projet/${p._id}`);
-            return [String(p._id), res.maquette];
+            const response = await API.get(`/maquettes/projet/${p._id}`);
+            // Correction cruciale : on récupère l'objet maquette à l'intérieur de la réponse
+            const mqData = response.data && response.data.maquette ? response.data.maquette : null;
+            return [String(p._id), mqData];
           } catch {
             return [String(p._id), null];
           }
@@ -175,16 +175,13 @@ const ClientDashboard = () => {
 
   useEffect(() => { fetchProjects(); }, []);
 
-  // ── Validation dates — retourne { date_début, date_fin } ────
   const validerDates = (debut, fin) => {
     const errors = { date_début: "", date_fin: "" };
-    
     if (debut && fin && fin < debut)
       errors.date_fin = "La date de fin ne peut pas être avant la date de début.";
     return errors;
   };
 
-  // ── Demander un projet ──────────────────────────────────────
   const handleDemandeProjet = async (e) => {
     e.preventDefault();
     if (!form.nom || !form.date_début || !form.date_fin) {
@@ -212,7 +209,6 @@ const ClientDashboard = () => {
     } finally { setSending(false); }
   };
 
-  // ── Modifier demande ────────────────────────────────────────
   const startEdit = (p) => {
     setEditingId(p._id);
     setEditErrors({ date_début: "", date_fin: "" });
@@ -244,7 +240,6 @@ const ClientDashboard = () => {
     } finally { setSending(false); }
   };
 
-  // ── Annuler demande ─────────────────────────────────────────
   const handleAnnuler = async (p) => {
     if (!window.confirm(`Annuler la demande "${p.nom}" ?`)) return;
     try {
@@ -256,23 +251,18 @@ const ClientDashboard = () => {
     }
   };
 
-  // ── Logique maquette ────────────────────────────────────────
   const getMaquette = (p) => maquettesMap[String(p._id)] ?? null;
   const canViewMaquette = (p) => p.statut !== "Refusé" && getMaquette(p) !== null;
   const getDisabledLabel = (p) => p.statut === "Refusé" ? "🚫 Projet refusé" : "⏳ Non générée";
-  const handleVoirMaquette = (p) => {
-    if (!canViewMaquette(p)) return;
-    setMaquetteModal({ open: true, projet: p, maquette: getMaquette(p) });
-  };
 
   const getStatusBadge = (statut) => {
     const map = {
-      "En cours":    { color: "#2563EB", bg: "rgba(37,99,235,0.1)",   icon: <Clock size={14} /> },
-      "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)",   icon: <Clock size={14} /> },
-      "Validé":      { color: "#059669", bg: "rgba(5,150,105,0.1)",   icon: <CheckCircle size={14} /> },
-      "Refusé":      { color: "#DC2626", bg: "rgba(220,38,38,0.1)",   icon: <AlertCircle size={14} /> },
-      "Terminé":     { color: "#7C3AED", bg: "rgba(124,58,237,0.1)", icon: <CheckCircle size={14} /> },
-      "En attente":  { color: "#D97706", bg: "rgba(217,119,6,0.1)",   icon: <Clock size={14} /> },
+      "En cours": { color: "#2563EB", bg: "rgba(37,99,235,0.1)", icon: <Clock size={14} /> },
+      "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)", icon: <Clock size={14} /> },
+      "Validé": { color: "#059669", bg: "rgba(5,150,105,0.1)", icon: <CheckCircle size={14} /> },
+      "Refusé": { color: "#DC2626", bg: "rgba(220,38,38,0.1)", icon: <AlertCircle size={14} /> },
+      "Terminé": { color: "#7C3AED", bg: "rgba(124,58,237,0.1)", icon: <CheckCircle size={14} /> },
+      "En attente": { color: "#D97706", bg: "rgba(217,119,6,0.1)", icon: <Clock size={14} /> },
     };
     return map[statut] || { color: "#64748B", bg: "rgba(100,116,139,0.1)", icon: null };
   };
@@ -280,12 +270,10 @@ const ClientDashboard = () => {
   const demandesEnAttente = projects.filter((p) => p.demanded && p.statut === "En attente");
   const projetsActifs = projects.filter((p) => !p.demanded || p.statut !== "En attente");
 
-  // Style input en erreur
   const inpErr = { ...inp, border: "1px solid #DC2626" };
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 600 }}>Mes projets</h1>
         <button onClick={() => { setShowForm(!showForm); setFormErrors({ date_début: "", date_fin: "" }); }} style={{
@@ -298,7 +286,6 @@ const ClientDashboard = () => {
         </button>
       </div>
 
-      {/* Message global */}
       {msg.text && (
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
@@ -312,7 +299,6 @@ const ClientDashboard = () => {
         </div>
       )}
 
-      {/* Formulaire nouvelle demande */}
       {showForm && (
         <div className="card" style={{ marginBottom: 24, borderLeft: "4px solid #2563EB", padding: 24 }}>
           <h3 style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 8, color: "#1E2A4A" }}>
@@ -325,8 +311,6 @@ const ClientDashboard = () => {
                 <input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })}
                   placeholder="ex: Refonte de mon site web" required style={inp} />
               </div>
-
-              {/* Date début */}
               <div>
                 <label style={lbl}>Date de début souhaitée *</label>
                 <input
@@ -337,17 +321,13 @@ const ClientDashboard = () => {
                     const newDebut = e.target.value;
                     const newFin = form.date_fin && form.date_fin < newDebut ? "" : form.date_fin;
                     setForm({ ...form, date_début: newDebut, date_fin: newFin });
-                    // Valider en temps réel
-                    const errors = validerDates(newDebut, newFin);
-                    setFormErrors(errors);
+                    setFormErrors(validerDates(newDebut, newFin));
                   }}
                   required
                   style={formErrors.date_début ? inpErr : inp}
                 />
                 <FieldError msg={formErrors.date_début} />
               </div>
-
-              {/* Date fin */}
               <div>
                 <label style={lbl}>Date de livraison souhaitée *</label>
                 <input
@@ -357,16 +337,13 @@ const ClientDashboard = () => {
                   onChange={(e) => {
                     const newFin = e.target.value;
                     setForm({ ...form, date_fin: newFin });
-                    // Valider en temps réel
-                    const errors = validerDates(form.date_début, newFin);
-                    setFormErrors(errors);
+                    setFormErrors(validerDates(form.date_début, newFin));
                   }}
                   required
                   style={formErrors.date_fin ? inpErr : inp}
                 />
                 <FieldError msg={formErrors.date_fin} />
               </div>
-
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Description</label>
                 <textarea value={form.description}
@@ -388,13 +365,12 @@ const ClientDashboard = () => {
         </div>
       )}
 
-      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px,1fr))", gap: 16, marginBottom: 28 }}>
         {[
-          { label: "Projets actifs",      count: projetsActifs.filter((p) => p.statut === "En cours").length, color: "#2563EB", bg: "rgba(37,99,235,0.1)",  icon: <Briefcase size={22} /> },
-          { label: "Demandes en attente", count: demandesEnAttente.length,                                      color: "#D97706", bg: "rgba(217,119,6,0.1)",  icon: <Clock size={22} /> },
-          { label: "Terminés",            count: projects.filter((p) => p.statut === "Terminé").length,         color: "#059669", bg: "rgba(5,150,105,0.1)", icon: <CheckCircle size={22} /> },
-          { label: "Total",               count: projects.length,                                                color: "#7C3AED", bg: "rgba(124,58,237,0.1)",icon: <FileText size={22} /> },
+          { label: "Projets actifs", count: projetsActifs.filter((p) => p.statut === "En cours").length, color: "#2563EB", bg: "rgba(37,99,235,0.1)", icon: <Briefcase size={22} /> },
+          { label: "Demandes en attente", count: demandesEnAttente.length, color: "#D97706", bg: "rgba(217,119,6,0.1)", icon: <Clock size={22} /> },
+          { label: "Terminés", count: projects.filter((p) => p.statut === "Terminé").length, color: "#059669", bg: "rgba(5,150,105,0.1)", icon: <CheckCircle size={22} /> },
+          { label: "Total", count: projects.length, color: "#7C3AED", bg: "rgba(124,58,237,0.1)", icon: <FileText size={22} /> },
         ].map((s, i) => (
           <div key={i} className="card" style={{ padding: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -408,7 +384,6 @@ const ClientDashboard = () => {
         ))}
       </div>
 
-      {/* Demandes en attente */}
       {demandesEnAttente.length > 0 && (
         <div className="card" style={{ marginBottom: 24, borderLeft: "4px solid #D97706" }}>
           <h3 style={{ marginBottom: 16, color: "#D97706", display: "flex", alignItems: "center", gap: 8 }}>
@@ -431,53 +406,30 @@ const ClientDashboard = () => {
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                             <div>
                               <label style={lbl}>Nom *</label>
-                              <input value={editForm.nom}
-                                onChange={(e) => setEditForm({ ...editForm, nom: e.target.value })}
-                                required style={inp} />
+                              <input value={editForm.nom} onChange={(e) => setEditForm({ ...editForm, nom: e.target.value })} required style={inp} />
                             </div>
-
-                            {/* Date début édition */}
                             <div>
                               <label style={lbl}>Date début *</label>
-                              <input
-                                type="date"
-                                value={editForm.date_début}
-                                min={today}
-                                onChange={(e) => {
-                                  const newDebut = e.target.value;
-                                  const newFin = editForm.date_fin && editForm.date_fin < newDebut ? "" : editForm.date_fin;
-                                  setEditForm({ ...editForm, date_début: newDebut, date_fin: newFin });
-                                  setEditErrors(validerDates(newDebut, newFin));
-                                }}
-                                required
-                                style={editErrors.date_début ? inpErr : inp}
-                              />
+                              <input type="date" value={editForm.date_début} min={today} onChange={(e) => {
+                                const newDebut = e.target.value;
+                                const newFin = editForm.date_fin && editForm.date_fin < newDebut ? "" : editForm.date_fin;
+                                setEditForm({ ...editForm, date_début: newDebut, date_fin: newFin });
+                                setEditErrors(validerDates(newDebut, newFin));
+                              }} required style={editErrors.date_début ? inpErr : inp} />
                               <FieldError msg={editErrors.date_début} />
                             </div>
-
-                            {/* Date fin édition */}
                             <div>
                               <label style={lbl}>Date fin *</label>
-                              <input
-                                type="date"
-                                value={editForm.date_fin}
-                                min={editForm.date_début || today}
-                                onChange={(e) => {
-                                  const newFin = e.target.value;
-                                  setEditForm({ ...editForm, date_fin: newFin });
-                                  setEditErrors(validerDates(editForm.date_début, newFin));
-                                }}
-                                required
-                                style={editErrors.date_fin ? inpErr : inp}
-                              />
+                              <input type="date" value={editForm.date_fin} min={editForm.date_début || today} onChange={(e) => {
+                                const newFin = e.target.value;
+                                setEditForm({ ...editForm, date_fin: newFin });
+                                setEditErrors(validerDates(editForm.date_début, newFin));
+                              }} required style={editErrors.date_fin ? inpErr : inp} />
                               <FieldError msg={editErrors.date_fin} />
                             </div>
-
                             <div>
                               <label style={lbl}>Description</label>
-                              <input value={editForm.description}
-                                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                                style={inp} />
+                              <input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} style={inp} />
                             </div>
                           </div>
                           <div style={{ display: "flex", gap: 8 }}>
@@ -517,22 +469,8 @@ const ClientDashboard = () => {
                         </td>
                         <td style={{ textAlign: "center" }}>
                           <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-                            <button onClick={() => startEdit(p)} style={{
-                              display: "inline-flex", alignItems: "center", gap: 4,
-                              background: "rgba(37,99,235,0.08)", color: "#2563EB",
-                              border: "1px solid rgba(37,99,235,0.2)", borderRadius: 8,
-                              padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                            }}>
-                              <Edit2 size={13} /> Modifier
-                            </button>
-                            <button onClick={() => handleAnnuler(p)} style={{
-                              display: "inline-flex", alignItems: "center", gap: 4,
-                              background: "rgba(220,38,38,0.08)", color: "#DC2626",
-                              border: "1px solid rgba(220,38,38,0.2)", borderRadius: 8,
-                              padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                            }}>
-                              <X size={13} /> Annuler
-                            </button>
+                            <button onClick={() => startEdit(p)} style={{ ...btnSmallAction, color: "#2563EB", background: "rgba(37,99,235,0.08)" }}><Edit2 size={13} /> Modifier</button>
+                            <button onClick={() => handleAnnuler(p)} style={{ ...btnSmallAction, color: "#DC2626", background: "rgba(220,38,38,0.08)" }}><X size={13} /> Annuler</button>
                           </div>
                         </td>
                       </>
@@ -545,7 +483,6 @@ const ClientDashboard = () => {
         </div>
       )}
 
-      {/* Projets actifs */}
       <div className="card">
         <h3 style={{ marginBottom: 20 }}>Mes projets ({projetsActifs.length})</h3>
         {loading ? (
@@ -556,7 +493,6 @@ const ClientDashboard = () => {
           <div style={{ textAlign: "center", padding: 48, color: "#94A3B8" }}>
             <Briefcase size={48} style={{ marginBottom: 12, opacity: 0.3 }} />
             <p>Aucun projet pour l'instant.</p>
-            <p style={{ fontSize: 13 }}>Cliquez sur "Demander un projet" pour commencer.</p>
           </div>
         ) : (
           <div className="table-container">
@@ -564,13 +500,14 @@ const ClientDashboard = () => {
               <thead>
                 <tr>
                   <th>Projet</th><th>Date début</th><th>Date fin</th>
-                  <th>Statut</th><th style={{ textAlign: "center" }}>Maquette</th>
+                  <th>Statut</th><th style={{ textAlign: "right" }}>Accès Éditeur</th>
                 </tr>
               </thead>
               <tbody>
                 {projetsActifs.map((p) => {
                   const s = getStatusBadge(p.statut);
-                  const canView = canViewMaquette(p);
+                  const mq = getMaquette(p);
+                  const canView = mq !== null && p.statut !== "Refusé";
                   return (
                     <tr key={p._id}>
                       <td>
@@ -589,30 +526,17 @@ const ClientDashboard = () => {
                           {s.icon} {p.statut}
                         </span>
                       </td>
-                      <td style={{ textAlign: "center" }}>
-                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                      <td style={{ textAlign: "right" }}>
+                        {canView ? (
                           <button
-                            onClick={() => handleVoirMaquette(p)}
-                            disabled={!canView}
-                            title={!canView ? getDisabledLabel(p) : ""}
-                            style={{
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                              background: canView ? "rgba(124,58,237,0.08)" : "rgba(100,116,139,0.06)",
-                              color: canView ? "#7C3AED" : "#CBD5E1",
-                              border: `1px solid ${canView ? "rgba(124,58,237,0.25)" : "rgba(203,213,225,0.4)"}`,
-                              borderRadius: 8, padding: "6px 14px",
-                              cursor: canView ? "pointer" : "not-allowed",
-                              fontSize: 13, fontWeight: 600,
-                            }}
+                            onClick={() => navigate(`/client/editeur/${mq._id}`)}
+                            style={btnGoEditor}
                           >
-                            <Image size={14} />
-                            Voir maquette
-                            {canView && <ExternalLink size={11} style={{ opacity: 0.6 }} />}
+                            <Image size={16} /> Ouvrir l'éditeur <ChevronRight size={16} />
                           </button>
-                          {!canView && (
-                            <span style={{ fontSize: 11, color: "#94A3B8" }}>{getDisabledLabel(p)}</span>
-                          )}
-                        </div>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "#CBD5E1" }}>{getDisabledLabel(p)}</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -623,58 +547,22 @@ const ClientDashboard = () => {
         )}
       </div>
 
-      {/* Modal Maquette */}
       {maquetteModal.open && maquetteModal.maquette && (
-        <div
-          onClick={() => setMaquetteModal({ open: false, projet: null, maquette: null })}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(15,23,42,0.7)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 1000, backdropFilter: "blur(4px)",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "white", borderRadius: 16, width: "95%", maxWidth: 1100,
-              maxHeight: "92vh", overflow: "hidden",
-              display: "flex", flexDirection: "column",
-              boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
-            }}
-          >
-            <div style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "16px 24px", borderBottom: "1px solid #F1F5F9", flexShrink: 0,
-            }}>
+        <div onClick={() => setMaquetteModal({ open: false, projet: null, maquette: null })} style={modalOverlay}>
+          <div onClick={(e) => e.stopPropagation()} style={modalContent}>
+            <div style={modalHeader}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ background: "rgba(124,58,237,0.1)", borderRadius: 8, padding: 8, color: "#7C3AED" }}>
-                  <Image size={18} />
-                </div>
+                <div style={{ background: "rgba(124,58,237,0.1)", borderRadius: 8, padding: 8, color: "#7C3AED" }}><Image size={18} /></div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16, color: "#1E293B" }}>{maquetteModal.maquette.nom}</div>
-                  <div style={{ fontSize: 12, color: "#94A3B8" }}>
-                    Projet : {maquetteModal.projet?.nom} · Aperçu en lecture seule
-                  </div>
+                  <div style={{ fontSize: 12, color: "#94A3B8" }}>Projet : {maquetteModal.projet?.nom} · Aperçu</div>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <a
-                  href={`/designer/maquettes/${maquetteModal.maquette._id}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    background: "#7C3AED", color: "white", textDecoration: "none",
-                    borderRadius: 8, padding: "7px 14px", fontWeight: 600, fontSize: 13,
-                  }}
-                >
+                <a href={`/designer/maquettes/${maquetteModal.maquette._id}`} target="_blank" rel="noopener noreferrer" style={btnModalEditor}>
                   <ExternalLink size={14} /> Ouvrir dans l'éditeur
                 </a>
-                <button
-                  onClick={() => setMaquetteModal({ open: false, projet: null, maquette: null })}
-                  style={{ background: "#F1F5F9", border: "none", borderRadius: 8, padding: 8, cursor: "pointer", color: "#64748B", display: "flex" }}
-                >
-                  <X size={18} />
-                </button>
+                <button onClick={() => setMaquetteModal({ open: false, projet: null, maquette: null })} style={btnClose}><X size={18} /></button>
               </div>
             </div>
             <div style={{ flex: 1, overflow: "auto", padding: 24, background: "#F8FAFC" }}>
@@ -683,7 +571,6 @@ const ClientDashboard = () => {
           </div>
         </div>
       )}
-
       <style>{`button:not(:disabled):hover { opacity: 0.87; }`}</style>
     </div>
   );
@@ -691,5 +578,12 @@ const ClientDashboard = () => {
 
 const lbl = { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 };
 const inp = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 14, outline: "none", boxSizing: "border-box", background: "white" };
+const btnGoEditor = { background: "#7C3AED", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 10, transition: "all 0.2s" };
+const btnSmallAction = { display: "inline-flex", alignItems: "center", gap: 4, border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600 };
+const modalOverlay = { position: "fixed", inset: 0, background: "rgba(15,23,42,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" };
+const modalContent = { background: "white", borderRadius: 16, width: "95%", maxWidth: 1100, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 25px 60px rgba(0,0,0,0.3)" };
+const modalHeader = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 };
+const btnModalEditor = { display: "inline-flex", alignItems: "center", gap: 6, background: "#7C3AED", color: "white", textDecoration: "none", borderRadius: 8, padding: "7px 14px", fontWeight: 600, fontSize: 13 };
+const btnClose = { background: "#F1F5F9", border: "none", borderRadius: 8, padding: 8, cursor: "pointer", color: "#64748B", display: "flex" };
 
 export default ClientDashboard;
