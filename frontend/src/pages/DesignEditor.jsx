@@ -641,10 +641,12 @@ const DesignEditor = () => {
 
     fabricCanvas.on("mouse:wheel", (opt) => {
       opt.e.preventDefault();
-      let z = fabricCanvas.getZoom();
-      z = opt.e.deltaY > 0 ? Math.max(ZOOM_MIN, z - ZOOM_STEP) : Math.min(ZOOM_MAX, z + ZOOM_STEP);
-      fabricCanvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, z);
-      setZoom(Math.round(z * 100));
+      if (isDesigner) {
+        let z = fabricCanvas.getZoom();
+        z = opt.e.deltaY > 0 ? Math.max(ZOOM_MIN, z - ZOOM_STEP) : Math.min(ZOOM_MAX, z + ZOOM_STEP);
+        fabricCanvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, z);
+        setZoom(Math.round(z * 100));
+      }
     });
 
     return () => fabricCanvas.off();
@@ -1003,7 +1005,7 @@ const DesignEditor = () => {
             <div className="header-title">{designData?.maquette?.nom || "Projet sans nom"}</div>
 
             {/* Badge lecture seule pour non-designer */}
-            {!isDesigner && (
+            {/* {!isDesigner && (
               <span style={{
                 fontSize: 11, fontWeight: 600, color: "#92400e",
                 background: "#fef3c7", border: "1px solid #fde68a",
@@ -1011,115 +1013,115 @@ const DesignEditor = () => {
               }}>
                 <Eye size={12} /> Lecture seule
               </span>
-            )}
+            )} */}
 
-            {isDesigner && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 20 }}>
-                {/* Dropdown versions */}
-                <div ref={dropdownRef} style={{ position: "relative" }}>
-                  <button
-                    onClick={handleToggleDropdown}
-                    disabled={!fabricCanvas}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      background: dropdownOpen ? "rgba(37,99,235,0.15)" : "rgba(37,99,235,0.1)",
-                      color: "#2563EB", border: "1px solid rgba(37,99,235,0.2)",
-                      borderRadius: 8, padding: "5px 12px",
-                      cursor: !fabricCanvas ? "not-allowed" : "pointer",
-                      fontSize: 13, fontWeight: 600, transition: "background 0.15s",
-                      opacity: !fabricCanvas ? 0.5 : 1,
-                    }}
-                  >
-                    <GitBranch size={13} />
-                    v{currentVersionNum ?? "—"}
-                    <ChevronDown size={13} style={{
-                      transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
-                      transition: "transform 0.2s",
-                    }} />
-                  </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 20 }}>
+              {/* Dropdown versions */}
+              <div ref={dropdownRef} style={{ position: "relative" }}>
+                <button
+                  onClick={handleToggleDropdown}
+                  disabled={!fabricCanvas}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    background: dropdownOpen ? "rgba(37,99,235,0.15)" : "rgba(37,99,235,0.1)",
+                    color: "#2563EB", border: "1px solid rgba(37,99,235,0.2)",
+                    borderRadius: 8, padding: "5px 12px",
+                    cursor: !fabricCanvas ? "not-allowed" : "pointer",
+                    fontSize: 13, fontWeight: 600, transition: "background 0.15s",
+                    opacity: !fabricCanvas ? 0.5 : 1,
+                  }}
+                >
+                  <GitBranch size={13} />
+                  v{currentVersionNum ?? "—"}
+                  <ChevronDown size={13} style={{
+                    transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.2s",
+                  }} />
+                </button>
 
-                  {dropdownOpen && (
+                {dropdownOpen && (
+                  <div style={{
+                    position: "absolute", top: "calc(100% + 8px)", left: 0,
+                    background: "white", borderRadius: 10,
+                    border: "1px solid #E2E8F0",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    minWidth: 260, zIndex: 9999, overflow: "hidden",
+                  }}>
                     <div style={{
-                      position: "absolute", top: "calc(100% + 8px)", left: 0,
-                      background: "white", borderRadius: 10,
-                      border: "1px solid #E2E8F0",
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                      minWidth: 260, zIndex: 9999, overflow: "hidden",
+                      padding: "10px 14px", borderBottom: "1px solid #F1F5F9",
+                      fontSize: 11, fontWeight: 700, color: "#94A3B8",
+                      textTransform: "uppercase", letterSpacing: "0.05em",
+                      display: "flex", alignItems: "center", gap: 6,
                     }}>
-                      <div style={{
-                        padding: "10px 14px", borderBottom: "1px solid #F1F5F9",
-                        fontSize: 11, fontWeight: 700, color: "#94A3B8",
-                        textTransform: "uppercase", letterSpacing: "0.05em",
-                        display: "flex", alignItems: "center", gap: 6,
-                      }}>
-                        <Clock size={11} /> Historique des versions
-                      </div>
-                      <div style={{ maxHeight: 280, overflowY: "auto" }}>
-                        {versions.length === 0 ? (
-                          <div style={{ padding: "16px 14px", color: "#94A3B8", fontSize: 13, textAlign: "center" }}>
-                            Aucune version
-                          </div>
-                        ) : (
-                          versions.map((v) => {
-                            const isCurrent = v.numéro_version === currentVersionNum;
-                            return (
-                              <button
-                                key={v._id}
-                                onClick={() => !isCurrent && handleLoadVersion(v)}
-                                disabled={isCurrent || loadingVersion}
-                                style={{
-                                  width: "100%", display: "flex", alignItems: "center",
-                                  justifyContent: "space-between",
-                                  padding: "10px 14px", border: "none", textAlign: "left",
-                                  background: isCurrent ? "#F0F7FF" : "white",
-                                  cursor: isCurrent ? "default" : "pointer",
-                                  borderBottom: "1px solid #F8FAFC",
-                                  transition: "background 0.15s",
-                                }}
-                                onMouseEnter={(e) => { if (!isCurrent) e.currentTarget.style.background = "#F8FAFC"; }}
-                                onMouseLeave={(e) => { if (!isCurrent) e.currentTarget.style.background = "white"; }}
-                              >
-                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                  <div style={{
-                                    width: 30, height: 30, borderRadius: 8,
-                                    background: isCurrent ? "rgba(37,99,235,0.12)" : "rgba(100,116,139,0.08)",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    color: isCurrent ? "#2563EB" : "#94A3B8", flexShrink: 0,
-                                  }}>
-                                    <GitBranch size={14} />
+                      <Clock size={11} /> Historique des versions
+                    </div>
+                    <div style={{ maxHeight: 280, overflowY: "auto" }}>
+                      {versions.length === 0 ? (
+                        <div style={{ padding: "16px 14px", color: "#94A3B8", fontSize: 13, textAlign: "center" }}>
+                          Aucune version
+                        </div>
+                      ) : (
+                        versions.map((v) => {
+                          const isCurrent = v.numéro_version === currentVersionNum;
+                          return (
+                            <button
+                              key={v._id}
+                              onClick={() => !isCurrent && handleLoadVersion(v)}
+                              disabled={isCurrent || loadingVersion}
+                              style={{
+                                width: "100%", display: "flex", alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "10px 14px", border: "none", textAlign: "left",
+                                background: isCurrent ? "#F0F7FF" : "white",
+                                cursor: isCurrent ? "default" : "pointer",
+                                borderBottom: "1px solid #F8FAFC",
+                                transition: "background 0.15s",
+                              }}
+                              onMouseEnter={(e) => { if (!isCurrent) e.currentTarget.style.background = "#F8FAFC"; }}
+                              onMouseLeave={(e) => { if (!isCurrent) e.currentTarget.style.background = "white"; }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{
+                                  width: 30, height: 30, borderRadius: 8,
+                                  background: isCurrent ? "rgba(37,99,235,0.12)" : "rgba(100,116,139,0.08)",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  color: isCurrent ? "#2563EB" : "#94A3B8", flexShrink: 0,
+                                }}>
+                                  <GitBranch size={14} />
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 600, color: isCurrent ? "#2563EB" : "#1E293B" }}>
+                                    Version {v.numéro_version}
+                                    {isCurrent && (
+                                      <span style={{
+                                        marginLeft: 6, fontSize: 10, background: "#2563EB",
+                                        color: "white", borderRadius: 10, padding: "1px 6px",
+                                      }}>
+                                        actuelle
+                                      </span>
+                                    )}
                                   </div>
-                                  <div>
-                                    <div style={{ fontSize: 13, fontWeight: 600, color: isCurrent ? "#2563EB" : "#1E293B" }}>
-                                      Version {v.numéro_version}
-                                      {isCurrent && (
-                                        <span style={{
-                                          marginLeft: 6, fontSize: 10, background: "#2563EB",
-                                          color: "white", borderRadius: 10, padding: "1px 6px",
-                                        }}>
-                                          actuelle
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
-                                      {formatDate(v.date_creation)}
-                                    </div>
+                                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
+                                    {formatDate(v.date_creation)}
                                   </div>
                                 </div>
-                                {!isCurrent && (
-                                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#64748B", fontWeight: 600 }}>
-                                    <Eye size={12} /> Charger
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
+                              </div>
+                              {!isCurrent && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#64748B", fontWeight: 600 }}>
+                                  <Eye size={12} /> Charger
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
 
-                {/* Bouton + Nouvelle version */}
+              {/* Bouton + Nouvelle version */}
+              {isDesigner && (
                 <button
                   onClick={handleNouvelleVersion}
                   disabled={!fabricCanvas || creatingVersion}
@@ -1137,29 +1139,32 @@ const DesignEditor = () => {
                   {creatingVersion ? <Loader size={14} className="spin" /> : versionSuccess ? <Check size={14} /> : <Plus size={14} />}
                   {creatingVersion ? "Création..." : versionSuccess ? "Créée !" : "Nouvelle version"}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
+
 
             <span className="badge-status">
               {(saveStatus === "Sauvegarde…" || saveStatus === "Sauvegarde..." || loadingVersion) ? <Loader size={12} className="spin" /> : null}
               {loadingVersion ? "Chargement..." : saveStatus}
             </span>
           </div>
+          {isDesigner &&
+            <div className="header-center">
+              <div className="toolbar-group">
 
-          <div className="header-center">
-            <div className="toolbar-group">
-              <button className={`btn-tool ${gridEnabled ? "active" : ""}`} onClick={() => setGridEnabled(g => !g)}><GridIcon size={16} /> <span className="hidden-sm">Grille</span></button>
-              {isDesigner && (
+                <button className={`btn-tool ${gridEnabled ? "active" : ""}`} onClick={() => setGridEnabled(g => !g)}><GridIcon size={16} /> <span className="hidden-sm">Grille</span></button>
                 <button className={`btn-tool ${snapEnabled ? "active" : ""}`} onClick={() => setSnapEnabled(s => !s)}><LayoutTemplate size={16} /> <span className="hidden-sm">Aimanter</span></button>
-              )}
-            </div>
-            <div className="toolbar-group zoom-group">
-              <button className="btn-tool-icon" onClick={() => fabricCanvas && setZoomLevel(Math.max(ZOOM_MIN, fabricCanvas.getZoom() - ZOOM_STEP))}><ZoomOut size={16} /></button>
-              <span className="zoom-val" onClick={() => setZoomLevel(1)}>{zoom}%</span>
-              <button className="btn-tool-icon" onClick={() => fabricCanvas && setZoomLevel(Math.min(ZOOM_MAX, fabricCanvas.getZoom() + ZOOM_STEP))}><ZoomIn size={16} /></button>
-            </div>
-          </div>
 
+              </div>
+              <div className="toolbar-group zoom-group">
+
+                <button className="btn-tool-icon" onClick={() => fabricCanvas && setZoomLevel(Math.max(ZOOM_MIN, fabricCanvas.getZoom() - ZOOM_STEP))}><ZoomOut size={16} /></button>
+                <span className="zoom-val" onClick={() => setZoomLevel(1)}>{zoom}%</span>
+                <button className="btn-tool-icon" onClick={() => fabricCanvas && setZoomLevel(Math.min(ZOOM_MAX, fabricCanvas.getZoom() + ZOOM_STEP))}><ZoomIn size={16} /></button>
+
+              </div>
+            </div>
+          }
           <div className="header-right">
             {isDesigner && (
               <button className="btn-primary" onClick={() => triggerSave(fabricCanvas, designData?.version?._id)}>
@@ -1215,27 +1220,28 @@ const DesignEditor = () => {
           </main>
 
           {/* Panel droit : Propriétés et Calques */}
-          <aside className="editor-right-panel">
-            <div className="right-tabs">
-              <button className={`right-tab ${rightTab === "props" ? "active" : ""}`} onClick={() => setRightTab("props")}>Propriétés</button>
-              <button className={`right-tab ${rightTab === "layers" ? "active" : ""}`} onClick={() => setRightTab("layers")}><Layers size={14} /> Calques</button>
-            </div>
-            <div className="right-panel-body custom-scrollbar">
-              {rightTab === "props"
-                ? <PropertiesPanel
+          {isDesigner &&
+            <aside className="editor-right-panel">
+              <div className="right-tabs">
+                <button className={`right-tab ${rightTab === "props" ? "active" : ""}`} onClick={() => setRightTab("props")}>Propriétés</button>
+                <button className={`right-tab ${rightTab === "layers" ? "active" : ""}`} onClick={() => setRightTab("layers")}><Layers size={14} /> Calques</button>
+              </div>
+              <div className="right-panel-body custom-scrollbar">
+                {rightTab === "props"
+                  ? <PropertiesPanel
                     selectedObject={selectedObj}
                     canvas={fabricCanvas}
                     onUpdate={() => { debouncedSave(fabricCanvas, designData?.version?._id); setLayersKey(k => k + 1); }}
                   />
-                : <LayersPanel
+                  : <LayersPanel
                     canvas={fabricCanvas}
                     selectedObject={selectedObj}
                     onSelectObject={setSelectedObj}
                     refreshKey={layersKey}
                   />
-              }
-            </div>
-          </aside>
+                }
+              </div>
+            </aside>}
         </div>
       </div>
 
