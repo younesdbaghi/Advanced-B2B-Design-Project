@@ -15,7 +15,10 @@ import {
   UserPlus,
   UserMinus,
   Users,
+  ChevronRight,
+  Image,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const today = new Date().toISOString().slice(0, 10);
@@ -823,12 +826,24 @@ const AdminProjets = () => {
     }
   };
 
+  const [maquettes, setMaquettes] = useState([]);
   useEffect(() => {
     fetchProjets();
     API.get("/utilisateurs")
       .then((r) => setUsers(r.data))
-      .catch(() => {});
+      .catch(() => { });
+    API.get("/maquettes")
+      .then((r) => setMaquettes(r.data))
+      // .then(dt => console.log("maquettes : ", maquettes))
+      .catch(() => { });
   }, []);
+  console.log("maquettes : ", maquettes);
+
+  const getMaquette = (projetId) => {
+    return maquettes.some(
+      (m) => String(m.id_projet?._id) === String(projetId)
+    );
+  };
 
   useEffect(() => {
     if (!msg.text) return;
@@ -900,16 +915,29 @@ const AdminProjets = () => {
   };
 
   const getStatutColor = (s) =>
-    ({
-      "En cours": { color: "#2563EB", bg: "rgba(37,99,235,0.1)" },
-      "En attente": { color: "#2563E5", bg: "rgba(15, 153, 26, 0.1)" },
-      "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)" },
-      Validé: { color: "#059669", bg: "rgba(5,150,105,0.1)" },
-      Refusé: { color: "#DC2626", bg: "rgba(220,38,38,0.1)" },
-      Terminé: { color: "#7C3AED", bg: "rgba(124,58,237,0.1)" },
-    }[s] || { color: "#64748B", bg: "rgba(100,116,139,0.1)" });
+  ({
+    "En cours": { color: "#2563EB", bg: "rgba(37,99,235,0.1)" },
+    "En attente": { color: "#2563E5", bg: "rgba(15, 153, 26, 0.1)" },
+    "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)" },
+    Validé: { color: "#059669", bg: "rgba(5,150,105,0.1)" },
+    Refusé: { color: "#DC2626", bg: "rgba(220,38,38,0.1)" },
+    Terminé: { color: "#7C3AED", bg: "rgba(124,58,237,0.1)" },
+  }[s] || { color: "#64748B", bg: "rgba(100,116,139,0.1)" });
 
   const clients = users.filter((u) => u.rôle === "client");
+
+  const navigate = useNavigate()
+  const openEditor = async (projet) => {
+    try {
+      const { data } = await API.get(`/maquettes/projet/${projet._id}`);
+      if (!data?.maquette) {
+        return;
+      }
+      navigate(`/admin/editeur/${data.maquette._id}`);
+    } catch (e) {
+      console.log("err : ", e);
+    }
+  };
 
   return (
     <div>
@@ -962,9 +990,8 @@ const AdminProjets = () => {
             marginBottom: 20,
             background: msg.type === "success" ? "#F0FDF4" : "#FEF2F2",
             color: msg.type === "success" ? "#059669" : "#DC2626",
-            border: `1px solid ${
-              msg.type === "success" ? "#BBF7D0" : "#FECACA"
-            }`,
+            border: `1px solid ${msg.type === "success" ? "#BBF7D0" : "#FECACA"
+              }`,
           }}
         >
           {msg.type === "success" ? (
@@ -1152,6 +1179,7 @@ const AdminProjets = () => {
                   <th>Statut</th>
                   <th style={{ textAlign: "center" }}>Demanded</th>
                   <th style={{ textAlign: "center" }}>Actions</th>
+                  <th style={{ textAlign: "center" }}>éditeur</th>
                 </tr>
               </thead>
               <tbody>
@@ -1300,6 +1328,18 @@ const AdminProjets = () => {
                           </button>
                         </div>
                       </td>
+                      <td style={{ textAlign: "right" }}>
+                        {getMaquette(p._id) ? (
+                          <button
+                            onClick={() => openEditor(p)}
+                            style={btnGoEditor}
+                          >
+                            <Image size={16} /> Ouvrir l'éditeur <ChevronRight size={16} />
+                          </button>
+                        ) : (
+                          <p style={{ fontSize: 12, color: "#94A3B8" }}>non généré</p>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -1385,5 +1425,18 @@ const btnDanger = {
   fontWeight: 600,
   fontSize: 14,
 };
-
+const btnGoEditor = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  background: "#7C3AED",
+  color: "white",
+  border: "none",
+  borderRadius: 8,
+  padding: "6px 12px",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+  justifyContent: "center",
+};
 export default AdminProjets;
