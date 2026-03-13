@@ -560,6 +560,25 @@ apiRouter.put("/versions/:id", verifyToken, async (req, res) => {
   }
 });
 
+// ---- SUPPRIMER UNE VERSION ----
+apiRouter.delete("/versions/:id", verifyToken, async (req, res) => {
+  try {
+    const version = await Version.findById(req.params.id);
+    if (!version) return res.status(404).json({ message: "Version introuvable." });
+
+    // Vérifier si c'est la seule version de la maquette (on empêche sa suppression)
+    const count = await Version.countDocuments({ id_maquette: version.id_maquette });
+    if (count <= 1) {
+      return res.status(400).json({ message: "Impossible de supprimer l'unique version de cette maquette." });
+    }
+
+    await Version.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Version supprimée avec succès." });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de la suppression.", error: error.message });
+  }
+});
+
 // ✅ Créer une nouvelle version (incrémente le numéro automatiquement)
 apiRouter.post("/versions", verifyToken, async (req, res) => {
   try {

@@ -13,7 +13,7 @@ import {
   Hexagon, Minus, Star, Cloud, Sun, Moon, Droplet, ArrowRight,
   ArrowUp, ArrowDown, MoveDiagonal, CornerUpRight, Video, Music, Map, Frame,
   CheckSquare, ToggleLeft, SlidersHorizontal, MessageSquare, AppWindow, DollarSign,
-  Users, HelpCircle, Play, GitBranch, Plus, Check, Clock
+  Users, HelpCircle, Play, GitBranch, Plus, Check, Clock, RotateCcw
 } from "lucide-react";
 
 // ─── CONFIGURATION ────────────────────────────────────────────────────────────
@@ -460,6 +460,7 @@ const DesignEditor = () => {
   const [versions, setVersions] = useState([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loadingVersion, setLoadingVersion] = useState(false);
+  const[deletingVersionId, setDeletingVersionId] = useState(null); // <--- NOUVEAU
   const dropdownRef = useRef(null);
 
   const maquetteIdRef = useRef(null);
@@ -593,16 +594,6 @@ const DesignEditor = () => {
           if (loadRes && typeof loadRes.then === "function") {
             await loadRes;
           }
-        } else if (designData.maquette.image_fond) {
-          try {
-            const imgRes = fabric.Image.fromURL(designData.maquette.image_fond, (img) => {
-              if (img && !imgRes) { canvas.add(img); canvas.renderAll(); }
-            });
-            if (imgRes && typeof imgRes.then === "function") {
-              const img = await imgRes;
-              if (img) canvas.add(img);
-            }
-          } catch (e) { }
         }
         canvas.renderAll();
         setSaveStatus("À jour ☁️");
@@ -817,6 +808,72 @@ const DesignEditor = () => {
   const handleToggleDropdown = async () => {
     if (!dropdownOpen) await fetchVersions();
     setDropdownOpen((prev) => !prev);
+  };
+
+  // ── RÉINITIALISER LES CHANGEMENTS NON SAUVEGARDÉS ──
+  const handleReset = async () => {
+    if (!fabricCanvas || !designData?.version || !isDesigner) return;
+    if (!window.confirm("Voulez-vous annuler toutes vos modifications non sauvegardées pour revenir à l'état sauvegardé de cette version ?")) return;
+
+    setSaveStatus("Réinitialisation...");
+    isSwitchingVersion.current = true; // Bloque l'auto-save pendant le reset
+    debouncedSave.cancel();
+
+    try {
+      const contenu = designData.version.contenu;
+      if (contenu?.objects?.length > 0) {
+        const loadRes = fabricCanvas.loadFromJSON(contenu);
+        if (loadRes && typeof loadRes.then === "function") await loadRes;
+      } else {
+        fabricCanvas.remove(...fabricCanvas.getObjects());
+        fabricCanvas.backgroundColor = "#ffffff";
+      }
+      fabricCanvas.renderAll();
+      // triggerSave(fabricCanvas, designData?.version?._id)
+
+      try {
+        const json = fabricCanvas.toJSON([
+          "excludeFromExport", "isPlaceholder", "placeholderLabel", "customName",
+          "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft",
+          "boxStroke", "boxStrokeWidth", "rx", "ry"
+        ]);
+        json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
+        await API.put(`/versions/${designData?.version?._id}`, { contenu: json });
+        setSaveStatus("À jour ☁️");
+        console.log("ANA F TRIGGER")
+      } catch (err) {
+        setSaveStatus("Erreur ❌");
+      }
+      setSaveStatus("À jour ☁️");
+      console.log("ANA HNAAAAAAAAA")
+
+    } catch (err) {
+      setSaveStatus("Erreur réinitialisation ❌");
+    } finally {
+      setTimeout(() => { isSwitchingVersion.current = false; }, 300);
+    }
+  };
+
+  // ── SUPPRIMER UNE VERSION ──
+  const handleDeleteVersion = async (e, versionId) => {
+    e.stopPropagation(); // Évite de déclencher le chargement (clic parent)
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement cette version ?")) return;
+
+    setDeletingVersionId(versionId);
+    try {
+      await API.delete(`/versions/${versionId}`);
+      await fetchVersions();
+
+      // Si l'utilisateur supprime la version qu'il était en train de regarder
+      if (versionId === currentVersionIdRef.current) {
+        const { data: latestVersion } = await API.get(`/maquettes/${maquetteIdRef.current}/latest-version`);
+        await handleLoadVersion(latestVersion);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Erreur lors de la suppression de la version.");
+    } finally {
+      setDeletingVersionId(null);
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -1061,17 +1118,16 @@ const DesignEditor = () => {
                           Aucune version
                         </div>
                       ) : (
-                        versions.map((v) => {
+                      versions.map((v) => {
                           const isCurrent = v.numéro_version === currentVersionNum;
                           return (
-                            <button
+                            <div
                               key={v._id}
-                              onClick={() => !isCurrent && handleLoadVersion(v)}
-                              disabled={isCurrent || loadingVersion}
+                              onClick={() => { if (!isCurrent && !loadingVersion) handleLoadVersion(v); }}
                               style={{
                                 width: "100%", display: "flex", alignItems: "center",
                                 justifyContent: "space-between",
-                                padding: "10px 14px", border: "none", textAlign: "left",
+                                padding: "10px 14px", textAlign: "left",
                                 background: isCurrent ? "#F0F7FF" : "white",
                                 cursor: isCurrent ? "default" : "pointer",
                                 borderBottom: "1px solid #F8FAFC",
@@ -1106,12 +1162,34 @@ const DesignEditor = () => {
                                   </div>
                                 </div>
                               </div>
-                              {!isCurrent && (
-                                <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#64748B", fontWeight: 600 }}>
-                                  <Eye size={12} /> Charger
-                                </div>
-                              )}
-                            </button>
+                              
+                              {/* Zone Actions : Charger / Supprimer */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                {!isCurrent && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#64748B", fontWeight: 600 }}>
+                                    <Eye size={12} /> Charger
+                                  </div>
+                                )}
+                                
+                                {/* Bouton de Suppression */}
+                                {isDesigner && (
+                                  <button
+                                    onClick={(e) => handleDeleteVersion(e, v._id)}
+                                    disabled={deletingVersionId === v._id}
+                                    style={{
+                                      background: "transparent", border: "none", color: "#EF4444",
+                                      display: "flex", alignItems: "center", justifyContent: "center",
+                                      padding: "6px", borderRadius: "6px", cursor: "pointer", transition: "0.2s"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = "#FEE2E2"}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                    title="Supprimer cette version"
+                                  >
+                                    {deletingVersionId === v._id ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           );
                         })
                       )}
@@ -1167,9 +1245,15 @@ const DesignEditor = () => {
           }
           <div className="header-right">
             {isDesigner && (
-              <button className="btn-primary" onClick={() => triggerSave(fabricCanvas, designData?.version?._id)}>
-                Enregistrer
-              </button>
+              <>
+                <button className="btn-tool" onClick={handleReset} title="Annuler les modifications en cours">
+                  <RotateCcw size={16} /> <span className="hidden-sm">Réinitialiser</span>
+                </button>
+                
+                <button className="btn-primary" onClick={() => triggerSave(fabricCanvas, designData?.version?._id)}>
+                  Enregistrer
+                </button>
+              </>
             )}
           </div>
         </header>
