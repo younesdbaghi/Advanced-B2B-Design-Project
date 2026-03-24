@@ -52,6 +52,7 @@ const affectationSchema = new mongoose.Schema({
   id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
   id_designer: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
   date_affectation: { type: Date, default: Date.now },
+  lu: { type: Boolean, default: false },
 });
 affectationSchema.index({ id_projet: 1, id_designer: 1 }, { unique: true });
 const Affectation = mongoose.model("Affectation", affectationSchema);
@@ -93,9 +94,9 @@ const Feedback = mongoose.model("Feedback", feedbackSchema);
 
 const rapportQuotidienSchema = new mongoose.Schema({
   date: { type: Date, required: true },
-  travail_effectué: { type: String, required: true },
-  tâches_restantes: { type: String, required: true },
-  blocages: { type: String },
+  travail_effectué: { type: [String], required: true },
+  tâches_restantes: { type: [String], required: true },
+  blocages: { type: [String] },
   date_soumission: { type: Date, default: Date.now },
   id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
   id_designer: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
@@ -179,6 +180,28 @@ apiRouter.post("/auth/login", async (req, res) => {
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 });
+
+apiRouter.put("/auth/change-password", verifyToken, async (req, res) => {
+  try {
+    let { currentPassword, newPassword } = req.body;
+    let userID = req.user.id;
+    let user = await Utilisateur.findById(userID);
+    if (!user) {
+      return res.status(400).json({ msg: "user not foud" })
+    }
+    let ifPassword = await bcrypt.compare(currentPassword, user.mot_de_passe);
+    if (!ifPassword) {
+      return res.status(404).json({ msg: "password are not same" })
+    }
+    let hashpassword = await bcrypt.hash(newPassword, 10);
+    user.mot_de_passe = hashpassword;
+    await user.save()
+    res.status(200).json({ msg: "it works successfully" })
+  }
+  catch (e) {
+    console.log("err : ", e)
+  }
+})
 
 // ---- UTILISATEURS ----
 apiRouter.get("/utilisateurs", verifyToken, checkRole(["admin"]), async (req, res) => {
@@ -455,6 +478,20 @@ apiRouter.delete("/affectations/:id", verifyToken, checkRole(["admin"]), async (
   }
 });
 
+apiRouter.patch("/affectations/:id/lire", async (req, res) => {
+  try {
+    let { id } = req.params;
+    const affectation = await Affectation.findByIdAndUpdate(id, { lu: true }, { new: true });
+    if (affectation) {
+      return res.status(200).json({ message: "affectation lu .", affectation });
+    }
+    else {
+      return res.status(404).json({ message: "affectation non lu ." });
+    }
+  } catch (e) {
+    console.log("e : ", e);
+  }
+});
 // ---- MAQUETTES & ÉDITEUR DESIGN ----
 
 apiRouter.get("/maquettes", verifyToken, async (req, res) => {
@@ -682,6 +719,8 @@ apiRouter.put("/rapport/:id", verifyToken, checkRole(["designer"]), async (req, 
 // Générer un PDF d'un rapport quotidien
 apiRouter.post("/rapportPDF/:id", verifyToken, async (req, res) => {
   try {
+    const rapport = await RapportQuotidien.findById(req.params.id).populate("id_projet");
+    console.log("rapport : ", rapport);
     const { date, travail_effectué, tâches_restantes, blocages, id_designer, id_projet } =
       await RapportQuotidien.findById(req.params.id).populate("id_projet id_designer");
 
@@ -689,7 +728,7 @@ apiRouter.post("/rapportPDF/:id", verifyToken, async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=rapport.pdf");
     doc.pipe(res);
-
+    console.log("id_designer : ", id_projet);
     doc.fontSize(30).fillColor("#2c3e50").text("Rapport Journalier", { align: "center" });
     doc.moveDown();
     doc.strokeColor("#aaaaaa").lineWidth(1).moveTo(50, doc.y).lineTo(550, doc.y).stroke();

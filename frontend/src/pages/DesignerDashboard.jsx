@@ -114,30 +114,31 @@ const DesignerDashboard = () => {
   };
 
   // ─── Computed stats ───────────────────────────────────────────────────────────
-  const affProjets   = affectations.map(a => a.id_projet).filter(Boolean);
-  const nonLus       = affectations.filter(a => !a.lu).length;
-  const enCours      = affProjets.filter(p => p?.statut === "En cours").length;
-  const termines     = affProjets.filter(p => p?.statut === "Terminé").length;
+  const affProjets = affectations.map(a => a.id_projet).filter(Boolean);
+  const nonLus = affectations.filter(a => !a.lu).length;
+  const enCours = affProjets.filter(p => p?.statut === "En cours").length;
+  const termines = affProjets.filter(p => p?.statut === "Terminé").length;
 
   const stats = [
-    { label: "Designs créés",    value: maquettes.length,       color: "#6366F1", bg: "rgba(99,102,241,0.1)",  icon: <Palette size={20} color="#6366F1"/> },
-    { label: "Projets assignés", value: affectations.length,    color: "#0EA5E9", bg: "rgba(14,165,233,0.1)",  icon: <LayoutGrid size={20} color="#0EA5E9"/> },
-    { label: "Non lus",          value: nonLus,                 color: "#F59E0B", bg: "rgba(245,158,11,0.1)",  icon: <BellRing size={20} color="#F59E0B"/> },
-    { label: "En cours",         value: enCours,                color: "#10B981", bg: "rgba(16,185,129,0.1)",  icon: <Clock size={20} color="#10B981"/> },
-    { label: "Terminés",         value: termines,               color: "#8B5CF6", bg: "rgba(139,92,246,0.1)",  icon: <CheckCircle size={20} color="#8B5CF6"/> },
+    { label: "Designs créés", value: maquettes.length, color: "#6366F1", bg: "rgba(99,102,241,0.1)", icon: <Palette size={20} color="#6366F1" /> },
+    { label: "Projets assignés", value: affectations.length, color: "#0EA5E9", bg: "rgba(14,165,233,0.1)", icon: <LayoutGrid size={20} color="#0EA5E9" /> },
+    { label: "Non lus", value: nonLus, color: "#F59E0B", bg: "rgba(245,158,11,0.1)", icon: <BellRing size={20} color="#F59E0B" /> },
+    { label: "En cours", value: enCours, color: "#10B981", bg: "rgba(16,185,129,0.1)", icon: <Clock size={20} color="#10B981" /> },
+    { label: "Terminés", value: termines, color: "#8B5CF6", bg: "rgba(139,92,246,0.1)", icon: <CheckCircle size={20} color="#8B5CF6" /> },
   ];
 
   // ─── Helpers ──────────────────────────────────────────────────────────────────
   const getStatutBadge = (statut) => {
     const map = {
-      "En cours":    { color: "#2563EB", bg: "rgba(37,99,235,0.1)",  icon: <Clock size={11}/> },
-      "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)",  icon: <Eye size={11}/> },
-      "Validé":      { color: "#059669", bg: "rgba(5,150,105,0.1)",  icon: <CheckCircle size={11}/> },
-      "Refusé":      { color: "#DC2626", bg: "rgba(220,38,38,0.1)",  icon: <XCircle size={11}/> },
-      "Terminé":     { color: "#7C3AED", bg: "rgba(124,58,237,0.1)", icon: <CheckCircle size={11}/> },
+      "En cours": { color: "#2563EB", bg: "rgba(37,99,235,0.1)", icon: <Clock size={11} /> },
+      "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)", icon: <Eye size={11} /> },
+      "Validé": { color: "#059669", bg: "rgba(5,150,105,0.1)", icon: <CheckCircle size={11} /> },
+      "Refusé": { color: "#DC2626", bg: "rgba(220,38,38,0.1)", icon: <XCircle size={11} /> },
+      "Terminé": { color: "#7C3AED", bg: "rgba(124,58,237,0.1)", icon: <CheckCircle size={11} /> },
     };
     return map[statut] || { color: "#64748B", bg: "rgba(100,116,139,0.1)", icon: null };
   };
+
 
   const getUrgencyColor = (dateFin) => {
     if (!dateFin) return "#64748B";
@@ -151,10 +152,12 @@ const DesignerDashboard = () => {
   // ─── Tabs ─────────────────────────────────────────────────────────────────────
   const tabs = [
     { id: "overview", label: "Vue d'ensemble" },
-    { id: "designs",  label: `Mes Designs (${maquettes.length})` },
-    { id: "projets",  label: `Mes Projets (${affectations.length})` },
+    { id: "designs", label: `Mes Designs (${maquettes.length})` },
+    { id: "projets", label: `Mes Projets (${affectations.length})` },
   ];
-
+  let users = JSON.parse(localStorage.getItem("user"))
+  console.log(users)
+  console.log("ffectation", affectations)
   // ─── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="db-root">
@@ -166,14 +169,14 @@ const DesignerDashboard = () => {
           <h1 className="db-name">{user?.nom || "Designer"} 👋</h1>
         </div>
         <button className="btn-create" onClick={() => setIsModalOpen(true)}>
-          <Plus size={18}/> Nouveau Design
+          <Plus size={18} /> Nouveau Design
         </button>
       </div>
 
       {/* ── Notification Banner ── */}
       {nonLus > 0 && (
         <div className="banner-notif">
-          <BellRing size={16} color="#92400E"/>
+          <BellRing size={16} color="#92400E" />
           <span>Vous avez <strong>{nonLus}</strong> nouvelle{nonLus > 1 ? "s" : ""} assignation{nonLus > 1 ? "s" : ""} non lue{nonLus > 1 ? "s" : ""}.</span>
         </div>
       )}
@@ -210,24 +213,24 @@ const DesignerDashboard = () => {
               <button className="link-btn" onClick={() => setActiveTab("designs")}>Voir tout →</button>
             </div>
             {loadingMaquettes
-              ? <Spinner/>
+              ? <Spinner />
               : maquettes.length === 0
-                ? <Empty icon={<Palette size={28} color="#6366F1"/>} text="Aucun design créé."/>
+                ? <Empty icon={<Palette size={28} color="#6366F1" />} text="Aucun design créé." />
                 : (
                   <div className="recent-list">
                     {maquettes.slice(0, 4).map(maq => (
                       <div key={maq._id} className="recent-item" onClick={() => navigate(`/designer/editeur/${maq._id}`)}>
                         <div className="recent-thumb">
                           {maq.image_fond
-                            ? <img src={maq.image_fond} alt="thumb"/>
-                            : <ImageIcon size={20} color="#ccc"/>
+                            ? <img src={maq.image_fond} alt="thumb" />
+                            : <ImageIcon size={20} color="#ccc" />
                           }
                         </div>
                         <div>
                           <div className="recent-title">{maq.nom}</div>
                           <div className="recent-sub">{maq.id_projet?.nom || "Sans projet"}</div>
                         </div>
-                        <Eye size={15} color="#94A3B8" style={{ marginLeft: "auto" }}/>
+                        <Eye size={15} color="#94A3B8" style={{ marginLeft: "auto" }} />
                       </div>
                     ))}
                   </div>
@@ -242,9 +245,9 @@ const DesignerDashboard = () => {
               <button className="link-btn" onClick={() => setActiveTab("projets")}>Voir tout →</button>
             </div>
             {loadingAff
-              ? <Spinner/>
+              ? <Spinner />
               : affectations.length === 0
-                ? <Empty icon={<LayoutGrid size={28} color="#0EA5E9"/>} text="Aucun projet assigné."/>
+                ? <Empty icon={<LayoutGrid size={28} color="#0EA5E9" />} text="Aucun projet assigné." />
                 : (
                   <div className="recent-list">
                     {affectations.slice(0, 4).map(a => {
@@ -276,15 +279,15 @@ const DesignerDashboard = () => {
           <div className="section-bar">
             <h2 className="section-title">Mes Designs</h2>
             <div className="view-toggle">
-              <button className={viewMode === "grid" ? "vt-active" : ""} onClick={() => setViewMode("grid")}><LayoutGrid size={16}/></button>
-              <button className={viewMode === "list" ? "vt-active" : ""} onClick={() => setViewMode("list")}><List size={16}/></button>
+              <button className={viewMode === "grid" ? "vt-active" : ""} onClick={() => setViewMode("grid")}><LayoutGrid size={16} /></button>
+              <button className={viewMode === "list" ? "vt-active" : ""} onClick={() => setViewMode("list")}><List size={16} /></button>
             </div>
           </div>
 
           {loadingMaquettes
-            ? <Spinner/>
+            ? <Spinner />
             : maquettes.length === 0
-              ? <Empty icon={<Palette size={40} color="#6366F1"/>} text="Aucun design pour le moment." sub="Créez votre premier design avec le bouton + ci-dessus."/>
+              ? <Empty icon={<Palette size={40} color="#6366F1" />} text="Aucun design pour le moment." sub="Créez votre premier design avec le bouton + ci-dessus." />
               : viewMode === "grid"
                 ? (
                   <div className="maq-grid">
@@ -292,10 +295,10 @@ const DesignerDashboard = () => {
                       <div key={maq._id} className="maq-card">
                         <div className="maq-thumb" onClick={() => navigate(`/designer/editeur/${maq._id}`)}>
                           {maq.image_fond
-                            ? <img src={maq.image_fond} alt="Miniature"/>
-                            : <div className="no-img"><ImageIcon size={36} color="#ccc"/></div>
+                            ? <img src={maq.image_fond} alt="Miniature" />
+                            : <div className="no-img"><ImageIcon size={36} color="#ccc" /></div>
                           }
-                          <div className="maq-overlay"><Eye size={20} color="white"/></div>
+                          <div className="maq-overlay"><Eye size={20} color="white" /></div>
                         </div>
                         <div className="maq-info">
                           <div>
@@ -303,9 +306,9 @@ const DesignerDashboard = () => {
                             <div className="maq-proj">{maq.id_projet?.nom || "Sans projet"}</div>
                           </div>
                           <div className="maq-actions">
-                            <button className="icon-btn eye-c"   onClick={() => navigate(`/designer/editeur/${maq._id}`)} title="Voir"><Eye size={15}/></button>
-                            <button className="icon-btn edit-c"  onClick={() => openEditModal(maq)} title="Modifier"><Edit3 size={15}/></button>
-                            <button className="icon-btn del-c"   onClick={() => deleteMaquette(maq._id)} title="Supprimer"><Trash2 size={15}/></button>
+                            <button className="icon-btn eye-c" onClick={() => navigate(`/designer/editeur/${maq._id}`)} title="Voir"><Eye size={15} /></button>
+                            <button className="icon-btn edit-c" onClick={() => openEditModal(maq)} title="Modifier"><Edit3 size={15} /></button>
+                            <button className="icon-btn del-c" onClick={() => deleteMaquette(maq._id)} title="Supprimer"><Trash2 size={15} /></button>
                           </div>
                         </div>
                       </div>
@@ -322,7 +325,7 @@ const DesignerDashboard = () => {
                             <td>
                               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                 <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", background: "#f0f2f5", flexShrink: 0 }}>
-                                  {maq.image_fond ? <img src={maq.image_fond} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/> : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}><ImageIcon size={18} color="#ccc"/></div>}
+                                  {maq.image_fond ? <img src={maq.image_fond} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}><ImageIcon size={18} color="#ccc" /></div>}
                                 </div>
                                 <span style={{ fontWeight: 600 }}>{maq.nom}</span>
                               </div>
@@ -330,9 +333,9 @@ const DesignerDashboard = () => {
                             <td><span className="badge" style={{ color: "#6366F1", background: "rgba(99,102,241,0.1)" }}>{maq.id_projet?.nom || "Sans projet"}</span></td>
                             <td>
                               <div style={{ display: "flex", gap: 8 }}>
-                                <button className="icon-btn eye-c"  onClick={() => navigate(`/designer/editeur/${maq._id}`)}><Eye size={15}/></button>
-                                <button className="icon-btn edit-c" onClick={() => openEditModal(maq)}><Edit3 size={15}/></button>
-                                <button className="icon-btn del-c"  onClick={() => deleteMaquette(maq._id)}><Trash2 size={15}/></button>
+                                <button className="icon-btn eye-c" onClick={() => navigate(`/designer/editeur/${maq._id}`)}><Eye size={15} /></button>
+                                <button className="icon-btn edit-c" onClick={() => openEditModal(maq)}><Edit3 size={15} /></button>
+                                <button className="icon-btn del-c" onClick={() => deleteMaquette(maq._id)}><Trash2 size={15} /></button>
                               </div>
                             </td>
                           </tr>
@@ -346,7 +349,7 @@ const DesignerDashboard = () => {
           {/* Journal rapide */}
           {maquettes.length > 0 && (
             <div className="journal-cta" onClick={() => navigate("/rapport")}>
-              <div className="journal-icon"><Notebook size={22} color="#6366F1"/></div>
+              <div className="journal-icon"><Notebook size={22} color="#6366F1" /></div>
               <div>
                 <div className="journal-title">Journal quotidien</div>
                 <div className="journal-sub">Créer un journal quotidien de vos activités</div>
@@ -361,9 +364,9 @@ const DesignerDashboard = () => {
       {activeTab === "projets" && (
         <div className="panel">
           {loadingAff
-            ? <Spinner/>
+            ? <Spinner />
             : affectations.length === 0
-              ? <Empty icon={<LayoutGrid size={40} color="#0EA5E9"/>} text="Aucun projet assigné." sub="L'administrateur vous assignera bientôt à un projet."/>
+              ? <Empty icon={<LayoutGrid size={40} color="#0EA5E9" />} text="Aucun projet assigné." sub="L'administrateur vous assignera bientôt à un projet." />
               : (
                 <div className="table-wrap">
                   <table className="data-table">
@@ -378,8 +381,9 @@ const DesignerDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
+                      {console.log("Affectations:", affectations)}
                       {affectations.map(a => {
-                        const p  = a.id_projet;
+                        const p = a.id_projet;
                         const sc = getStatutBadge(p?.statut);
                         const uc = getUrgencyColor(p?.date_fin);
                         const isNew = !a.lu;
@@ -387,7 +391,7 @@ const DesignerDashboard = () => {
                           <tr key={a._id} style={{ background: isNew ? "rgba(245,158,11,0.04)" : "" }}>
                             <td>
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                {isNew && <div className="dot-notif"/>}
+                                {isNew && <div className="dot-notif" />}
                                 <div>
                                   <div style={{ fontWeight: 700, fontSize: 14 }}>{p?.nom || "—"}</div>
                                   {p?.description && <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>{p.description.slice(0, 55)}…</div>}
@@ -406,8 +410,8 @@ const DesignerDashboard = () => {
                             <td>
                               {p?.date_fin
                                 ? <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: uc }}>
-                                    <Calendar size={12}/>{new Date(p.date_fin).toLocaleDateString("fr-FR")}
-                                  </span>
+                                  <Calendar size={12} />{new Date(p.date_fin).toLocaleDateString("fr-FR")}
+                                </span>
                                 : "—"}
                             </td>
                             <td>
@@ -417,12 +421,12 @@ const DesignerDashboard = () => {
                             </td>
                             <td style={{ fontSize: 12, color: "#64748B" }}>
                               <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                <Calendar size={11}/>{new Date(a.date_affectation).toLocaleDateString("fr-FR")}
+                                <Calendar size={11} />{new Date(a.date_affectation).toLocaleDateString("fr-FR")}
                               </span>
                             </td>
                             <td style={{ textAlign: "center" }}>
                               {a.lu
-                                ? <span className="badge" style={{ color: "#059669", background: "rgba(5,150,105,0.1)" }}><CheckCircle size={11}/> Lu</span>
+                                ? <span className="badge" style={{ color: "#059669", background: "rgba(5,150,105,0.1)" }}><CheckCircle size={11} /> Lu</span>
                                 : (
                                   <button
                                     className="btn-mark-lu"
@@ -430,7 +434,7 @@ const DesignerDashboard = () => {
                                     disabled={marking === a._id}
                                     style={{ opacity: marking === a._id ? 0.7 : 1 }}
                                   >
-                                    <Bell size={12}/> {marking === a._id ? "…" : "Marquer lu"}
+                                    <Bell size={12} /> {marking === a._id ? "…" : "Marquer lu"}
                                   </button>
                                 )
                               }
@@ -452,21 +456,21 @@ const DesignerDashboard = () => {
           <div className="modal">
             <div className="modal-head">
               <h3>Nouveau Design</h3>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)}><X size={18}/></button>
+              <button className="modal-close" onClick={() => setIsModalOpen(false)}><X size={18} /></button>
             </div>
             <form onSubmit={startDesign} className="modal-form">
-              <input type="text" placeholder="Nom du design *" required className="inp" onChange={e => setFormData({ ...formData, nom: e.target.value })}/>
+              <input type="text" placeholder="Nom du design *" required className="inp" onChange={e => setFormData({ ...formData, nom: e.target.value })} />
               <select required className="inp" onChange={e => setFormData({ ...formData, id_projet: e.target.value })}>
                 <option value="">— Assigner à un projet —</option>
-                {projets.map(p => <option key={p._id} value={p._id}>{p.nom}</option>)}
+                {affectations.filter(p => p.id_designer === users.id).map(p => <option key={p._id} value={p._id}>{p.id_projet.nom}</option>)}
               </select>
               <label className="upload-zone">
-                <Upload size={22} color="#6366F1"/>
+                <Upload size={22} color="#6366F1" />
                 <span>{formData.image_fond ? "Image prête ✅" : "Importer une image de fond"}</span>
-                <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }}/>
+                <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
               </label>
               <button type="submit" className="btn-submit" disabled={isCreating}>
-                {isCreating ? <><Loader size={16} className="spin"/> Chargement…</> : "Commencer 🚀"}
+                {isCreating ? <><Loader size={16} className="spin" /> Chargement…</> : "Commencer 🚀"}
               </button>
             </form>
           </div>
@@ -479,17 +483,17 @@ const DesignerDashboard = () => {
           <div className="modal">
             <div className="modal-head">
               <h3>Modifier les informations</h3>
-              <button className="modal-close" onClick={() => setIsEditModalOpen(false)}><X size={18}/></button>
+              <button className="modal-close" onClick={() => setIsEditModalOpen(false)}><X size={18} /></button>
             </div>
             <form onSubmit={updateInfo} className="modal-form">
-              <input type="text" value={editData.nom} required className="inp" onChange={e => setEditData({ ...editData, nom: e.target.value })}/>
-              <textarea value={editData.description} placeholder="Description" className="inp" rows={3} onChange={e => setEditData({ ...editData, description: e.target.value })}/>
+              <input type="text" value={editData.nom} required className="inp" onChange={e => setEditData({ ...editData, nom: e.target.value })} />
+              <textarea value={editData.description} placeholder="Description" className="inp" rows={3} onChange={e => setEditData({ ...editData, description: e.target.value })} />
               <select value={editData.id_projet} required className="inp" onChange={e => setEditData({ ...editData, id_projet: e.target.value })}>
                 <option value="">— Assigner à un projet —</option>
                 {projets.map(p => <option key={p._id} value={p._id}>{p.nom}</option>)}
               </select>
               <button type="submit" className="btn-submit" disabled={isUpdating}>
-                {isUpdating ? <><Loader size={16} className="spin"/> Sauvegarde…</> : "Enregistrer les modifications"}
+                {isUpdating ? <><Loader size={16} className="spin" /> Sauvegarde…</> : "Enregistrer les modifications"}
               </button>
             </form>
           </div>
@@ -744,7 +748,7 @@ const DesignerDashboard = () => {
 // ─── Helpers composants ────────────────────────────────────────────────────────
 const Spinner = () => (
   <div style={{ textAlign: "center", padding: "40px 0", color: "#94A3B8" }}>
-    <Loader className="spin" size={28} color="#6366F1"/>
+    <Loader className="spin" size={28} color="#6366F1" />
   </div>
 );
 

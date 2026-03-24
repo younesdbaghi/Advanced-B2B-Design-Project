@@ -12,16 +12,16 @@ const DashboardLayout = ({ children }) => {
   const menuItems = {
     admin: [
       { path: '/admin/utilisateurs', icon: <Users size={20} />, label: 'Utilisateurs' },
-      { path: '/admin/projets',      icon: <FolderOpen size={20} />, label: 'Projets' },
-      { path: '/admin/demandes',     icon: <Bell size={20} />, label: 'Demandes' },
-      { path: '/admin/history',      icon: <History size={20} />, label: 'Rapport Historique' },
+      { path: '/admin/projets', icon: <FolderOpen size={20} />, label: 'Projets' },
+      { path: '/admin/demandes', icon: <Bell size={20} />, label: 'Demandes' },
+      { path: '/admin/history', icon: <History size={20} />, label: 'Rapport Historique' },
     ],
     client: [
       { path: '/client', icon: <Briefcase size={20} />, label: 'Mes Projets' },
     ],
     designer: [
-      { path: '/designer',         icon: <FileSignature size={20} />, label: 'Tableau de bord' },
-      { path: '/designer/history', icon: <History size={20} />,       label: 'Rapport Historique' },
+      { path: '/designer', icon: <FileSignature size={20} />, label: 'Tableau de bord' },
+      { path: '/designer/history', icon: <History size={20} />, label: 'Rapport Historique' },
     ],
   };
 
@@ -86,6 +86,8 @@ const DashboardLayout = ({ children }) => {
             <div className="user-avatar">
               {user.nom?.charAt(0)?.toUpperCase() || <UserCircle size={22} />}
             </div>
+            <Link to={"/change"}>change password</Link>
+
           </div>
         </div>
 

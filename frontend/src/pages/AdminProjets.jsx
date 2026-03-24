@@ -113,6 +113,7 @@ const AssignerDropdown = ({ projet, onAssigned }) => {
   const [assigning, setAssigning] = useState(null);
   const [msg, setMsg] = useState("");
   const ref = useRef(null);
+  console.log("props", projet)
 
   useEffect(() => {
     const handle = (e) => {
@@ -164,8 +165,10 @@ const AssignerDropdown = ({ projet, onAssigned }) => {
     <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
       <button
         onClick={handleOpen}
-        title="Assigner un designer"
-        style={{ ...iconBtn, color: "#059669" }}
+        title={projet.statut !== "Refusé" && "Assigner un designer"}
+        disabled={projet.statut === "Refusé"}
+        style={{ ...iconBtn, color: "#059669", opacity: projet.statut === "Refusé" ? 0.3 : 1, }}
+
       >
         <UserPlus size={15} />
       </button>
@@ -309,6 +312,7 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
     try {
       const { data } = await API.get(`/affectations/projet/${projet._id}`);
       setAffectations(Array.isArray(data) ? data : []);
+      console.log("affectations : ", data);
     } catch {
     } finally {
       setLoadingAff(false);
@@ -317,6 +321,8 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
   useEffect(() => {
     fetchAff();
   }, []);
+
+
 
   const handleRetirer = async (id) => {
     try {
@@ -422,6 +428,7 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
                 marginBottom: 6,
               }}
             >
+
               <AlignLeft size={14} color="#64748B" />
               <span style={{ fontSize: 12, color: "#94A3B8" }}>
                 Description
@@ -528,6 +535,35 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
                       </div>
                     </div>
                   </div>
+
+
+                  <div
+                    style={{
+                      marginLeft: "200px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      borderRadius: "999px",
+                      fontSize: "12px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                      transition: "0.2s",
+
+                      background: a.lu ? "#ECFDF5" : "#F3F4F6",
+                      color: a.lu ? "#16A34A" : "#6B7280",
+                      border: a.lu ? "1px solid #BBF7D0" : "1px solid #E5E7EB",
+                    }}
+                  >
+                    {a.lu ? (
+                      <>
+                        <CheckCircle size={14} />
+                        <span>Lu</span>
+                      </>
+                    ) : (
+                      <span>Non lu</span>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleRetirer(a._id)}
                     style={{
@@ -543,6 +579,7 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
                       fontSize: 12,
                     }}
                   >
+
                     <UserMinus size={13} /> Retirer
                   </button>
                 </div>
@@ -837,7 +874,6 @@ const AdminProjets = () => {
       // .then(dt => console.log("maquettes : ", maquettes))
       .catch(() => { });
   }, []);
-  console.log("maquettes : ", maquettes);
 
   const getMaquette = (projetId) => {
     return maquettes.some(
@@ -938,7 +974,7 @@ const AdminProjets = () => {
       console.log("err : ", e);
     }
   };
-
+  console.log("projets ", projets)
   return (
     <div>
       {deleteProjet && (

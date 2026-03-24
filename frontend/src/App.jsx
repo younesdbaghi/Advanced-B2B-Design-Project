@@ -14,6 +14,7 @@ import AdminDemandes from './pages/AdminDemandes';
 import DesignEditor from './pages/DesignEditor';
 import Rapport from './pages/rapport';
 import History from './pages/history';
+import ChangePassword from './pages/changePassword';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
               path="/login"
               element={<GuestRoute><Login /></GuestRoute>}
             />
+
 
             {/* Routes Admin */}
             <Route path="/admin" element={<Navigate to="/admin/utilisateurs" replace />} />
@@ -69,11 +71,12 @@ function App() {
               path='/designer/history'
               element={<ProtectedRoute allowedRoles={["designer"]}><History /></ProtectedRoute>}
             />
-
+            <Route path='/change' element={<ChangePassword />} />
             {/* Redirection */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </DashboardLayout>
+
       </AuthProvider>
     </Router>
   );

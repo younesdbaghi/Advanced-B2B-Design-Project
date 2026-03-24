@@ -2,6 +2,7 @@ import { useState, useContext } from 'react';
 import API from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { KeyRound, Mail, AlertCircle, Fingerprint } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -46,12 +47,12 @@ const Login = () => {
             <label>Identifiant ou Email</label>
             <div className="input-wrapper">
               <Mail size={18} />
-              <input 
-                type="text" 
-                placeholder="admin@devportal.com" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                required 
+              <input
+                type="text"
+                placeholder="admin@devportal.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
           </div>
@@ -60,12 +61,12 @@ const Login = () => {
             <label>Mot de passe</label>
             <div className="input-wrapper">
               <KeyRound size={18} />
-              <input 
-                type="password" 
-                placeholder="••••••••" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
           </div>
@@ -73,6 +74,7 @@ const Login = () => {
           <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '30px' }}>
             {loading ? 'Connexion en cours...' : 'Se connecter'}
           </button>
+
         </form>
       </div>
     </div>
