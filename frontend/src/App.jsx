@@ -14,6 +14,8 @@ import AdminDemandes from './pages/AdminDemandes';
 import DesignEditor from './pages/DesignEditor';
 import Rapport from './pages/rapport';
 import History from './pages/history';
+import AdminFeedbacks from './pages/AdminFeedbacks';
+import ClientFeedbacks from './pages/ClientFeedbacks';
 
 function App() {
   return (
@@ -33,6 +35,7 @@ function App() {
             <Route path="/admin/utilisateurs" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin/projets" element={<ProtectedRoute allowedRoles={['admin']}><AdminProjets /></ProtectedRoute>} />
             <Route path="/admin/demandes" element={<ProtectedRoute allowedRoles={['admin']}><AdminDemandes /></ProtectedRoute>} />
+            <Route path="/admin/feedbacks" element={<AdminFeedbacks />} />
             <Route
               path='/admin/history'
               element={<ProtectedRoute allowedRoles={["admin"]}><History /></ProtectedRoute>}
@@ -51,6 +54,7 @@ function App() {
               path="/client/editeur/:id"
               element={<ProtectedRoute allowedRoles={['client']}><DesignEditor /></ProtectedRoute>}
             />
+            <Route path="/client/feedbacks" element={<ClientFeedbacks />} />
             {/* Routes Designer */}
             <Route
               path="/designer/editeur/:id"

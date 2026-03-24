@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Palette, Calendar, CheckCircle, Clock, XCircle, Eye,
-  BellRing, Bell, Plus, X, Upload, Loader, Image as ImageIcon,
+  BellRing, Plus, X, Upload, Loader, Image as ImageIcon,
   Edit3, Trash2, Notebook, LayoutGrid, List
 } from "lucide-react";
 import API from "../api";
@@ -23,7 +23,7 @@ const DesignerDashboard = () => {
   const [marking, setMarking] = useState(null);
 
   // --- UI ---
-  const [activeTab, setActiveTab] = useState("overview"); // overview | designs | projets
+  const [activeTab, setActiveTab] = useState("overview");
   const [viewMode, setViewMode] = useState("grid");
 
   // --- Modals ---
@@ -43,9 +43,14 @@ const DesignerDashboard = () => {
         API.get("/projets"),
         API.get("/affectations/mes-projets"),
       ]);
-      setMaquettes(resMaq.data);
-      setProjets(resPrj.data);
-      setAffectations(Array.isArray(resAff.data) ? resAff.data : []);
+
+      const maqData = Array.isArray(resMaq.data) ? resMaq.data : Array.isArray(resMaq.data?.maquettes) ? resMaq.data.maquettes : Array.isArray(resMaq.data?.data) ? resMaq.data.data : [];
+      const prjData = Array.isArray(resPrj.data) ? resPrj.data : Array.isArray(resPrj.data?.projets) ? resPrj.data.projets : Array.isArray(resPrj.data?.data) ? resPrj.data.data : [];
+      const affData = Array.isArray(resAff.data) ? resAff.data : Array.isArray(resAff.data?.affectations) ? resAff.data.affectations : Array.isArray(resAff.data?.data) ? resAff.data.data : [];
+
+      setMaquettes(maqData);
+      setProjets(prjData);
+      setAffectations(affData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -54,7 +59,33 @@ const DesignerDashboard = () => {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  // ─── Fetch corrections transmises par l'admin ─────────────────────────────
+  const [corrections, setCorrections]             = useState([]);
+  const [loadingCorrections, setLoadingCorrections] = useState(true);
+  const [showCorrDetail, setShowCorrDetail]        = useState(null);
+
+  const fetchCorrections = async () => {
+    try {
+      const { data } = await API.get("/validations/corrections-designer");
+      setCorrections(Array.isArray(data) ? data : []);
+    } catch (e) { console.error(e); }
+    finally { setLoadingCorrections(false); }
+  };
+
+  const handleMarquerLuCorrection = async (correctionId) => {
+    try {
+      await API.patch(`/validations/${correctionId}/lu-designer`);
+      setCorrections(prev => prev.filter(c => c._id !== correctionId));
+    } catch (e) { console.error(e); }
+  };
+
+  // ─── Notifications designer (corrections transmises par admin) ─────────────
+  // Gérées dans DashboardLayout — plus besoin ici
+
+  useEffect(() => {
+    fetchAll();
+    fetchCorrections();
+  }, []);
 
   // ─── Maquettes actions ────────────────────────────────────────────────────────
   const handleImageChange = (e) => {
@@ -123,6 +154,7 @@ const DesignerDashboard = () => {
     { label: "Designs créés",    value: maquettes.length,       color: "#6366F1", bg: "rgba(99,102,241,0.1)",  icon: <Palette size={20} color="#6366F1"/> },
     { label: "Projets assignés", value: affectations.length,    color: "#0EA5E9", bg: "rgba(14,165,233,0.1)",  icon: <LayoutGrid size={20} color="#0EA5E9"/> },
     { label: "Non lus",          value: nonLus,                 color: "#F59E0B", bg: "rgba(245,158,11,0.1)",  icon: <BellRing size={20} color="#F59E0B"/> },
+    { label: "Corrections",      value: corrections.length,     color: "#DC2626", bg: "rgba(220,38,38,0.1)",   icon: <XCircle size={20} color="#DC2626"/> },
     { label: "En cours",         value: enCours,                color: "#10B981", bg: "rgba(16,185,129,0.1)",  icon: <Clock size={20} color="#10B981"/> },
     { label: "Terminés",         value: termines,               color: "#8B5CF6", bg: "rgba(139,92,246,0.1)",  icon: <CheckCircle size={20} color="#8B5CF6"/> },
   ];
@@ -142,17 +174,16 @@ const DesignerDashboard = () => {
   const getUrgencyColor = (dateFin) => {
     if (!dateFin) return "#64748B";
     const diff = Math.ceil((new Date(dateFin) - new Date()) / (1000 * 60 * 60 * 24));
-    if (diff <= 0) return "#DC2626";
     if (diff <= 3) return "#DC2626";
     if (diff <= 7) return "#D97706";
     return "#059669";
   };
 
-  // ─── Tabs ─────────────────────────────────────────────────────────────────────
   const tabs = [
-    { id: "overview", label: "Vue d'ensemble" },
-    { id: "designs",  label: `Mes Designs (${maquettes.length})` },
-    { id: "projets",  label: `Mes Projets (${affectations.length})` },
+    { id: "overview",    label: "Vue d'ensemble" },
+    { id: "designs",     label: `Mes Designs (${maquettes.length})` },
+    { id: "projets",     label: `Mes Projets (${affectations.length})` },
+    { id: "corrections", label: `Corrections${corrections.length > 0 ? ` (${corrections.length})` : ""}`, alert: corrections.length > 0 },
   ];
 
   // ─── Render ───────────────────────────────────────────────────────────────────
@@ -170,11 +201,32 @@ const DesignerDashboard = () => {
         </button>
       </div>
 
-      {/* ── Notification Banner ── */}
+      {/* ── Notification Banner assignations non lues ── */}
       {nonLus > 0 && (
         <div className="banner-notif">
           <BellRing size={16} color="#92400E"/>
           <span>Vous avez <strong>{nonLus}</strong> nouvelle{nonLus > 1 ? "s" : ""} assignation{nonLus > 1 ? "s" : ""} non lue{nonLus > 1 ? "s" : ""}.</span>
+        </div>
+      )}
+
+      {/* ── Banner corrections clients (priorité haute) ── */}
+      {corrections.length > 0 && (
+        <div
+          onClick={() => setActiveTab("corrections")}
+          style={{ display:"flex",alignItems:"center",gap:10,background:"rgba(220,38,38,0.08)",border:"1px solid rgba(220,38,38,0.25)",borderRadius:12,padding:"12px 18px",marginBottom:16,cursor:"pointer",transition:"background .15s" }}
+          onMouseEnter={e=>e.currentTarget.style.background="rgba(220,38,38,0.13)"}
+          onMouseLeave={e=>e.currentTarget.style.background="rgba(220,38,38,0.08)"}
+        >
+          <div style={{ width:10,height:10,borderRadius:"50%",background:"#DC2626",flexShrink:0,animation:"pulse 1.5s ease-in-out infinite" }}/>
+          <div style={{ flex:1 }}>
+            <span style={{ fontSize:13,fontWeight:700,color:"#DC2626" }}>
+              ⚠️ {corrections.length} correction{corrections.length > 1 ? "s" : ""} demandée{corrections.length > 1 ? "s" : ""} par un client
+            </span>
+            <span style={{ fontSize:12,color:"#94A3B8",marginLeft:8 }}>
+              — {corrections.map(c => c.version_id?.id_maquette?.id_projet?.nom || "Projet").join(", ")}
+            </span>
+          </div>
+          <span style={{ fontSize:12,color:"#DC2626",fontWeight:600 }}>Voir →</span>
         </div>
       )}
 
@@ -194,8 +246,12 @@ const DesignerDashboard = () => {
       {/* ── Tabs ── */}
       <div className="tabs">
         {tabs.map(t => (
-          <button key={t.id} className={`tab-btn ${activeTab === t.id ? "active" : ""}`} onClick={() => setActiveTab(t.id)}>
+          <button key={t.id} className={`tab-btn ${activeTab === t.id ? "active" : ""}`} onClick={() => setActiveTab(t.id)}
+            style={t.alert && activeTab !== t.id ? { color:"#DC2626",position:"relative" } : {}}>
             {t.label}
+            {t.alert && (
+              <span style={{ position:"absolute",top:-4,right:-4,width:8,height:8,borderRadius:"50%",background:"#DC2626",animation:"pulse 1.5s ease-in-out infinite" }}/>
+            )}
           </button>
         ))}
       </div>
@@ -203,7 +259,6 @@ const DesignerDashboard = () => {
       {/* ══════════════ TAB: OVERVIEW ══════════════ */}
       {activeTab === "overview" && (
         <div className="overview-grid">
-          {/* Recent Designs */}
           <div className="panel">
             <div className="panel-head">
               <h2>Designs récents</h2>
@@ -218,10 +273,7 @@ const DesignerDashboard = () => {
                     {maquettes.slice(0, 4).map(maq => (
                       <div key={maq._id} className="recent-item" onClick={() => navigate(`/designer/editeur/${maq._id}`)}>
                         <div className="recent-thumb">
-                          {maq.image_fond
-                            ? <img src={maq.image_fond} alt="thumb"/>
-                            : <ImageIcon size={20} color="#ccc"/>
-                          }
+                          {maq.image_fond ? <img src={maq.image_fond} alt="thumb"/> : <ImageIcon size={20} color="#ccc"/>}
                         </div>
                         <div>
                           <div className="recent-title">{maq.nom}</div>
@@ -235,7 +287,6 @@ const DesignerDashboard = () => {
             }
           </div>
 
-          {/* Recent Projets */}
           <div className="panel">
             <div className="panel-head">
               <h2>Projets récents</h2>
@@ -303,9 +354,9 @@ const DesignerDashboard = () => {
                             <div className="maq-proj">{maq.id_projet?.nom || "Sans projet"}</div>
                           </div>
                           <div className="maq-actions">
-                            <button className="icon-btn eye-c"   onClick={() => navigate(`/designer/editeur/${maq._id}`)} title="Voir"><Eye size={15}/></button>
-                            <button className="icon-btn edit-c"  onClick={() => openEditModal(maq)} title="Modifier"><Edit3 size={15}/></button>
-                            <button className="icon-btn del-c"   onClick={() => deleteMaquette(maq._id)} title="Supprimer"><Trash2 size={15}/></button>
+                            <button className="icon-btn eye-c"  onClick={() => navigate(`/designer/editeur/${maq._id}`)} title="Voir"><Eye size={15}/></button>
+                            <button className="icon-btn edit-c" onClick={() => openEditModal(maq)} title="Modifier"><Edit3 size={15}/></button>
+                            <button className="icon-btn del-c"  onClick={() => deleteMaquette(maq._id)} title="Supprimer"><Trash2 size={15}/></button>
                           </div>
                         </div>
                       </div>
@@ -322,7 +373,10 @@ const DesignerDashboard = () => {
                             <td>
                               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                 <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", background: "#f0f2f5", flexShrink: 0 }}>
-                                  {maq.image_fond ? <img src={maq.image_fond} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/> : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}><ImageIcon size={18} color="#ccc"/></div>}
+                                  {maq.image_fond
+                                    ? <img src={maq.image_fond} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
+                                    : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}><ImageIcon size={18} color="#ccc"/></div>
+                                  }
                                 </div>
                                 <span style={{ fontWeight: 600 }}>{maq.nom}</span>
                               </div>
@@ -343,7 +397,6 @@ const DesignerDashboard = () => {
                 )
           }
 
-          {/* Journal rapide */}
           {maquettes.length > 0 && (
             <div className="journal-cta" onClick={() => navigate("/rapport")}>
               <div className="journal-icon"><Notebook size={22} color="#6366F1"/></div>
@@ -369,12 +422,8 @@ const DesignerDashboard = () => {
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Projet</th>
-                        <th>Client</th>
-                        <th>Date fin</th>
-                        <th>Statut</th>
-                        <th>Assigné le</th>
-                        <th style={{ textAlign: "center" }}>Lu</th>
+                        <th>Projet</th><th>Client</th><th>Date fin</th>
+                        <th>Statut</th><th>Assigné le</th><th style={{ textAlign: "center" }}>Lu</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -424,12 +473,7 @@ const DesignerDashboard = () => {
                               {a.lu
                                 ? <span className="badge" style={{ color: "#059669", background: "rgba(5,150,105,0.1)" }}><CheckCircle size={11}/> Lu</span>
                                 : (
-                                  <button
-                                    className="btn-mark-lu"
-                                    onClick={() => handleMarquerLu(a._id)}
-                                    disabled={marking === a._id}
-                                    style={{ opacity: marking === a._id ? 0.7 : 1 }}
-                                  >
+                                  <button className="btn-mark-lu" onClick={() => handleMarquerLu(a._id)} disabled={marking === a._id} style={{ opacity: marking === a._id ? 0.7 : 1 }}>
                                     <Bell size={12}/> {marking === a._id ? "…" : "Marquer lu"}
                                   </button>
                                 )
@@ -443,6 +487,106 @@ const DesignerDashboard = () => {
                 </div>
               )
           }
+        </div>
+      )}
+
+      {/* ══════════════ TAB: CORRECTIONS ══════════════ */}
+      {activeTab === "corrections" && (
+        <div>
+          {loadingCorrections ? <Spinner/> : corrections.length === 0 ? (
+            <div className="panel" style={{ textAlign:"center",padding:"60px 20px" }}>
+              <CheckCircle size={48} color="#C7D2FE" style={{ marginBottom:14 }}/>
+              <p style={{ fontWeight:700,fontSize:16,color:"#374151",margin:0 }}>Aucune correction en attente</p>
+              <p style={{ fontSize:13,color:"#94A3B8",marginTop:6 }}>Toutes vos maquettes sont à jour ✅</p>
+            </div>
+          ) : (
+            <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
+              {corrections.map(c => {
+                const vNum   = c.version_id?.numéro_version;
+                const maqNom = c.version_id?.id_maquette?.nom;
+                const projet = c.version_id?.id_maquette?.id_projet;
+                const client = c.client_id;
+                const commentairesAvecContenu = (c.commentaires || []).filter(cm => cm.commentaire_admin || cm.commentaire_client);
+                const isOpen = showCorrDetail === c._id;
+
+                return (
+                  <div key={c._id} className="panel" style={{ padding:0,overflow:"hidden",border:"1.5px solid rgba(220,38,38,0.25)" }}>
+                    {/* Header correction */}
+                    <div onClick={()=>setShowCorrDetail(isOpen ? null : c._id)}
+                      style={{ display:"flex",alignItems:"center",gap:14,padding:"16px 20px",cursor:"pointer",background:isOpen?"rgba(220,38,38,0.03)":"white" }}>
+                      <div style={{ width:10,height:10,borderRadius:"50%",background:"#DC2626",flexShrink:0,animation:"pulse 1.5s ease-in-out infinite" }}/>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:14,fontWeight:700,color:"#0F172A",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+                          {projet?.nom || "Projet"} — {maqNom || "Maquette"}
+                          <span style={{ background:"rgba(99,102,241,0.1)",color:"#6366F1",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700 }}>v{vNum}</span>
+                          <span style={{ background:"rgba(220,38,38,0.1)",color:"#DC2626",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700 }}>À corriger</span>
+                        </div>
+                        <div style={{ fontSize:12,color:"#94A3B8",marginTop:3 }}>
+                          Client : <strong style={{ color:"#374151" }}>{client?.nom || "—"}</strong>
+                          {client?.email && <span style={{ marginLeft:6 }}>({client.email})</span>}
+                          {" · "}{new Date(c.date_validation).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"})}
+                          {commentairesAvecContenu.length > 0 && (
+                            <span style={{ marginLeft:8,color:"#DC2626",fontWeight:600 }}>
+                              · {commentairesAvecContenu.length} remarque{commentairesAvecContenu.length > 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                        <button
+                          onClick={e=>{e.stopPropagation(); navigate(`/designer/editeur/${c.version_id?.id_maquette?._id}`);}}
+                          className="icon-btn eye-c"
+                          title="Ouvrir dans l'éditeur"
+                        >
+                          <Eye size={15}/>
+                        </button>
+                        <span style={{ color:"#94A3B8",fontSize:13 }}>{isOpen ? "▲" : "▼"}</span>
+                      </div>
+                    </div>
+
+                    {/* Détails corrections */}
+                    {isOpen && (
+                      <div style={{ padding:"0 20px 20px",borderTop:"1px solid #F1F5F9" }}>
+                        {commentairesAvecContenu.length === 0 ? (
+                          <p style={{ fontSize:13,color:"#94A3B8",paddingTop:14,textAlign:"center",fontStyle:"italic" }}>
+                            Rejet général — aucune remarque spécifique sur les éléments.
+                          </p>
+                        ) : (
+                          <div style={{ display:"flex",flexDirection:"column",gap:8,marginTop:14 }}>
+                            {commentairesAvecContenu.map(cm => (
+                              <div key={cm._id} style={{ background:"#FFF7F7",border:"1px solid #FEE2E2",borderRadius:8,padding:"10px 14px" }}>
+                                <div style={{ fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".04em",marginBottom:4 }}>
+                                  Élément : {cm.label_element || cm.id_element}
+                                </div>
+                                <div style={{ fontSize:13,color:"#1E293B",lineHeight:1.6 }}>
+                                  {cm.commentaire_admin || cm.commentaire_client}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,paddingTop:14,borderTop:"1px solid #F1F5F9" }}>
+                          <button
+                            onClick={() => navigate(`/designer/editeur/${c.version_id?.id_maquette?._id}`)}
+                            style={{ display:"inline-flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#6366F1,#8B5CF6)",color:"white",border:"none",borderRadius:9,padding:"10px 20px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 14px rgba(99,102,241,0.3)" }}
+                          >
+                            <Eye size={14}/> Ouvrir l'éditeur et corriger
+                          </button>
+                          <button
+                            onClick={() => handleMarquerLuCorrection(c._id)}
+                            style={{ display:"inline-flex",alignItems:"center",gap:6,background:"rgba(5,150,105,0.1)",color:"#059669",border:"none",borderRadius:9,padding:"10px 18px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}
+                          >
+                            <CheckCircle size={14}/> Marquer traité
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -496,254 +640,100 @@ const DesignerDashboard = () => {
         </div>
       )}
 
-      {/* ══════════════ STYLES ══════════════ */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-        .db-root {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 28px 24px 60px;
-          color: #1E293B;
-          min-height: 100vh;
-        }
-
-        /* ── Header ── */
-        .db-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-bottom: 28px;
-        }
+        .db-root { font-family: 'Plus Jakarta Sans', sans-serif; max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; color: #1E293B; min-height: 100vh; }
+        .db-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; }
         .db-greeting { font-size: 13px; color: #94A3B8; font-weight: 500; margin: 0 0 2px; }
-        .db-name     { font-size: 26px; font-weight: 800; margin: 0; color: #0F172A; }
-
-        .btn-create {
-          display: flex; align-items: center; gap: 8px;
-          background: linear-gradient(135deg, #6366F1, #8B5CF6);
-          color: white; border: none; border-radius: 12px;
-          padding: 11px 22px; font-weight: 700; font-size: 14px;
-          cursor: pointer; box-shadow: 0 4px 15px rgba(99,102,241,0.4);
-          transition: all .2s; white-space: nowrap;
-        }
+        .db-name { font-size: 26px; font-weight: 800; margin: 0; color: #0F172A; }
+        .btn-create { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; border: none; border-radius: 12px; padding: 11px 22px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 15px rgba(99,102,241,0.4); transition: all .2s; white-space: nowrap; }
         .btn-create:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99,102,241,0.45); }
-
-        /* ── Banner ── */
-        .banner-notif {
-          display: flex; align-items: center; gap: 10px;
-          background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
-          border-radius: 12px; padding: 12px 18px; margin-bottom: 24px;
-          font-size: 13px; color: #92400E; font-weight: 600;
-        }
-
-        /* ── Stats ── */
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-          gap: 14px;
-          margin-bottom: 28px;
-        }
-        .stat-card {
-          background: white; border-radius: 16px;
-          padding: 18px; display: flex; align-items: center; gap: 14px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid #F1F5F9;
-          transition: transform .2s;
-        }
+        .banner-notif { display: flex; align-items: center; gap: 10px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px; padding: 12px 18px; margin-bottom: 24px; font-size: 13px; color: #92400E; font-weight: 600; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-bottom: 28px; }
+        .stat-card { background: white; border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid #F1F5F9; transition: transform .2s; }
         .stat-card:hover { transform: translateY(-3px); }
-        .stat-icon {
-          width: 46px; height: 46px; border-radius: 12px;
-          background: var(--accent-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
+        .stat-icon { width: 46px; height: 46px; border-radius: 12px; background: var(--accent-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .stat-value { font-size: 26px; font-weight: 800; color: var(--accent); }
         .stat-label { font-size: 11px; color: #94A3B8; font-weight: 600; margin-top: 1px; }
-
-        /* ── Tabs ── */
         .tabs { display: flex; gap: 4px; background: white; padding: 5px; border-radius: 14px; border: 1px solid #E2E8F0; margin-bottom: 24px; width: fit-content; }
-        .tab-btn {
-          padding: 9px 20px; border: none; border-radius: 10px;
-          font-size: 13px; font-weight: 600; cursor: pointer;
-          background: none; color: #64748B; transition: all .2s;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
+        .tab-btn { padding: 9px 20px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; background: none; color: #64748B; transition: all .2s; font-family: 'Plus Jakarta Sans', sans-serif; }
         .tab-btn.active { background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; box-shadow: 0 3px 10px rgba(99,102,241,0.35); }
-        .tab-btn:hover:not(.active) { background: none; color: #374151; }
-
-        /* ── Panels ── */
+        .tab-btn:hover:not(.active) { color: #374151; }
         .panel { background: white; border-radius: 16px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid #F1F5F9; margin-bottom: 20px; }
         .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .panel-head h2 { font-size: 15px; font-weight: 700; color: #0F172A; margin: 0; }
         .link-btn { background: none; border: none; color: #6366F1; font-weight: 600; font-size: 13px; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
-
         .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media (max-width: 700px) { .overview-grid { grid-template-columns: 1fr; } }
-
-        /* ── Recent list ── */
         .recent-list { display: flex; flex-direction: column; gap: 10px; }
-        .recent-item {
-          display: flex; align-items: center; gap: 12px;
-          padding: 10px 12px; border-radius: 10px; border: 1px solid #F1F5F9;
-          cursor: pointer; transition: background .15s;
-        }
-        .recent-item:hover { background: none; }
-        .recent-thumb {
-          width: 42px; height: 42px; border-radius: 8px;
-          background: #f0f2f5; overflow: hidden; flex-shrink: 0;
-          display: flex; align-items: center; justify-content: center;
-        }
+        .recent-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid #F1F5F9; cursor: pointer; transition: background .15s; }
+        .recent-thumb { width: 42px; height: 42px; border-radius: 8px; background: #f0f2f5; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .recent-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .recent-title { font-size: 13px; font-weight: 700; color: #1E293B; }
-        .recent-sub   { font-size: 11px; color: #94A3B8; margin-top: 1px; }
-
-        /* ── Avatar ── */
-        .avatar {
-          width: 32px; height: 32px; border-radius: 50%;
-          background: linear-gradient(135deg, #6366F1, #8B5CF6);
-          color: white; display: flex; align-items: center; justify-content: center;
-          font-weight: 800; font-size: 13px; flex-shrink: 0;
-        }
-
-        /* ── Badge ── */
-        .badge {
-          display: inline-flex; align-items: center; gap: 4px;
-          border-radius: 20px; padding: 4px 11px;
-          font-size: 11px; font-weight: 700;
-        }
-
-        /* ── Section bar ── */
+        .recent-sub { font-size: 11px; color: #94A3B8; margin-top: 1px; }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; }
+        .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 20px; padding: 4px 11px; font-size: 11px; font-weight: 700; }
         .section-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
         .section-title { font-size: 17px; font-weight: 800; color: #0F172A; margin: 0; }
         .view-toggle { display: flex; gap: 4px; background: white; border-radius: 10px; padding: 4px; border: 1px solid #E2E8F0; }
         .view-toggle button { border: none; background: none; padding: 6px 8px; border-radius: 8px; cursor: pointer; color: #94A3B8; display: flex; }
         .view-toggle .vt-active { background: #6366F1; color: white; }
-
-        /* ── Maquette Grid ── */
         .maq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; margin-bottom: 20px; }
         .maq-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border: 1px solid #F1F5F9; transition: all .25s; }
         .maq-card:hover { transform: translateY(-5px); box-shadow: 0 10px 28px rgba(0,0,0,0.1); }
-        .maq-thumb {
-          height: 165px; background: #f0f2f5; cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          overflow: hidden; position: relative;
-        }
+        .maq-thumb { height: 165px; background: #f0f2f5; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
         .maq-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .no-img { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
-        .maq-overlay {
-          position: absolute; inset: 0; background: rgba(99,102,241,0.55);
-          display: flex; align-items: center; justify-content: center;
-          opacity: 0; transition: opacity .2s;
-        }
+        .maq-overlay { position: absolute; inset: 0; background: rgba(99,102,241,0.55); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .2s; }
         .maq-thumb:hover .maq-overlay { opacity: 1; }
         .maq-info { padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
-        .maq-name  { font-size: 14px; font-weight: 700; color: #1E293B; }
-        .maq-proj  { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+        .maq-name { font-size: 14px; font-weight: 700; color: #1E293B; }
+        .maq-proj { font-size: 11px; color: #94A3B8; margin-top: 2px; }
         .maq-actions { display: flex; gap: 6px; }
-
-        /* ── Icon buttons ── */
         .icon-btn { border: none; cursor: pointer; padding: 7px; border-radius: 8px; transition: all .18s; display: flex; align-items: center; }
         .eye-c  { color: #2a9d8f; background: rgba(42,157,143,0.1); }
-        .edit-c { color: #6366F1;  background: rgba(99,102,241,0.1); }
-        .del-c  { color: #e63946;  background: rgba(230,57,70,0.1); }
+        .edit-c { color: #6366F1; background: rgba(99,102,241,0.1); }
+        .del-c  { color: #e63946; background: rgba(230,57,70,0.1); }
         .icon-btn:hover { filter: brightness(1.1); transform: scale(1.08); }
-
-        /* ── Table ── */
         .table-wrap { overflow-x: auto; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .data-table th { text-align: left; padding: 10px 14px; color: #94A3B8; font-weight: 700; font-size: 11px; border-bottom: 1px solid #F1F5F9; text-transform: uppercase; letter-spacing: .05em; }
-        .data-table td { padding: 13px 14px; border-bottom: 1px solid none; color: #374151; vertical-align: middle; }
+        .data-table td { padding: 13px 14px; color: #374151; vertical-align: middle; }
         .data-table tr:last-child td { border-bottom: none; }
-        .data-table tr:hover td { background: none; }
-
-        /* ── Dot notif ── */
         .dot-notif { width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; flex-shrink: 0; }
-
-        /* ── Mark lu button ── */
-        .btn-mark-lu {
-          display: inline-flex; align-items: center; gap: 5px;
-          background: #F59E0B; color: white; border: none;
-          border-radius: 20px; padding: 5px 14px;
-          font-size: 12px; font-weight: 700; cursor: pointer;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          transition: all .2s;
-        }
+        .btn-mark-lu { display: inline-flex; align-items: center; gap: 5px; background: #F59E0B; color: white; border: none; border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .2s; }
         .btn-mark-lu:hover { background: #D97706; }
         .btn-mark-lu:disabled { cursor: not-allowed; }
-
-        /* ── Journal CTA ── */
-        .journal-cta {
-          display: flex; align-items: center; gap: 14px;
-          background: white; border: 1px dashed #C7D2FE; border-radius: 14px;
-          padding: 18px 20px; cursor: pointer; transition: all .2s; margin-top: 4px;
-        }
+        .journal-cta { display: flex; align-items: center; gap: 14px; background: white; border: 1px dashed #C7D2FE; border-radius: 14px; padding: 18px 20px; cursor: pointer; transition: all .2s; margin-top: 4px; }
         .journal-cta:hover { background: rgba(99,102,241,0.04); border-color: #6366F1; }
         .journal-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(99,102,241,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .journal-title { font-size: 14px; font-weight: 700; color: #1E293B; }
-        .journal-sub   { font-size: 12px; color: #94A3B8; margin-top: 2px; }
-
-        /* ── Modal ── */
-        .overlay {
-          position: fixed; inset: 0; background: rgba(15,23,42,0.6);
-          backdrop-filter: blur(6px); display: flex; align-items: center;
-          justify-content: center; z-index: 1000; padding: 20px;
-        }
-        .modal {
-          background: white; border-radius: 20px; width: 100%; max-width: 440px;
-          box-shadow: 0 25px 60px rgba(0,0,0,0.2); animation: popIn .25s ease;
-        }
+        .journal-sub { font-size: 12px; color: #94A3B8; margin-top: 2px; }
+        .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal { background: white; border-radius: 20px; width: 100%; max-width: 440px; box-shadow: 0 25px 60px rgba(0,0,0,0.2); animation: popIn .25s ease; }
         @keyframes popIn { from { transform: scale(.94) translateY(12px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-        .modal-head {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 22px 24px 0;
-        }
+        .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 22px 24px 0; }
         .modal-head h3 { font-size: 17px; font-weight: 800; margin: 0; color: #0F172A; }
-        .modal-close {
-          border: none; background: #F1F5F9; border-radius: 8px; padding: 7px;
-          cursor: pointer; color: #64748B; display: flex; transition: background .15s;
-        }
+        .modal-close { border: none; background: #F1F5F9; border-radius: 8px; padding: 7px; cursor: pointer; color: #64748B; display: flex; transition: background .15s; }
         .modal-close:hover { background: #E2E8F0; }
-        .modal-form {
-          display: flex; flex-direction: column; gap: 13px;
-          padding: 20px 24px 24px;
-        }
-        .inp {
-          width: 100%; padding: 12px 14px; border: 1.5px solid #E2E8F0;
-          border-radius: 10px; font-size: 14px; color: #1E293B;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          transition: border-color .2s; outline: none; box-sizing: border-box;
-          resize: none;
-        }
+        .modal-form { display: flex; flex-direction: column; gap: 13px; padding: 20px 24px 24px; }
+        .inp { width: 100%; padding: 12px 14px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 14px; color: #1E293B; font-family: 'Plus Jakarta Sans', sans-serif; transition: border-color .2s; outline: none; box-sizing: border-box; resize: none; }
         .inp:focus { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
-        .upload-zone {
-          display: flex; flex-direction: column; align-items: center; gap: 8px;
-          border: 2px dashed #C7D2FE; border-radius: 12px; padding: 22px 16px;
-          background: rgba(99,102,241,0.03); cursor: pointer;
-          transition: border-color .2s; text-align: center;
-          font-size: 13px; color: #6366F1; font-weight: 600;
-        }
+        .upload-zone { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 2px dashed #C7D2FE; border-radius: 12px; padding: 22px 16px; background: rgba(99,102,241,0.03); cursor: pointer; transition: border-color .2s; text-align: center; font-size: 13px; color: #6366F1; font-weight: 600; }
         .upload-zone:hover { border-color: #6366F1; background: rgba(99,102,241,0.06); }
-        .btn-submit {
-          display: flex; align-items: center; justify-content: center; gap: 8px;
-          background: linear-gradient(135deg, #6366F1, #8B5CF6);
-          color: white; border: none; border-radius: 12px; padding: 13px;
-          font-size: 15px; font-weight: 700; cursor: pointer;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          box-shadow: 0 4px 15px rgba(99,102,241,0.4);
-          transition: all .2s;
-        }
-        .btn-submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(99,102,241,0.4); }
+        .btn-submit { display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; border: none; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 4px 15px rgba(99,102,241,0.4); transition: all .2s; }
+        .btn-submit:hover:not(:disabled) { transform: translateY(-1px); }
         .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; }
-
-        /* ── Spinner ── */
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
       `}</style>
     </div>
   );
 };
 
-// ─── Helpers composants ────────────────────────────────────────────────────────
 const Spinner = () => (
-  <div style={{ textAlign: "center", padding: "40px 0", color: "#94A3B8" }}>
+  <div style={{ textAlign: "center", padding: "40px 0" }}>
     <Loader className="spin" size={28} color="#6366F1"/>
   </div>
 );
