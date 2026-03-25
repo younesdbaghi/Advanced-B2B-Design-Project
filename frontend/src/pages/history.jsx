@@ -8,23 +8,73 @@ function History() {
   const [rapport, setRapport] = useState({});
   const [id, setId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [projets, setProjets] = useState([]);
 
   const [showView, setShowView] = useState(false);
   const [showUpdate, setShowUpdate] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // --- États pour le système de Tags ---
   const [updateData, setUpdateData] = useState({
     date: "",
+    travail_effectué: [],
+    tâches_restantes: [],
+    blocages: [],
+  });
+
+  const [tagInputs, setTagInputs] = useState({
     travail_effectué: "",
     tâches_restantes: "",
-    blocages: "",
+    blocages: ""
+  });
+
+  const [tagEditing, setTagEditing] = useState({
+    travail_effectué: null,
+    tâches_restantes: null,
+    blocages: null
   });
 
   const user = JSON.parse(localStorage.getItem("user"));
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setUpdateData({ ...updateData, [name]: value });
+  // --- Fonctions de gestion des Tags (portées de Rapport.js) ---
+  const handleTagKeyDown = (e, field) => {
+    if (e.key === "Enter" || e.key === ";") {
+      e.preventDefault();
+      const values = tagInputs[field].split(/[;\n]/);
+      let updated = [...updateData[field]];
+
+      values.forEach(val => {
+        const trimmed = val.trim();
+        if (!trimmed) return;
+        if (tagEditing[field] !== null) {
+          updated[tagEditing[field]] = trimmed;
+        } else {
+          updated.push(trimmed);
+        }
+      });
+
+      setUpdateData({ ...updateData, [field]: updated });
+      setTagInputs({ ...tagInputs, [field]: "" });
+      setTagEditing({ ...tagEditing, [field]: null });
+    }
+  };
+
+  const handleEditTag = (field, index) => {
+    setTagInputs({ ...tagInputs, [field]: updateData[field][index] });
+    setTagEditing({ ...tagEditing, [field]: index });
+  };
+
+  const removeTag = (field, index) => {
+    const updated = updateData[field].filter((_, i) => i !== index);
+    setUpdateData({ ...updateData, [field]: updated });
+  };
+
+  // --- Fonctions API ---
+  const fetchProjets = async () => {
+    try {
+      const res = await API.get("/projets");
+      setProjets(res.data);
+    } catch (e) { console.log("fetch projets failed :", e); }
   };
 
   const fetchRapport = async () => {
@@ -32,14 +82,14 @@ function History() {
     try {
       const res = await API.get("/rapport");
       setRapports(res.data.rapports);
-    } catch (e) {
-      console.log("fetch failed :", e);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.log("fetch failed :", e); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchRapport(); }, []);
+  useEffect(() => {
+    fetchRapport();
+    fetchProjets();
+  }, []);
 
   const handleView = async (id) => {
     try {
@@ -52,11 +102,13 @@ function History() {
   const handleUpdate = (rapport) => {
     setId(rapport._id);
     setUpdateData({
-      date: rapport.date,
-      travail_effectué: rapport.travail_effectué,
-      tâches_restantes: rapport.tâches_restantes,
-      blocages: rapport.blocages,
+      date: rapport.date?.split("T")[0] || "",
+      travail_effectué: Array.isArray(rapport.travail_effectué) ? rapport.travail_effectué : [],
+      tâches_restantes: Array.isArray(rapport.tâches_restantes) ? rapport.tâches_restantes : [],
+      blocages: Array.isArray(rapport.blocages) ? rapport.blocages : [],
     });
+    // Reset inputs temporaires
+    setTagInputs({ travail_effectué: "", tâches_restantes: "", blocages: "" });
     setShowUpdate(true);
   };
 
@@ -81,48 +133,55 @@ function History() {
 
   const downloadPDF = async (id) => {
     try {
-
       const token = localStorage.getItem("token");
-
       const response = await axios.post(
         `http://localhost:5000/Api_B2B/rapportPDF/${id}`,
         {},
         {
           responseType: "blob",
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+          headers: { Authorization: `Bearer ${token}` }
         }
       );
-
       const url = window.URL.createObjectURL(new Blob([response.data]));
-
       const a = document.createElement("a");
       a.href = url;
       a.download = "rapport.pdf";
-
       document.body.appendChild(a);
       a.click();
       a.remove();
-
-    } catch (e) {
-      console.log("err download pdf ", e);
-    }
+    } catch (e) { console.log("err download pdf ", e); }
   };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
   };
 
+  const getDesignerNom = (rapport) => {
+    if (!rapport || !rapport.id_designer) return "Designer inconnu";
+    return typeof rapport.id_designer === 'object' ? rapport.id_designer.nom : "Designer inconnu";
+  };
+
+  const getProjetNom = (rapport) => {
+    if (!rapport || !rapport.id_projet) return "Projet inconnu";
+    if (typeof rapport.id_projet === 'object') return rapport.id_projet.nom;
+    const projet = projets.find(p => p._id === rapport.id_projet);
+    return projet?.nom || "Projet inconnu";
+  };
+
+  const formatTexte = (texte) => {
+    if (Array.isArray(texte)) return texte.join(' • ');
+    return texte || "";
+  };
+
   return (
     <div className="h-root">
-      {console.log(rapports)}
       {/* ── Header ── */}
       <div className="h-header">
         <div>
           <p className="h-sup">Tableau de bord</p>
           <h1 className="h-title">Historique des rapports</h1>
-          <p className="h-sub">Consultez et gérez tous les rapports quotidiens des designers</p>
+          <p className="h-sub">Consultez et gérez tous les rapports quotidiens</p>
         </div>
         <div className="h-badge">
           <FileText size={16} color="#6366F1" />
@@ -130,17 +189,14 @@ function History() {
         </div>
       </div>
 
-      {/* ── Table panel ── */}
+      {/* ── Table ── */}
       <div className="panel">
         {loading ? (
-          <div className="center-block">
-            <Loader className="spin" size={28} color="#6366F1" />
-          </div>
+          <div className="center-block"><Loader className="spin" size={28} color="#6366F1" /></div>
         ) : rapports.length === 0 ? (
           <div className="center-block">
             <div className="empty-icon"><FileText size={28} color="#6366F1" /></div>
             <p className="empty-title">Aucun rapport disponible</p>
-            <p className="empty-sub">Les rapports apparaîtront ici une fois créés.</p>
           </div>
         ) : (
           <div className="table-wrap">
@@ -148,56 +204,25 @@ function History() {
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>nom de designer</th>
-                  <th>nom de projet</th>
-                  <th>Travail effectué</th>
-                  <th>Tâches restantes</th>
-                  <th>Blocages</th>
+                  <th>Designer</th>
+                  <th>Projet</th>
                   <th style={{ textAlign: "center" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {rapports.map((p) => (
+                {rapports.filter(r => r && r._id).map((p) => (
                   <tr key={p._id}>
-                    <td>
-                      <div className="date-cell">
-                        <Calendar size={13} color="#6366F1" />
-                        <span>{formatDate(p.date)}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="truncate">{p.id_designer.nom}</span>
-                    </td>
-                    <td>
-                      <span className="truncate">{p.id_projet.nom}</span>
-                    </td>
-                    <td>
-                      <span className="truncate">{p.travail_effectué}</span>
-                    </td>
-                    <td>
-                      <span className="truncate">{p.tâches_restantes}</span>
-                    </td>
-                    <td>
-                      {p.blocages
-                        ? <span className="badge-blocage"><AlertCircle size={11} /> {p.blocages}</span>
-                        : <span className="badge-ok"><CheckCircle size={11} /> Aucun</span>
-                      }
-                    </td>
+                    <td><div className="date-cell"><Calendar size={13} color="#6366F1" /><span>{formatDate(p.date)}</span></div></td>
+                    <td><span className="truncate">{getDesignerNom(p)}</span></td>
+                    <td><span className="truncate">{getProjetNom(p)}</span></td>
                     <td>
                       <div className="actions-cell">
-                        <button className="icon-btn down-c" onClick={() => downloadPDF(p._id)}>
-                          <Download size={15} /></button>
-                        <button className="icon-btn eye-c" onClick={() => handleView(p._id)} title="Voir">
-                          <Eye size={15} />
-                        </button>
+                        <button className="icon-btn down-c" onClick={() => downloadPDF(p._id)}><Download size={15} /></button>
+                        <button className="icon-btn eye-c" onClick={() => handleView(p._id)} title="Voir"><Eye size={15} /></button>
                         {user?.rôle === "designer" && (
-                          <button className="icon-btn edit-c" onClick={() => handleUpdate(p)} title="Modifier">
-                            <Edit3 size={15} />
-                          </button>
+                          <button className="icon-btn edit-c" onClick={() => handleUpdate(p)} title="Modifier"><Edit3 size={15} /></button>
                         )}
-                        <button className="icon-btn del-c" onClick={() => handleDelete(p._id)} title="Supprimer">
-                          <Trash2 size={15} />
-                        </button>
+                        <button className="icon-btn del-c" onClick={() => handleDelete(p._id)} title="Supprimer"><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -209,42 +234,27 @@ function History() {
       </div>
 
       {/* ── VIEW MODAL ── */}
-      {showView && (
+      {showView && rapport && (
         <div className="overlay">
           <div className="modal">
             <div className="modal-head">
-              <div className="modal-head-left">
-                <div className="modal-icon"><FileText size={18} color="#6366F1" /></div>
-                <h3>Détails du rapport</h3>
-              </div>
+              <div className="modal-head-left"><div className="modal-icon"><FileText size={18} color="#6366F1" /></div><h3>Détails</h3></div>
               <button className="modal-close" onClick={() => setShowView(false)}><X size={18} /></button>
             </div>
             <div className="modal-body">
-              <div className="detail-row">
-                <div className="detail-label"><Calendar size={13} /> Date</div>
-                <div className="detail-value">{formatDate(rapport.date)}</div>
-              </div>
-              <div className="detail-section">
-                <div className="detail-section-label">Travail effectué</div>
-                <div className="detail-section-text">{rapport.travail_effectué}</div>
-              </div>
-              <div className="detail-section">
-                <div className="detail-section-label">Tâches restantes</div>
-                <div className="detail-section-text">{rapport.tâches_restantes}</div>
-              </div>
-              <div className="detail-section">
-                <div className="detail-section-label"><AlertCircle size={13} color="#F59E0B" /> Blocages</div>
-                <div className="detail-section-text">{rapport.blocages || "Aucun blocage signalé"}</div>
-              </div>
+              <div className="detail-row"><div className="detail-label"><Calendar size={13} /> Date</div><div className="detail-value">{formatDate(rapport.date)}</div></div>
+              <div className="detail-section"><div className="detail-section-label">Travail effectué</div><div className="detail-section-text">{formatTexte(rapport.travail_effectué)}</div></div>
+              <div className="detail-section"><div className="detail-section-label">Tâches restantes</div><div className="detail-section-text">{formatTexte(rapport.tâches_restantes)}</div></div>
+              <div className="detail-section"><div className="detail-section-label"><AlertCircle size={13} color="#F59E0B" /> Blocages</div><div className="detail-section-text">{formatTexte(rapport.blocages) || "Aucun"}</div></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── UPDATE MODAL ── */}
+      {/* ── UPDATE MODAL (VERSION RAPPORT) ── */}
       {showUpdate && (
         <div className="overlay">
-          <div className="modal">
+          <div className="modal h-modal-scroll">
             <div className="modal-head">
               <div className="modal-head-left">
                 <div className="modal-icon"><Edit3 size={18} color="#6366F1" /></div>
@@ -255,22 +265,72 @@ function History() {
             <form className="modal-body" onSubmit={submitUpdate}>
               <div className="field">
                 <label className="field-label"><Calendar size={12} /> Date</label>
-                <input type="date" name="date" value={updateData.date?.split("T")[0]} onChange={handleChange} className="inp" />
+                <input type="date" value={updateData.date} onChange={(e) => setUpdateData({ ...updateData, date: e.target.value })} className="inp" />
               </div>
+
+              {/* Travail Effectué */}
               <div className="field">
                 <label className="field-label"><CheckCircle size={12} color="#10B981" /> Travail effectué</label>
-                <textarea name="travail_effectué" value={updateData.travail_effectué} onChange={handleChange} className="inp" rows={3} />
+                <textarea
+                  placeholder="Écrire puis Entrée ou ;"
+                  value={tagInputs.travail_effectué}
+                  onChange={(e) => setTagInputs({ ...tagInputs, travail_effectué: e.target.value })}
+                  onKeyDown={(e) => handleTagKeyDown(e, "travail_effectué")}
+                  className="inp"
+                  style={{ borderColor: tagEditing.travail_effectué !== null ? "#f59e0b" : "#E2E8F0" }}
+                />
+                <div className="tagsContainer">
+                  {updateData.travail_effectué.map((tag, index) => (
+                    <div key={index} className="tag-chip" onClick={() => handleEditTag("travail_effectué", index)}>
+                      {tag} <span className="tag-close" onClick={(e) => { e.stopPropagation(); removeTag("travail_effectué", index); }}>×</span>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* Tâches Restantes */}
               <div className="field">
                 <label className="field-label"><Clock size={12} color="#F59E0B" /> Tâches restantes</label>
-                <textarea name="tâches_restantes" value={updateData.tâches_restantes} onChange={handleChange} className="inp" rows={3} />
+                <textarea
+                  placeholder="Écrire puis Entrée ou ;"
+                  value={tagInputs.tâches_restantes}
+                  onChange={(e) => setTagInputs({ ...tagInputs, tâches_restantes: e.target.value })}
+                  onKeyDown={(e) => handleTagKeyDown(e, "tâches_restantes")}
+                  className="inp"
+                  style={{ borderColor: tagEditing.tâches_restantes !== null ? "#f59e0b" : "#E2E8F0" }}
+                />
+                <div className="tagsContainer">
+                  {updateData.tâches_restantes.map((tag, index) => (
+                    <div key={index} className="tag-chip" onClick={() => handleEditTag("tâches_restantes", index)}>
+
+                      {tag} <span className="tag-close" onClick={(e) => { e.stopPropagation(); removeTag("tâches_restantes", index); }}>×</span>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* Blocages */}
               <div className="field">
                 <label className="field-label"><AlertCircle size={12} color="#EF4444" /> Blocages</label>
-                <input name="blocages" value={updateData.blocages} onChange={handleChange} className="inp" placeholder="Aucun blocage..." />
+                <textarea
+                  placeholder="Écrire puis Entrée ou ;"
+                  value={tagInputs.blocages}
+                  onChange={(e) => setTagInputs({ ...tagInputs, blocages: e.target.value })}
+                  onKeyDown={(e) => handleTagKeyDown(e, "blocages")}
+                  className="inp"
+                  style={{ borderColor: tagEditing.blocages !== null ? "#f59e0b" : "#E2E8F0" }}
+                />
+                <div className="tagsContainer">
+                  {updateData.blocages.map((tag, index) => (
+                    <div key={index} className="tag-chip" onClick={() => handleEditTag("blocages", index)}>
+                      {tag} <span className="tag-close" onClick={(e) => { e.stopPropagation(); removeTag("blocages", index); }}>×</span>
+                    </div>
+                  ))}
+                </div>
               </div>
+
               <button type="submit" className="btn-submit" disabled={isUpdating}>
-                {isUpdating ? <><Loader size={15} className="spin" /> Sauvegarde…</> : "Enregistrer les modifications"}
+                {isUpdating ? <Loader size={15} className="spin" /> : "Enregistrer les modifications"}
               </button>
             </form>
           </div>
@@ -280,207 +340,48 @@ function History() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        .h-root {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 28px 24px 60px;
-          background: none;
-          min-height: 100vh;
-          color: #1E293B;
-        }
+        .h-root { font-family: 'Plus Jakarta Sans', sans-serif; max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; color: #1E293B; }
+        .h-header { display: flex; justify-content: space-between; margin-bottom: 28px; }
+        .h-title { font-size: 26px; font-weight: 800; margin: 0; }
+        .h-badge { display: flex; align-items: center; gap: 8px; background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 700; color: #6366F1; }
 
-        /* ── Header ── */
-        .h-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 28px;
-        }
-        .h-sup   { font-size: 12px; font-weight: 600; color: #6366F1; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 4px; }
-        .h-title { font-size: 26px; font-weight: 800; color: #0F172A; margin: 0 0 5px; }
-        .h-sub   { font-size: 13px; color: #94A3B8; margin: 0; }
-
-        .h-badge {
-          display: flex; align-items: center; gap: 8px;
-          background: white; border: 1px solid #E2E8F0;
-          border-radius: 12px; padding: 10px 18px;
-          font-size: 13px; font-weight: 700; color: #6366F1;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-          white-space: nowrap;
-        }
-
-        /* ── Panel ── */
-        .panel {
-          background: white;
-          border-radius: 16px;
-          padding: 0;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-          border: 1px solid #F1F5F9;
-          overflow: hidden;
-        }
-
-        .center-block {
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: center;
-          padding: 60px 20px; gap: 12px;
-        }
-        .empty-icon {
-          width: 64px; height: 64px; border-radius: 50%;
-          background: rgba(99,102,241,0.08);
-          display: flex; align-items: center; justify-content: center;
-        }
-        .empty-title { font-size: 15px; font-weight: 700; color: #374151; margin: 0; }
-        .empty-sub   { font-size: 13px; color: #94A3B8; margin: 0; }
-
-        /* ── Table ── */
+        .panel { background: white; border-radius: 16px; border: 1px solid #F1F5F9; overflow: hidden; }
         .table-wrap { overflow-x: auto; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .data-table thead { background: none; }
-        .data-table th {
-          text-align: left; padding: 14px 18px;
-          color: #94A3B8; font-weight: 700; font-size: 11px;
-          text-transform: uppercase; letter-spacing: .06em;
-          border-bottom: 1px solid #F1F5F9;
-        }
-        .data-table td {
-          padding: 15px 18px; border-bottom: 1px solid none;
-          color: #374151; vertical-align: middle;
-        }
-        .data-table tr:last-child td { border-bottom: none; }
-        .data-table tbody tr:hover td { background: none; }
+        .data-table th { text-align: left; padding: 14px 18px; color: #94A3B8; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #F1F5F9; }
+        .data-table td { padding: 15px 18px; border-bottom: 1px solid #F8FAFC; }
 
-        .date-cell { display: flex; align-items: center; gap: 7px; font-weight: 700; color: #1E293B; white-space: nowrap; }
+        .actions-cell { display: flex; gap: 8px; justify-content: center; }
+        .icon-btn { border: none; cursor: pointer; padding: 7px; border-radius: 8px; display: flex; transition: .2s; }
+        .eye-c { color: #2a9d8f; background: rgba(42,157,143,0.1); }
+        .edit-c { color: #6366F1; background: rgba(99,102,241,0.1); }
+        .del-c { color: #e63946; background: rgba(230,57,70,0.1); }
+        .down-c { color: #10B981; background: rgba(16,185,129,0.1); }
+        .icon-btn:hover { transform: scale(1.1); }
 
-        .truncate {
-          display: -webkit-box; -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical; overflow: hidden;
-          max-width: 240px; line-height: 1.5;
-        }
+        .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal { background: white; border-radius: 20px; width: 100%; max-width: 520px; box-shadow: 0 25px 60px rgba(0,0,0,0.2); animation: popIn .25s ease; }
+        .h-modal-scroll { max-height: 90vh; overflow-y: auto; }
+        
+        @keyframes popIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        .badge-blocage {
-          display: inline-flex; align-items: center; gap: 5px;
-          background: rgba(239,68,68,0.1); color: #DC2626;
-          border-radius: 20px; padding: 4px 11px;
-          font-size: 11px; font-weight: 700;
-        }
-        .badge-ok {
-          display: inline-flex; align-items: center; gap: 5px;
-          background: rgba(16,185,129,0.1); color: #059669;
-          border-radius: 20px; padding: 4px 11px;
-          font-size: 11px; font-weight: 700;
-        }
-
-        .actions-cell { display: flex; align-items: center; justify-content: center; gap: 8px; }
-
-        /* ── Icon buttons ── */
-        .icon-btn { border: none; cursor: pointer; padding: 7px; border-radius: 8px; transition: all .18s; display: flex; align-items: center; }
-        .eye-c  { color: #2a9d8f; background: rgba(42,157,143,0.1); }
-        .edit-c { color: #6366F1;  background: rgba(99,102,241,0.1); }
-        .del-c  { color: #e63946;  background: rgba(230,57,70,0.1); }
-        .down-c {color: #35e611}
-        .icon-btn:hover { filter: brightness(1.1); transform: scale(1.1); }
-
-        /* ── Overlay & Modal ── */
-        .overlay {
-          position: fixed; inset: 0;
-          background: rgba(15,23,42,0.6);
-          backdrop-filter: blur(6px);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 1000; padding: 20px;
-        }
-        .modal {
-          background: white; border-radius: 20px;
-          width: 100%; max-width: 480px;
-          box-shadow: 0 25px 60px rgba(0,0,0,0.2);
-          animation: popIn .25s ease;
-          overflow: hidden;
-        }
-        @keyframes popIn {
-          from { transform: scale(.94) translateY(12px); opacity: 0; }
-          to   { transform: scale(1) translateY(0); opacity: 1; }
-        }
-
-        .modal-head {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 20px 24px;
-          border-bottom: 1px solid #F1F5F9;
-        }
-        .modal-head-left { display: flex; align-items: center; gap: 12px; }
-        .modal-icon {
-          width: 38px; height: 38px; border-radius: 10px;
-          background: rgba(99,102,241,0.1);
-          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .modal-head h3 { font-size: 16px; font-weight: 800; color: #0F172A; margin: 0; }
-
-        .modal-close {
-          border: none; background: #F1F5F9; border-radius: 8px;
-          padding: 7px; cursor: pointer; color: #64748B;
-          display: flex; transition: background .15s;
-        }
-        .modal-close:hover { background: #E2E8F0; }
-
-        /* ── Modal Body ── */
-        .modal-body {
-          display: flex; flex-direction: column; gap: 16px;
-          padding: 22px 24px 24px;
-        }
-
-        /* View details */
-        .detail-row {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 12px 16px; background: none; border-radius: 10px;
-        }
-        .detail-label {
-          display: flex; align-items: center; gap: 7px;
-          font-size: 12px; font-weight: 700; color: #94A3B8;
-          text-transform: uppercase; letter-spacing: .05em;
-        }
-        .detail-value { font-size: 14px; font-weight: 700; color: #1E293B; }
-
-        .detail-section { display: flex; flex-direction: column; gap: 7px; }
-        .detail-section-label {
-          display: flex; align-items: center; gap: 6px;
-          font-size: 11px; font-weight: 700; color: #94A3B8;
-          text-transform: uppercase; letter-spacing: .05em;
-        }
-        .detail-section-text {
-          background: none; border-radius: 10px;
-          padding: 12px 14px; font-size: 13px; color: #374151;
-          line-height: 1.6; border: 1px solid #F1F5F9;
-        }
-
-        /* Form fields */
+        .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid #F1F5F9; }
+        .modal-body { display: flex; flex-direction: column; gap: 16px; padding: 20px 24px; }
+        
         .field { display: flex; flex-direction: column; gap: 6px; }
-        .field-label {
-          display: flex; align-items: center; gap: 6px;
-          font-size: 11px; font-weight: 700; color: #64748B;
-          text-transform: uppercase; letter-spacing: .05em;
-        }
-        .inp {
-          width: 100%; padding: 11px 13px;
-          border: 1.5px solid #E2E8F0; border-radius: 10px;
-          font-size: 13px; color: #1E293B;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          outline: none; transition: border-color .2s;
-          resize: none; box-sizing: border-box;
-        }
-        .inp:focus { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+        .field-label { font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+        .inp { width: 100%; padding: 10px 12px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 13px; outline: none; resize: none; }
+        .inp:focus { border-color: #6366F1; }
 
-        .btn-submit {
-          display: flex; align-items: center; justify-content: center; gap: 8px;
-          background: linear-gradient(135deg, #6366F1, #8B5CF6);
-          color: white; border: none; border-radius: 12px;
-          padding: 13px; font-size: 14px; font-weight: 700;
-          cursor: pointer; margin-top: 4px;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          box-shadow: 0 4px 15px rgba(99,102,241,0.4);
-          transition: all .2s;
-        }
-        .btn-submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(99,102,241,0.4); }
-        .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; }
+        .tagsContainer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .tag-chip { background: #1E293B; color: white; padding: 4px 10px; border-radius: 100px; font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: .2s; }
+        .tag-chip:hover { background: #334155; }
+        .tag-close { font-weight: bold; cursor: pointer; color: #94A3B8; }
 
+        .btn-submit { background: #6366F1; color: white; border: none; border-radius: 12px; padding: 12px; font-weight: 700; cursor: pointer; transition: .2s; margin-top: 10px; }
+        .btn-submit:hover { background: #4F46E5; }
+
+        .detail-section-text { background: #F8FAFC; padding: 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; border: 1px solid #F1F5F9; }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>

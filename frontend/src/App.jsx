@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import GuestRoute from './components/GuestRoute';
-import DashboardLayout from './components/DashboardLayout'; // <-- Ajout du Layout
+import DashboardLayout from './components/DashboardLayout';
 
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
@@ -16,12 +16,12 @@ import Rapport from './pages/rapport';
 import History from './pages/history';
 import AdminFeedbacks from './pages/AdminFeedbacks';
 import ClientFeedbacks from './pages/ClientFeedbacks';
+import ChangePassword from './pages/ChangePassword';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-        {/* Le Layout enveloppe toutes nos routes */}
         <DashboardLayout>
           <Routes>
             {/* Route Login */}
@@ -55,12 +55,12 @@ function App() {
               element={<ProtectedRoute allowedRoles={['client']}><DesignEditor /></ProtectedRoute>}
             />
             <Route path="/client/feedbacks" element={<ClientFeedbacks />} />
+
             {/* Routes Designer */}
             <Route
               path="/designer/editeur/:id"
               element={<ProtectedRoute allowedRoles={['designer']}><DesignEditor /></ProtectedRoute>}
             />
-
             <Route
               path="/designer"
               element={<ProtectedRoute allowedRoles={['designer']}><DesignerDashboard /></ProtectedRoute>}
@@ -73,6 +73,9 @@ function App() {
               path='/designer/history'
               element={<ProtectedRoute allowedRoles={["designer"]}><History /></ProtectedRoute>}
             />
+
+            {/* Route Change Password */}
+            <Route path='/change' element={<ChangePassword />} />
 
             {/* Redirection */}
             <Route path="*" element={<Navigate to="/login" replace />} />

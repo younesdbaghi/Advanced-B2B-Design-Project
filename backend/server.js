@@ -82,24 +82,27 @@ const Version = mongoose.model("Version", versionSchema);
 const feedbackSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ["Com", "Val", "Refus"], required: true },
-    commentaire: { type: String, default: "" },         // commentaire original du client
-    commentaire_admin: { type: String, default: "" },    // commentaire modifié par admin
+    commentaire: { type: String, default: "" },
+    commentaire_admin: { type: String, default: "" },
     justification: { type: String },
     id_version: { type: mongoose.Schema.Types.ObjectId, ref: "Version", required: true },
     id_auteur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
-    transmis_designer: { type: Boolean, default: false }, // admin a transmis au designer
+    transmis_designer: { type: Boolean, default: false },
     date_transmission: { type: Date },
-    lu: { type: Boolean, default: false },               // designer a lu
+    lu: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: "date_creation", updatedAt: false } }
 );
 const Feedback = mongoose.model("Feedback", feedbackSchema);
 
+// HEAD : travail_effectué / tâches_restantes sont des tableaux [String]
+// feature/amine : ce sont des String simples
+// → On garde la version HEAD (tableaux) qui est plus flexible
 const rapportQuotidienSchema = new mongoose.Schema({
   date: { type: Date, required: true },
-  travail_effectué: { type: String, required: true },
-  tâches_restantes: { type: String, required: true },
-  blocages: { type: String },
+  travail_effectué: { type: [String], required: true },
+  tâches_restantes: { type: [String], required: true },
+  blocages: { type: [String] },
   date_soumission: { type: Date, default: Date.now },
   id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
   id_designer: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
@@ -117,25 +120,25 @@ const ConnexionLog = mongoose.model("ConnexionLog", connexionLogSchema);
 const commentaireElementSchema = new mongoose.Schema(
   {
     validation_id:       { type: mongoose.Schema.Types.ObjectId, ref: "Validation", required: true },
-    id_element:          { type: String, required: true },   // customName ou index de l'objet Fabric
-    label_element:       { type: String, default: "" },      // nom lisible de l'élément
-    commentaire_client:  { type: String, default: "" },      // remarque client (peut être vide = pas affiché)
-    commentaire_admin:   { type: String, default: "" },      // reformulation admin
+    id_element:          { type: String, required: true },
+    label_element:       { type: String, default: "" },
+    commentaire_client:  { type: String, default: "" },
+    commentaire_admin:   { type: String, default: "" },
   },
   { timestamps: { createdAt: "date_creation", updatedAt: false } }
 );
 const CommentaireElement = mongoose.model("CommentaireElement", commentaireElementSchema);
 
-// ── Schema Validation (action client sur une version) ──────────────────────
+// ── Schema Validation ──────────────────────────────────────────────────────
 const validationSchema = new mongoose.Schema(
   {
-    maquette_id:   { type: mongoose.Schema.Types.ObjectId, ref: "Maquette",    required: true },
-    version_id:    { type: mongoose.Schema.Types.ObjectId, ref: "Version",     required: true },
-    client_id:     { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
-    statut:        { type: String, enum: ["validé", "à corriger"],             required: true },
+    maquette_id:       { type: mongoose.Schema.Types.ObjectId, ref: "Maquette",    required: true },
+    version_id:        { type: mongoose.Schema.Types.ObjectId, ref: "Version",     required: true },
+    client_id:         { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
+    statut:            { type: String, enum: ["validé", "à corriger"],             required: true },
     transmis_designer: { type: Boolean, default: false },
     date_transmission: { type: Date },
-    lu_designer:   { type: Boolean, default: false },
+    lu_designer:       { type: Boolean, default: false },
   },
   { timestamps: { createdAt: "date_validation", updatedAt: false } }
 );
@@ -144,13 +147,12 @@ const Validation = mongoose.model("Validation", validationSchema);
 // ── Schema Notification ────────────────────────────────────────────────────
 const notificationSchema = new mongoose.Schema(
   {
-    message:     { type: String, required: true },
-    type:        { type: String, enum: ["validation", "refus", "demande", "info", "correction"], default: "info" },
-    lu:          { type: Boolean, default: false },
-    id_projet:   { type: mongoose.Schema.Types.ObjectId, ref: "Projet",      default: null },
-    id_version:  { type: mongoose.Schema.Types.ObjectId, ref: "Version",     default: null },
-    id_client:   { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", default: null },
-    // ✅ destinataire : null = admin, sinon id du designer concerné
+    message:         { type: String, required: true },
+    type:            { type: String, enum: ["validation", "refus", "demande", "info", "correction"], default: "info" },
+    lu:              { type: Boolean, default: false },
+    id_projet:       { type: mongoose.Schema.Types.ObjectId, ref: "Projet",      default: null },
+    id_version:      { type: mongoose.Schema.Types.ObjectId, ref: "Version",     default: null },
+    id_client:       { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", default: null },
     id_destinataire: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", default: null },
   },
   { timestamps: true }
@@ -225,6 +227,24 @@ apiRouter.post("/auth/login", async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+});
+
+// Présent uniquement dans HEAD — ajouté dans la fusion
+apiRouter.put("/auth/change-password", verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userID = req.user.id;
+    const user = await Utilisateur.findById(userID);
+    if (!user) return res.status(400).json({ msg: "Utilisateur non trouvé." });
+    const ifPassword = await bcrypt.compare(currentPassword, user.mot_de_passe);
+    if (!ifPassword) return res.status(404).json({ msg: "Mot de passe actuel incorrect." });
+    user.mot_de_passe = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.status(200).json({ msg: "Mot de passe modifié avec succès." });
+  } catch (e) {
+    console.error("Erreur change-password :", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -313,12 +333,7 @@ apiRouter.get("/designers", verifyToken, checkRole(['admin']), async (req, res) 
 // ---- PROJETS ----
 apiRouter.get("/projets", verifyToken, async (req, res) => {
   try {
-    // Filtre selon le rôle :
-    // - admin    → tous les projets
-    // - client   → seulement ses propres projets
-    // - designer → ses projets via affectations (géré séparément)
     const filter = req.user.rôle === "client" ? { id_client: req.user.id } : {};
-
     const projets = await Projet.find(filter)
       .populate("id_client", "nom email")
       .populate("id_admin_createur", "nom email");
@@ -417,7 +432,7 @@ apiRouter.delete("/projets/:id", verifyToken, async (req, res) => {
 
 // ---- AFFECTATIONS ----
 
-// GET affectations d'un projet — champ lu inclus automatiquement
+// GET affectations d'un projet
 apiRouter.get("/affectations/projet/:id_projet", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const affectations = await Affectation.find({ id_projet: req.params.id_projet })
@@ -499,7 +514,7 @@ apiRouter.post("/maquettes", verifyToken, checkRole(['designer', 'admin']), asyn
     if (!nom || !id_projet) return res.status(400).json({ message: "nom et id_projet sont requis" });
     const maquette = await Maquette.create({ nom, description, id_projet, id_createur: req.user.id, image_fond });
 
-    // ✅ Créer automatiquement la version 1 vide pour l'éditeur
+    // Créer automatiquement la version 1 vide pour l'éditeur
     const version = await Version.create({
       id_maquette:    maquette._id,
       numéro_version: 1,
@@ -523,7 +538,7 @@ apiRouter.get("/maquettes", verifyToken, async (req, res) => {
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// ⚠️ ORDRE CRITIQUE : routes spécifiques AVANT /:id (sinon Express capture "projet" et "latest-version" comme un ID)
+// ⚠️ ORDRE CRITIQUE : routes spécifiques AVANT /:id
 
 // GET /maquettes/projet/:id_projet — maquettes d'un projet avec leurs versions
 apiRouter.get("/maquettes/projet/:id_projet", verifyToken, async (req, res) => {
@@ -549,7 +564,6 @@ apiRouter.get("/maquettes/:id/latest-version", verifyToken, async (req, res) => 
     let version = await Version.findOne({ id_maquette: req.params.id, est_auto_save: { $ne: true } })
       .sort({ numéro_version: -1 });
 
-    // ✅ Si aucune version n'existe encore, on en crée une automatiquement
     if (!version) {
       const maquette = await Maquette.findById(req.params.id);
       if (!maquette) return res.status(404).json({ message: "Maquette introuvable" });
@@ -606,12 +620,11 @@ apiRouter.get("/versions/maquette/:id_maquette", verifyToken, async (req, res) =
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// GET /versions/:id — récupère une version avec son contenu (pour éditeur / restauration)
+// GET /versions/:id — récupère une version avec son contenu
 apiRouter.get("/versions/:id", verifyToken, async (req, res) => {
   try {
     const version = await Version.findById(req.params.id);
     if (!version) return res.status(404).json({ message: "Version introuvable" });
-    // Retourne l'objet directement (sans wrapper { version: ... }) pour cohérence avec latest-version
     res.json(version);
   } catch (err) { res.status(500).json({ message: "Erreur serveur", error: err.message }); }
 });
@@ -628,7 +641,7 @@ apiRouter.post("/versions", verifyToken, checkRole(['designer', 'admin']), async
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// PUT /versions/:id — auto-save (met à jour le contenu)
+// PUT /versions/:id — auto-save
 apiRouter.put("/versions/:id", verifyToken, checkRole(['designer', 'admin']), async (req, res) => {
   try {
     const version = await Version.findByIdAndUpdate(req.params.id, { contenu: req.body.contenu }, { returnDocument: "after" });
@@ -648,10 +661,10 @@ apiRouter.patch("/versions/:id/statut", verifyToken, async (req, res) => {
 });
 
 // ==========================================
-// ROUTES FEEDBACKS (VALIDATION / REFUS)
+// ROUTES FEEDBACKS
 // ==========================================
 
-// GET /feedbacks?id_version=xxx — feedbacks d'une version
+// GET /feedbacks?id_version=xxx
 apiRouter.get("/feedbacks", verifyToken, async (req, res) => {
   try {
     const filter = {};
@@ -663,7 +676,7 @@ apiRouter.get("/feedbacks", verifyToken, async (req, res) => {
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// GET /feedbacks/en-attente — feedbacks de type Refus en attente de modération admin
+// GET /feedbacks/en-attente
 apiRouter.get("/feedbacks/en-attente", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const feedbacks = await Feedback.find({ type: "Refus", transmis_designer: false })
@@ -684,7 +697,6 @@ apiRouter.post("/feedbacks", verifyToken, checkRole(['client']), async (req, res
     const version = await Version.findById(id_version).populate("id_maquette");
     if (!version) return res.status(404).json({ message: "Version introuvable" });
 
-    // Créer le feedback
     const feedback = await Feedback.create({
       type, commentaire: commentaire || "", justification,
       id_version, id_auteur: req.user.id,
@@ -692,11 +704,9 @@ apiRouter.post("/feedbacks", verifyToken, checkRole(['client']), async (req, res
       commentaire_admin: "",
     });
 
-    // Mettre à jour le statut de la version
     const newStatutVersion = type === "Val" ? "Validé" : "À corriger";
     await Version.findByIdAndUpdate(id_version, { statut: newStatutVersion });
 
-    // Mettre à jour le statut du projet
     if (type === "Val") {
       await Projet.findByIdAndUpdate(version.id_maquette.id_projet, { statut: "Validé" });
     } else {
@@ -707,7 +717,7 @@ apiRouter.post("/feedbacks", verifyToken, checkRole(['client']), async (req, res
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// PATCH /feedbacks/:id/moderer — admin modifie le commentaire avant transmission
+// PATCH /feedbacks/:id/moderer
 apiRouter.patch("/feedbacks/:id/moderer", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const { commentaire_admin } = req.body;
@@ -721,7 +731,7 @@ apiRouter.patch("/feedbacks/:id/moderer", verifyToken, checkRole(['admin']), asy
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// PATCH /feedbacks/:id/transmettre — admin transmet le feedback au designer
+// PATCH /feedbacks/:id/transmettre
 apiRouter.patch("/feedbacks/:id/transmettre", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const feedback = await Feedback.findByIdAndUpdate(
@@ -734,10 +744,9 @@ apiRouter.patch("/feedbacks/:id/transmettre", verifyToken, checkRole(['admin']),
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// GET /feedbacks/corrections — designer voit les corrections à faire sur ses maquettes
+// GET /feedbacks/corrections — designer voit les corrections à faire
 apiRouter.get("/feedbacks/corrections", verifyToken, checkRole(['designer']), async (req, res) => {
   try {
-    // Trouver les maquettes du designer
     const mesMaquettes = await Maquette.find({ id_createur: req.user.id }).select("_id");
     const maquetteIds = mesMaquettes.map(m => m._id);
     const versions = await Version.find({ id_maquette: { $in: maquetteIds } }).select("_id");
@@ -760,9 +769,7 @@ apiRouter.get("/feedbacks/corrections", verifyToken, checkRole(['designer']), as
 // ROUTES VALIDATIONS
 // ==========================================
 
-// POST /validations — client valide OU rejette une version
-// Body valider : { maquette_id, version_id, statut: "validé" }
-// Body rejeter : { maquette_id, version_id, statut: "à corriger", commentaires: [{ id_element, label_element, commentaire_client }] }
+// POST /validations
 apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, res) => {
   try {
     const { maquette_id, version_id, statut, commentaires } = req.body;
@@ -777,7 +784,6 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
     const maquette = await Maquette.findById(maquette_id).populate("id_projet");
     if (!maquette) return res.status(404).json({ message: "Maquette introuvable." });
 
-    // Créer la validation
     const validation = await Validation.create({
       maquette_id, version_id,
       client_id: req.user.id,
@@ -786,7 +792,6 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
       lu_designer: false,
     });
 
-    // Si rejet → insérer les commentaires par élément
     let commentairesInseres = [];
     if (statut === "à corriger" && Array.isArray(commentaires) && commentaires.length > 0) {
       const docs = commentaires.map(c => ({
@@ -797,7 +802,6 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
         commentaire_admin:  "",
       }));
       commentairesInseres = await CommentaireElement.insertMany(docs);
-      // Mettre le statut version à "À corriger"
       await Version.findByIdAndUpdate(version_id, { statut: "À corriger" });
       await Projet.findByIdAndUpdate(maquette.id_projet, { statut: "En révision" });
     }
@@ -805,7 +809,6 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
     if (statut === "validé") {
       await Version.findByIdAndUpdate(version_id, { statut: "Validé" });
       await Projet.findByIdAndUpdate(maquette.id_projet, { statut: "Validé" });
-      // Notifier l'admin
       const client = await Utilisateur.findById(req.user.id).select("nom");
       const projetNom = maquette.id_projet?.nom || "Projet";
       await creerNotification({
@@ -818,7 +821,6 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
     }
 
     if (statut === "à corriger") {
-      // Notifier l'admin du rejet
       const client = await Utilisateur.findById(req.user.id).select("nom");
       const projetNom = maquette.id_projet?.nom || "Projet";
       await creerNotification({
@@ -840,7 +842,7 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
   }
 });
 
-// GET /validations — liste des validations (filtrables)
+// GET /validations
 apiRouter.get("/validations", verifyToken, async (req, res) => {
   try {
     const filter = {};
@@ -859,19 +861,16 @@ apiRouter.get("/validations", verifyToken, async (req, res) => {
   }
 });
 
-// GET /validations/maquette/:id_maquette — validations + feedbacks d'une maquette (utilisé par Feedbacks admin/client)
+// GET /validations/maquette/:id_maquette
 apiRouter.get("/validations/maquette/:id_maquette", verifyToken, async (req, res) => {
   try {
-    // Récupérer toutes les versions de la maquette
     const versionIds = (await Version.find({ id_maquette: req.params.id_maquette }).select("_id")).map(v => v._id);
 
-    // Récupérer les validations liées à ces versions
     const validations = await Validation.find({ version_id: { $in: versionIds } })
       .populate("client_id", "nom email")
       .populate("version_id", "numéro_version statut")
       .sort({ date_validation: -1 });
 
-    // Aussi récupérer les feedbacks (Val/Refus) pour compatibilité avec l'ancien système
     const feedbacks = await Feedback.find({ id_version: { $in: versionIds }, type: { $in: ["Val", "Refus"] } })
       .populate("id_auteur", "nom email")
       .populate("id_version", "numéro_version")
@@ -883,7 +882,7 @@ apiRouter.get("/validations/maquette/:id_maquette", verifyToken, async (req, res
   }
 });
 
-// GET /validations/a-corriger — admin voit les rejets en attente de transmission
+// GET /validations/a-corriger
 apiRouter.get("/validations/a-corriger", verifyToken, checkRole(["admin"]), async (req, res) => {
   try {
     const validations = await Validation.find({ statut: "à corriger", transmis_designer: false })
@@ -902,8 +901,8 @@ apiRouter.get("/validations/a-corriger", verifyToken, checkRole(["admin"]), asyn
   }
 });
 
-// ⚠️ ORDRE CRITIQUE — GET /validations/corrections-designer AVANT /validations/:id/commentaires
-// GET /validations/corrections-designer — designer voit ses corrections à faire
+// ⚠️ ORDRE CRITIQUE — routes spécifiques AVANT /:id/commentaires
+// GET /validations/corrections-designer
 apiRouter.get("/validations/corrections-designer", verifyToken, checkRole(["designer"]), async (req, res) => {
   try {
     const mesMaquettes = await Maquette.find({ id_createur: req.user.id }).select("_id id_projet nom").populate("id_projet", "nom");
@@ -934,7 +933,7 @@ apiRouter.get("/validations/corrections-designer", verifyToken, checkRole(["desi
   }
 });
 
-// GET /validations/:id/commentaires — commentaires d'une validation
+// GET /validations/:id/commentaires
 apiRouter.get("/validations/:id/commentaires", verifyToken, async (req, res) => {
   try {
     const commentaires = await CommentaireElement.find({ validation_id: req.params.id });
@@ -944,7 +943,7 @@ apiRouter.get("/validations/:id/commentaires", verifyToken, async (req, res) => 
   }
 });
 
-// PATCH /commentaires-elements/:id — admin reformule un commentaire
+// PATCH /commentaires-elements/:id
 apiRouter.patch("/commentaires-elements/:id", verifyToken, checkRole(["admin"]), async (req, res) => {
   try {
     const { commentaire_admin } = req.body;
@@ -960,7 +959,7 @@ apiRouter.patch("/commentaires-elements/:id", verifyToken, checkRole(["admin"]),
   }
 });
 
-// PATCH /validations/:id/transmettre — admin transmet la réclamation au designer
+// PATCH /validations/:id/transmettre
 apiRouter.patch("/validations/:id/transmettre", verifyToken, checkRole(["admin"]), async (req, res) => {
   try {
     const validation = await Validation.findByIdAndUpdate(
@@ -973,19 +972,17 @@ apiRouter.patch("/validations/:id/transmettre", verifyToken, checkRole(["admin"]
 
     if (!validation) return res.status(404).json({ message: "Validation introuvable." });
 
-    // Infos pour la notification
     const clientNom  = validation.client_id?.nom    || "Un client";
     const projetNom  = validation.version_id?.id_maquette?.id_projet?.nom || "Projet";
     const versionNum = validation.version_id?.numéro_version || "?";
     const designerId = validation.version_id?.id_maquette?.id_createur || null;
 
-    // ✅ Notif détaillée avec nom client + projet + version → destinataire = le designer
     await creerNotification({
       message: `⚠️ ${clientNom} a rejeté la version ${versionNum} du projet "${projetNom}" — des corrections sont à apporter`,
       type: "correction",
-      id_projet:      validation.version_id?.id_maquette?.id_projet?._id || null,
-      id_version:     validation.version_id?._id || null,
-      id_client:      validation.client_id?._id  || null,
+      id_projet:       validation.version_id?.id_maquette?.id_projet?._id || null,
+      id_version:      validation.version_id?._id || null,
+      id_client:       validation.client_id?._id  || null,
       id_destinataire: designerId,
     });
 
@@ -995,8 +992,7 @@ apiRouter.patch("/validations/:id/transmettre", verifyToken, checkRole(["admin"]
   }
 });
 
-// GET /validations/corrections-designer — designer voit ses corrections à faire
-// PATCH /validations/:id/lu-designer — designer marque la correction comme lue
+// PATCH /validations/:id/lu-designer
 apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designer"]), async (req, res) => {
   try {
     const v = await Validation.findByIdAndUpdate(req.params.id, { lu_designer: true }, { returnDocument: "after" });
@@ -1073,9 +1069,9 @@ apiRouter.post("/rapportPDF/:id", verifyToken, async (req, res) => {
     doc.moveDown();
     doc.fontSize(16).fillColor("#34495e").text("Designer :"); doc.fontSize(12).fillColor("black").text(id_designer?.nom || "—"); doc.moveDown();
     doc.fontSize(16).fillColor("#34495e").text("Projet :"); doc.fontSize(12).fillColor("black").text(id_projet?.nom || "—"); doc.moveDown();
-    doc.fontSize(16).fillColor("#34495e").text("Travail effectué :"); doc.fontSize(12).fillColor("black").text(travail_effectué || "—"); doc.moveDown();
-    doc.fontSize(16).fillColor("#34495e").text("Tâches restantes :"); doc.fontSize(12).fillColor("black").text(tâches_restantes || "—"); doc.moveDown();
-    doc.fontSize(16).fillColor("#34495e").text("Blocages :"); doc.fontSize(12).fillColor("black").text(blocages || "Aucun");
+    doc.fontSize(16).fillColor("#34495e").text("Travail effectué :"); doc.fontSize(12).fillColor("black").text(Array.isArray(travail_effectué) ? travail_effectué.join(", ") : travail_effectué || "—"); doc.moveDown();
+    doc.fontSize(16).fillColor("#34495e").text("Tâches restantes :"); doc.fontSize(12).fillColor("black").text(Array.isArray(tâches_restantes) ? tâches_restantes.join(", ") : tâches_restantes || "—"); doc.moveDown();
+    doc.fontSize(16).fillColor("#34495e").text("Blocages :"); doc.fontSize(12).fillColor("black").text(Array.isArray(blocages) ? blocages.join(", ") : blocages || "Aucun");
     doc.end();
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1128,7 +1124,7 @@ apiRouter.delete("/notifications/:id", verifyToken, checkRole(["admin"]), async 
 // ROUTES NOTIFICATIONS DESIGNER
 // ==========================================
 
-// GET /notifications/designer — notifs du designer connecté (type correction)
+// GET /notifications/designer
 apiRouter.get("/notifications/designer", verifyToken, checkRole(["designer"]), async (req, res) => {
   try {
     const notifs = await Notification.find({
@@ -1143,7 +1139,7 @@ apiRouter.get("/notifications/designer", verifyToken, checkRole(["designer"]), a
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// GET /notifications/designer/count — nombre non lues pour le designer
+// GET /notifications/designer/count
 apiRouter.get("/notifications/designer/count", verifyToken, checkRole(["designer"]), async (req, res) => {
   try {
     const count = await Notification.countDocuments({ id_destinataire: req.user.id, lu: false });
@@ -1151,7 +1147,7 @@ apiRouter.get("/notifications/designer/count", verifyToken, checkRole(["designer
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// PATCH /notifications/designer/:id/read — marquer une notif designer comme lue
+// PATCH /notifications/designer/:id/read
 apiRouter.patch("/notifications/designer/:id/read", verifyToken, checkRole(["designer"]), async (req, res) => {
   try {
     const notif = await Notification.findOneAndUpdate(

@@ -75,7 +75,15 @@ const AssignerDropdown = ({ projet, onAssigned }) => {
 
   return (
     <div ref={ref} style={{ position:"relative", display:"inline-block" }}>
-      <button onClick={handleOpen} title="Assigner un designer" style={{ ...iconBtn, color:"#059669" }}><UserPlus size={15}/></button>
+      {/* feature/amine : bouton désactivé si statut "Refusé" */}
+      <button
+        onClick={handleOpen}
+        title={projet.statut !== "Refusé" ? "Assigner un designer" : undefined}
+        disabled={projet.statut === "Refusé"}
+        style={{ ...iconBtn, color:"#059669", opacity: projet.statut === "Refusé" ? 0.3 : 1 }}
+      >
+        <UserPlus size={15}/>
+      </button>
       {open && (
         <div style={{ position:"absolute", right:0, top:"110%", zIndex:500, background:"white", borderRadius:12, minWidth:240, boxShadow:"0 8px 32px rgba(0,0,0,0.15)", border:"1px solid #E2E8F0", overflow:"hidden" }}>
           <div style={{ padding:"10px 14px", borderBottom:"1px solid #F1F5F9", fontSize:12, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:"0.05em" }}>Designers disponibles</div>
@@ -115,8 +123,11 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
 
   const fetchAff = async () => {
     setLoadingAff(true);
-    try { const { data } = await API.get(`/affectations/projet/${projet._id}`); setAffectations(Array.isArray(data) ? data : []); }
-    catch {} finally { setLoadingAff(false); }
+    try {
+      const { data } = await API.get(`/affectations/projet/${projet._id}`);
+      setAffectations(Array.isArray(data) ? data : []);
+    } catch {}
+    finally { setLoadingAff(false); }
   };
   useEffect(() => { fetchAff(); }, []);
 
@@ -143,7 +154,15 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
           <div style={dCard}><Calendar size={14} color="#2563EB" style={{ marginBottom:4 }}/><div style={{ fontSize:12, color:"#94A3B8" }}>Début</div><div style={{ fontWeight:600, fontSize:14 }}>{new Date(projet.date_début).toLocaleDateString("fr-FR")}</div></div>
           <div style={dCard}><Calendar size={14} color="#7C3AED" style={{ marginBottom:4 }}/><div style={{ fontSize:12, color:"#94A3B8" }}>Fin</div><div style={{ fontWeight:600, fontSize:14 }}>{new Date(projet.date_fin).toLocaleDateString("fr-FR")}</div></div>
         </div>
-        {projet.description && <div style={dCard}><div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}><AlignLeft size={14} color="#64748B"/><span style={{ fontSize:12, color:"#94A3B8" }}>Description</span></div><p style={{ margin:0, fontSize:14, color:"#374151", lineHeight:1.6 }}>{projet.description}</p></div>}
+        {projet.description && (
+          <div style={dCard}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+              <AlignLeft size={14} color="#64748B"/>
+              <span style={{ fontSize:12, color:"#94A3B8" }}>Description</span>
+            </div>
+            <p style={{ margin:0, fontSize:14, color:"#374151", lineHeight:1.6 }}>{projet.description}</p>
+          </div>
+        )}
         <div style={{ borderTop:"1px solid #F1F5F9", paddingTop:16 }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
             <Users size={16} color="#2563EB"/><span style={{ fontWeight:700, fontSize:15 }}>Designers assignés ({affectations.length})</span>
@@ -157,6 +176,16 @@ const DetailModal = ({ projet, onClose, onEdit, onDelete, getStatutColor }) => {
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,#059669,#0D9488)", color:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:12 }}>{a.id_designer?.nom?.charAt(0)||"?"}</div>
                     <div><div style={{ fontSize:13, fontWeight:600 }}>{a.id_designer?.nom}</div><div style={{ fontSize:11, color:"#94A3B8" }}>{a.id_designer?.email}</div></div>
+                  </div>
+                  {/* feature/amine : badge lu/non lu */}
+                  <div style={{
+                    display:"inline-flex", alignItems:"center", gap:6,
+                    padding:"6px 12px", borderRadius:999, fontSize:12, fontWeight:500,
+                    background: a.lu ? "#ECFDF5" : "#F3F4F6",
+                    color:      a.lu ? "#16A34A" : "#6B7280",
+                    border:     a.lu ? "1px solid #BBF7D0" : "1px solid #E5E7EB",
+                  }}>
+                    {a.lu ? <><CheckCircle size={14}/><span>Lu</span></> : <span>Non lu</span>}
                   </div>
                   <button onClick={() => handleRetirer(a._id)} style={{ background:"none", border:"1px solid #FECACA", borderRadius:8, cursor:"pointer", color:"#DC2626", padding:"4px 10px", display:"flex", alignItems:"center", gap:4, fontSize:12 }}>
                     <UserMinus size={13}/> Retirer
@@ -249,19 +278,19 @@ const DeleteModal = ({ projet, onClose, onConfirm, deleting }) => (
 
 // ── AdminProjets ──────────────────────────────────────────────────────────────
 const AdminProjets = () => {
-  const [projets, setProjets]           = useState([]);
-  const [users, setUsers]               = useState([]);
-  const [maquettes, setMaquettes]       = useState([]);
-  const [fetching, setFetching]         = useState(true);
-  const [showForm, setShowForm]         = useState(false);
+  const [projets, setProjets]             = useState([]);
+  const [users, setUsers]                 = useState([]);
+  const [maquettes, setMaquettes]         = useState([]);
+  const [fetching, setFetching]           = useState(true);
+  const [showForm, setShowForm]           = useState(false);
   const [projetLoading, setProjetLoading] = useState(false);
-  const [msg, setMsg]                   = useState({ type:"", text:"" });
+  const [msg, setMsg]                     = useState({ type:"", text:"" });
   const [form, setForm] = useState({ nom:"", description:"", date_début:"", date_fin:"", statut:"En attente", id_client:"", demanded:false });
-  const [formErrors, setFormErrors]     = useState({ date_début:"", date_fin:"" });
-  const [detailProjet, setDetailProjet] = useState(null);
-  const [editProjet, setEditProjet]     = useState(null);
-  const [deleteProjet, setDeleteProjet] = useState(null);
-  const [deleting, setDeleting]         = useState(false);
+  const [formErrors, setFormErrors]       = useState({ date_début:"", date_fin:"" });
+  const [detailProjet, setDetailProjet]   = useState(null);
+  const [editProjet, setEditProjet]       = useState(null);
+  const [deleteProjet, setDeleteProjet]   = useState(null);
+  const [deleting, setDeleting]           = useState(false);
   const navigate = useNavigate();
 
   const fetchProjets = async () => {
@@ -276,7 +305,6 @@ const AdminProjets = () => {
     fetchProjets();
     API.get("/utilisateurs").then(r => setUsers(r.data)).catch(() => {});
     API.get("/maquettes").then(r => {
-      // /maquettes retourne un tableau directement
       const list = Array.isArray(r.data) ? r.data : r.data?.maquettes || [];
       setMaquettes(list);
     }).catch(() => {});

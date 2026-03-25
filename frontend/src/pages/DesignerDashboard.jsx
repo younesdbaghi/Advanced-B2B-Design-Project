@@ -60,9 +60,9 @@ const DesignerDashboard = () => {
   };
 
   // ─── Fetch corrections transmises par l'admin ─────────────────────────────
-  const [corrections, setCorrections]             = useState([]);
+  const [corrections, setCorrections]              = useState([]);
   const [loadingCorrections, setLoadingCorrections] = useState(true);
-  const [showCorrDetail, setShowCorrDetail]        = useState(null);
+  const [showCorrDetail, setShowCorrDetail]         = useState(null);
 
   const fetchCorrections = async () => {
     try {
@@ -145,18 +145,18 @@ const DesignerDashboard = () => {
   };
 
   // ─── Computed stats ───────────────────────────────────────────────────────────
-  const affProjets   = affectations.map(a => a.id_projet).filter(Boolean);
-  const nonLus       = affectations.filter(a => !a.lu).length;
-  const enCours      = affProjets.filter(p => p?.statut === "En cours").length;
-  const termines     = affProjets.filter(p => p?.statut === "Terminé").length;
+  const affProjets = affectations.map(a => a.id_projet).filter(Boolean);
+  const nonLus     = affectations.filter(a => !a.lu).length;
+  const enCours    = affProjets.filter(p => p?.statut === "En cours").length;
+  const termines   = affProjets.filter(p => p?.statut === "Terminé").length;
 
   const stats = [
-    { label: "Designs créés",    value: maquettes.length,       color: "#6366F1", bg: "rgba(99,102,241,0.1)",  icon: <Palette size={20} color="#6366F1"/> },
-    { label: "Projets assignés", value: affectations.length,    color: "#0EA5E9", bg: "rgba(14,165,233,0.1)",  icon: <LayoutGrid size={20} color="#0EA5E9"/> },
-    { label: "Non lus",          value: nonLus,                 color: "#F59E0B", bg: "rgba(245,158,11,0.1)",  icon: <BellRing size={20} color="#F59E0B"/> },
-    { label: "Corrections",      value: corrections.length,     color: "#DC2626", bg: "rgba(220,38,38,0.1)",   icon: <XCircle size={20} color="#DC2626"/> },
-    { label: "En cours",         value: enCours,                color: "#10B981", bg: "rgba(16,185,129,0.1)",  icon: <Clock size={20} color="#10B981"/> },
-    { label: "Terminés",         value: termines,               color: "#8B5CF6", bg: "rgba(139,92,246,0.1)",  icon: <CheckCircle size={20} color="#8B5CF6"/> },
+    { label: "Designs créés",    value: maquettes.length,    color: "#6366F1", bg: "rgba(99,102,241,0.1)",  icon: <Palette size={20} color="#6366F1"/> },
+    { label: "Projets assignés", value: affectations.length, color: "#0EA5E9", bg: "rgba(14,165,233,0.1)",  icon: <LayoutGrid size={20} color="#0EA5E9"/> },
+    { label: "Non lus",          value: nonLus,              color: "#F59E0B", bg: "rgba(245,158,11,0.1)",  icon: <BellRing size={20} color="#F59E0B"/> },
+    { label: "Corrections",      value: corrections.length,  color: "#DC2626", bg: "rgba(220,38,38,0.1)",   icon: <XCircle size={20} color="#DC2626"/> },
+    { label: "En cours",         value: enCours,             color: "#10B981", bg: "rgba(16,185,129,0.1)",  icon: <Clock size={20} color="#10B981"/> },
+    { label: "Terminés",         value: termines,            color: "#8B5CF6", bg: "rgba(139,92,246,0.1)",  icon: <CheckCircle size={20} color="#8B5CF6"/> },
   ];
 
   // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -214,8 +214,8 @@ const DesignerDashboard = () => {
         <div
           onClick={() => setActiveTab("corrections")}
           style={{ display:"flex",alignItems:"center",gap:10,background:"rgba(220,38,38,0.08)",border:"1px solid rgba(220,38,38,0.25)",borderRadius:12,padding:"12px 18px",marginBottom:16,cursor:"pointer",transition:"background .15s" }}
-          onMouseEnter={e=>e.currentTarget.style.background="rgba(220,38,38,0.13)"}
-          onMouseLeave={e=>e.currentTarget.style.background="rgba(220,38,38,0.08)"}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(220,38,38,0.13)"}
+          onMouseLeave={e => e.currentTarget.style.background = "rgba(220,38,38,0.08)"}
         >
           <div style={{ width:10,height:10,borderRadius:"50%",background:"#DC2626",flexShrink:0,animation:"pulse 1.5s ease-in-out infinite" }}/>
           <div style={{ flex:1 }}>
@@ -246,8 +246,12 @@ const DesignerDashboard = () => {
       {/* ── Tabs ── */}
       <div className="tabs">
         {tabs.map(t => (
-          <button key={t.id} className={`tab-btn ${activeTab === t.id ? "active" : ""}`} onClick={() => setActiveTab(t.id)}
-            style={t.alert && activeTab !== t.id ? { color:"#DC2626",position:"relative" } : {}}>
+          <button
+            key={t.id}
+            className={`tab-btn ${activeTab === t.id ? "active" : ""}`}
+            onClick={() => setActiveTab(t.id)}
+            style={t.alert && activeTab !== t.id ? { color:"#DC2626", position:"relative" } : {}}
+          >
             {t.label}
             {t.alert && (
               <span style={{ position:"absolute",top:-4,right:-4,width:8,height:8,borderRadius:"50%",background:"#DC2626",animation:"pulse 1.5s ease-in-out infinite" }}/>
@@ -273,7 +277,10 @@ const DesignerDashboard = () => {
                     {maquettes.slice(0, 4).map(maq => (
                       <div key={maq._id} className="recent-item" onClick={() => navigate(`/designer/editeur/${maq._id}`)}>
                         <div className="recent-thumb">
-                          {maq.image_fond ? <img src={maq.image_fond} alt="thumb"/> : <ImageIcon size={20} color="#ccc"/>}
+                          {maq.image_fond
+                            ? <img src={maq.image_fond} alt="thumb"/>
+                            : <ImageIcon size={20} color="#ccc"/>
+                          }
                         </div>
                         <div>
                           <div className="recent-title">{maq.nom}</div>
@@ -299,7 +306,7 @@ const DesignerDashboard = () => {
                 : (
                   <div className="recent-list">
                     {affectations.slice(0, 4).map(a => {
-                      const p = a.id_projet;
+                      const p  = a.id_projet;
                       const sc = getStatutBadge(p?.statut);
                       return (
                         <div key={a._id} className="recent-item">
@@ -473,8 +480,13 @@ const DesignerDashboard = () => {
                               {a.lu
                                 ? <span className="badge" style={{ color: "#059669", background: "rgba(5,150,105,0.1)" }}><CheckCircle size={11}/> Lu</span>
                                 : (
-                                  <button className="btn-mark-lu" onClick={() => handleMarquerLu(a._id)} disabled={marking === a._id} style={{ opacity: marking === a._id ? 0.7 : 1 }}>
-                                    <Bell size={12}/> {marking === a._id ? "…" : "Marquer lu"}
+                                  <button
+                                    className="btn-mark-lu"
+                                    onClick={() => handleMarquerLu(a._id)}
+                                    disabled={marking === a._id}
+                                    style={{ opacity: marking === a._id ? 0.7 : 1 }}
+                                  >
+                                    <BellRing size={12}/> {marking === a._id ? "…" : "Marquer lu"}
                                   </button>
                                 )
                               }
@@ -494,13 +506,13 @@ const DesignerDashboard = () => {
       {activeTab === "corrections" && (
         <div>
           {loadingCorrections ? <Spinner/> : corrections.length === 0 ? (
-            <div className="panel" style={{ textAlign:"center",padding:"60px 20px" }}>
+            <div className="panel" style={{ textAlign:"center", padding:"60px 20px" }}>
               <CheckCircle size={48} color="#C7D2FE" style={{ marginBottom:14 }}/>
-              <p style={{ fontWeight:700,fontSize:16,color:"#374151",margin:0 }}>Aucune correction en attente</p>
-              <p style={{ fontSize:13,color:"#94A3B8",marginTop:6 }}>Toutes vos maquettes sont à jour ✅</p>
+              <p style={{ fontWeight:700, fontSize:16, color:"#374151", margin:0 }}>Aucune correction en attente</p>
+              <p style={{ fontSize:13, color:"#94A3B8", marginTop:6 }}>Toutes vos maquettes sont à jour ✅</p>
             </div>
           ) : (
-            <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
               {corrections.map(c => {
                 const vNum   = c.version_id?.numéro_version;
                 const maqNom = c.version_id?.id_maquette?.nom;
@@ -510,55 +522,57 @@ const DesignerDashboard = () => {
                 const isOpen = showCorrDetail === c._id;
 
                 return (
-                  <div key={c._id} className="panel" style={{ padding:0,overflow:"hidden",border:"1.5px solid rgba(220,38,38,0.25)" }}>
+                  <div key={c._id} className="panel" style={{ padding:0, overflow:"hidden", border:"1.5px solid rgba(220,38,38,0.25)" }}>
                     {/* Header correction */}
-                    <div onClick={()=>setShowCorrDetail(isOpen ? null : c._id)}
-                      style={{ display:"flex",alignItems:"center",gap:14,padding:"16px 20px",cursor:"pointer",background:isOpen?"rgba(220,38,38,0.03)":"white" }}>
-                      <div style={{ width:10,height:10,borderRadius:"50%",background:"#DC2626",flexShrink:0,animation:"pulse 1.5s ease-in-out infinite" }}/>
+                    <div
+                      onClick={() => setShowCorrDetail(isOpen ? null : c._id)}
+                      style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 20px", cursor:"pointer", background:isOpen ? "rgba(220,38,38,0.03)" : "white" }}
+                    >
+                      <div style={{ width:10, height:10, borderRadius:"50%", background:"#DC2626", flexShrink:0, animation:"pulse 1.5s ease-in-out infinite" }}/>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:14,fontWeight:700,color:"#0F172A",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:"#0F172A", display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                           {projet?.nom || "Projet"} — {maqNom || "Maquette"}
-                          <span style={{ background:"rgba(99,102,241,0.1)",color:"#6366F1",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700 }}>v{vNum}</span>
-                          <span style={{ background:"rgba(220,38,38,0.1)",color:"#DC2626",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700 }}>À corriger</span>
+                          <span style={{ background:"rgba(99,102,241,0.1)", color:"#6366F1", borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:700 }}>v{vNum}</span>
+                          <span style={{ background:"rgba(220,38,38,0.1)", color:"#DC2626", borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:700 }}>À corriger</span>
                         </div>
-                        <div style={{ fontSize:12,color:"#94A3B8",marginTop:3 }}>
+                        <div style={{ fontSize:12, color:"#94A3B8", marginTop:3 }}>
                           Client : <strong style={{ color:"#374151" }}>{client?.nom || "—"}</strong>
                           {client?.email && <span style={{ marginLeft:6 }}>({client.email})</span>}
-                          {" · "}{new Date(c.date_validation).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"})}
+                          {" · "}{new Date(c.date_validation).toLocaleDateString("fr-FR", { day:"2-digit", month:"short", year:"numeric" })}
                           {commentairesAvecContenu.length > 0 && (
-                            <span style={{ marginLeft:8,color:"#DC2626",fontWeight:600 }}>
+                            <span style={{ marginLeft:8, color:"#DC2626", fontWeight:600 }}>
                               · {commentairesAvecContenu.length} remarque{commentairesAvecContenu.length > 1 ? "s" : ""}
                             </span>
                           )}
                         </div>
                       </div>
-                      <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                         <button
-                          onClick={e=>{e.stopPropagation(); navigate(`/designer/editeur/${c.version_id?.id_maquette?._id}`);}}
+                          onClick={e => { e.stopPropagation(); navigate(`/designer/editeur/${c.version_id?.id_maquette?._id}`); }}
                           className="icon-btn eye-c"
                           title="Ouvrir dans l'éditeur"
                         >
                           <Eye size={15}/>
                         </button>
-                        <span style={{ color:"#94A3B8",fontSize:13 }}>{isOpen ? "▲" : "▼"}</span>
+                        <span style={{ color:"#94A3B8", fontSize:13 }}>{isOpen ? "▲" : "▼"}</span>
                       </div>
                     </div>
 
                     {/* Détails corrections */}
                     {isOpen && (
-                      <div style={{ padding:"0 20px 20px",borderTop:"1px solid #F1F5F9" }}>
+                      <div style={{ padding:"0 20px 20px", borderTop:"1px solid #F1F5F9" }}>
                         {commentairesAvecContenu.length === 0 ? (
-                          <p style={{ fontSize:13,color:"#94A3B8",paddingTop:14,textAlign:"center",fontStyle:"italic" }}>
+                          <p style={{ fontSize:13, color:"#94A3B8", paddingTop:14, textAlign:"center", fontStyle:"italic" }}>
                             Rejet général — aucune remarque spécifique sur les éléments.
                           </p>
                         ) : (
-                          <div style={{ display:"flex",flexDirection:"column",gap:8,marginTop:14 }}>
+                          <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:14 }}>
                             {commentairesAvecContenu.map(cm => (
-                              <div key={cm._id} style={{ background:"#FFF7F7",border:"1px solid #FEE2E2",borderRadius:8,padding:"10px 14px" }}>
-                                <div style={{ fontSize:11,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".04em",marginBottom:4 }}>
+                              <div key={cm._id} style={{ background:"#FFF7F7", border:"1px solid #FEE2E2", borderRadius:8, padding:"10px 14px" }}>
+                                <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:".04em", marginBottom:4 }}>
                                   Élément : {cm.label_element || cm.id_element}
                                 </div>
-                                <div style={{ fontSize:13,color:"#1E293B",lineHeight:1.6 }}>
+                                <div style={{ fontSize:13, color:"#1E293B", lineHeight:1.6 }}>
                                   {cm.commentaire_admin || cm.commentaire_client}
                                 </div>
                               </div>
@@ -566,16 +580,16 @@ const DesignerDashboard = () => {
                           </div>
                         )}
 
-                        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,paddingTop:14,borderTop:"1px solid #F1F5F9" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:16, paddingTop:14, borderTop:"1px solid #F1F5F9" }}>
                           <button
                             onClick={() => navigate(`/designer/editeur/${c.version_id?.id_maquette?._id}`)}
-                            style={{ display:"inline-flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#6366F1,#8B5CF6)",color:"white",border:"none",borderRadius:9,padding:"10px 20px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 14px rgba(99,102,241,0.3)" }}
+                            style={{ display:"inline-flex", alignItems:"center", gap:8, background:"linear-gradient(135deg,#6366F1,#8B5CF6)", color:"white", border:"none", borderRadius:9, padding:"10px 20px", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", boxShadow:"0 4px 14px rgba(99,102,241,0.3)" }}
                           >
                             <Eye size={14}/> Ouvrir l'éditeur et corriger
                           </button>
                           <button
                             onClick={() => handleMarquerLuCorrection(c._id)}
-                            style={{ display:"inline-flex",alignItems:"center",gap:6,background:"rgba(5,150,105,0.1)",color:"#059669",border:"none",borderRadius:9,padding:"10px 18px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}
+                            style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(5,150,105,0.1)", color:"#059669", border:"none", borderRadius:9, padding:"10px 18px", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}
                           >
                             <CheckCircle size={14}/> Marquer traité
                           </button>
@@ -656,7 +670,7 @@ const DesignerDashboard = () => {
         .stat-value { font-size: 26px; font-weight: 800; color: var(--accent); }
         .stat-label { font-size: 11px; color: #94A3B8; font-weight: 600; margin-top: 1px; }
         .tabs { display: flex; gap: 4px; background: white; padding: 5px; border-radius: 14px; border: 1px solid #E2E8F0; margin-bottom: 24px; width: fit-content; }
-        .tab-btn { padding: 9px 20px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; background: none; color: #64748B; transition: all .2s; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .tab-btn { padding: 9px 20px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; background: none; color: #64748B; transition: all .2s; font-family: 'Plus Jakarta Sans', sans-serif; position: relative; }
         .tab-btn.active { background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; box-shadow: 0 3px 10px rgba(99,102,241,0.35); }
         .tab-btn:hover:not(.active) { color: #374151; }
         .panel { background: white; border-radius: 16px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid #F1F5F9; margin-bottom: 20px; }

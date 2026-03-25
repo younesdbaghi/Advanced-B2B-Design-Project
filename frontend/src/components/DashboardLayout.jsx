@@ -26,7 +26,6 @@ const DashboardLayout = ({ children }) => {
         setNotifications(list);
         setUnreadCount(list.filter(n => !n.lu).length);
       } else if (user.rôle === 'designer') {
-        // ✅ Notifs dynamiques : corrections transmises par l'admin
         const { data } = await API.get('/notifications/designer');
         const list = Array.isArray(data) ? data : [];
         setNotifications(list);
@@ -62,7 +61,6 @@ const DashboardLayout = ({ children }) => {
       if (user.rôle === 'admin') {
         await API.patch('/notifications/mark-all-read');
       }
-      // Pour designer : marque toutes lues localement (pas de route bulk pour l'instant)
       setNotifications(prev => prev.map(n => ({ ...n, lu: true })));
       setUnreadCount(0);
     } catch (err) { console.error(err); }
@@ -283,6 +281,10 @@ const DashboardLayout = ({ children }) => {
                 {user.nom?.charAt(0)?.toUpperCase() || <UserCircle size={22} />}
               </div>
             </div>
+
+            {/* Lien change password — ajouté depuis HEAD */}
+            <Link to="/change">change password</Link>
+
           </div>
         </div>
 
