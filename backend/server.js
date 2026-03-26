@@ -312,14 +312,34 @@ apiRouter.delete("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (
 // ---- DESIGNERS DISPONIBLES ----
 apiRouter.get("/designers", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
-    const affectations = await Affectation.find().distinct("id_designer");
+    const affectations = await Affectation.aggregate([
+      {
+        $group: {
+          _id: "$id_designer",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $match: {
+          count: { $gte: 3 }
+        }
+      }
+    ]);
+
+    const busyDesigners = affectations.map(a => a._id);
+
     const designers = await Utilisateur.find({
       rôle: "designer",
-      _id: { $nin: affectations }
+      _id: { $nin: busyDesigners }
     }).select("-mot_de_passe");
+
     res.status(200).json(designers);
+
   } catch (error) {
-    res.status(500).json({ message: "Erreur récupération designers", error: error.message });
+    res.status(500).json({
+      message: "Erreur récupération designers",
+      error: error.message
+    });
   }
 });
 
