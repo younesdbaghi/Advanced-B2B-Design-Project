@@ -240,126 +240,239 @@ const ClientDashboard = () => {
       )}
 
       {/* ── Formulaire demande ── */}
-      {showForm && (
-        <div className="card" style={{ marginBottom:24, borderLeft:"4px solid #2563EB", padding:24 }}>
-          <h3 style={{ marginBottom:20, display:"flex", alignItems:"center", gap:8, color:"#1E2A4A" }}><Send size={20}/> Demander un nouveau projet</h3>
-          <form onSubmit={handleDemandeProjet}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
-              <div style={{ gridColumn:"1/-1" }}>
-                <label style={lbl}>Nom du projet *</label>
-                <input value={form.nom} onChange={e=>setForm({...form, nom:e.target.value})} placeholder="ex: Refonte de mon site web" required style={inp}/>
-              </div>
-              <div>
-                <label style={lbl}>Date de début souhaitée *</label>
-                <input type="date" value={form.date_début} min={today}
-                  onChange={e=>{ const d=e.target.value; const f=form.date_fin&&form.date_fin<d?"":form.date_fin; setForm({...form,date_début:d,date_fin:f}); setFormErrors(validerDates(d,f)); }}
-                  required style={formErrors.date_début?inpErr:inp}/>
-                <FieldError msg={formErrors.date_début}/>
-              </div>
-              <div>
-                <label style={lbl}>Date de livraison souhaitée *</label>
-                <input type="date" value={form.date_fin} min={form.date_début||today}
-                  onChange={e=>{ const f=e.target.value; setForm({...form,date_fin:f}); setFormErrors(validerDates(form.date_début,f)); }}
-                  required style={formErrors.date_fin?inpErr:inp}/>
-                <FieldError msg={formErrors.date_fin}/>
-              </div>
-              <div style={{ gridColumn:"1/-1" }}>
-                <label style={lbl}>Description</label>
-                <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Décrivez votre projet..." rows={4} style={{...inp,resize:"vertical"}}/>
-              </div>
-            </div>
-            <button type="submit" disabled={sending} style={{ display:"flex", alignItems:"center", gap:8, background:sending?"#93C5FD":"#2563EB", color:"white", border:"none", borderRadius:10, padding:"12px 24px", cursor:sending?"not-allowed":"pointer", fontWeight:600, fontSize:14 }}>
-              {sending?<Loader size={16}/>:<Send size={16}/>}{sending?"Envoi...":"Envoyer la demande"}
-            </button>
-          </form>
+{showForm && (
+  <div className="card" style={{ marginBottom: 24, borderLeft: "4px solid #2563EB", padding: 24 }}>
+    <h3 style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 8, color: "#1E2A4A" }}>
+      <Send size={20}/> Demander un nouveau projet
+    </h3>
+    <form onSubmit={handleDemandeProjet}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        
+        {/* Nom du projet */}
+        <div style={{ gridColumn: "1/-1" }}>
+          <label style={lbl}>Nom du projet *</label>
+          <input 
+            value={form.nom} 
+            onChange={e => setForm({ ...form, nom: e.target.value })} 
+            placeholder="ex: Refonte de mon site web" 
+            required 
+            style={inp} 
+          />
         </div>
-      )}
 
-      {/* ── Stats ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px,1fr))", gap:16, marginBottom:28 }}>
-        {[
-          { label:"Projets actifs",       count:projetsActifs.filter(p=>p.statut==="En cours").length,  color:"#2563EB", bg:"rgba(37,99,235,0.1)",  icon:<Briefcase size={22}/> },
-          { label:"Demandes en attente",  count:demandesEnAttente.length,                               color:"#D97706", bg:"rgba(217,119,6,0.1)",  icon:<Clock size={22}/> },
-          { label:"Terminés",             count:projects.filter(p=>p.statut==="Terminé").length,        color:"#059669", bg:"rgba(5,150,105,0.1)",  icon:<CheckCircle size={22}/> },
-          { label:"Total",                count:projects.length,                                         color:"#7C3AED", bg:"rgba(124,58,237,0.1)", icon:<FileText size={22}/> },
-        ].map((s,i)=>(
-          <div key={i} className="card" style={{ padding:18 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ background:s.bg, borderRadius:10, padding:10, color:s.color }}>{s.icon}</div>
-              <div>
-                <div style={{ fontSize:13, color:"#64748B" }}>{s.label}</div>
-                <div style={{ fontSize:26, fontWeight:700, color:"#1E293B" }}>{s.count}</div>
-              </div>
-            </div>
-          </div>
-        ))}
+        {/* Date de début - MODIFIÉE : min={today} supprimé pour permettre aujourd'hui et avant */}
+        <div>
+          <label style={lbl}>Date de début souhaitée *</label>
+          <input 
+            type="date" 
+            value={form.date_début} 
+            onChange={e => { 
+              const d = e.target.value; 
+              // Si la date de fin devient incohérente (avant le début), on la vide
+              const f = form.date_fin && form.date_fin < d ? "" : form.date_fin; 
+              setForm({ ...form, date_début: d, date_fin: f }); 
+              if (typeof validerDates === "function") setFormErrors(validerDates(d, f)); 
+            }}
+            required 
+            style={formErrors.date_début ? inpErr : inp}
+          />
+          <FieldError msg={formErrors.date_début}/>
+        </div>
+
+        {/* Date de livraison */}
+        <div>
+          <label style={lbl}>Date de livraison souhaitée *</label>
+          <input 
+            type="date" 
+            value={form.date_fin} 
+            // On s'assure juste que la fin n'est pas avant le début choisi
+            min={form.date_début || ""} 
+            onChange={e => { 
+              const f = e.target.value; 
+              setForm({ ...form, date_fin: f }); 
+              if (typeof validerDates === "function") setFormErrors(validerDates(form.date_début, f)); 
+            }}
+            required 
+            style={formErrors.date_fin ? inpErr : inp}
+          />
+          <FieldError msg={formErrors.date_fin}/>
+        </div>
+
+        {/* Description */}
+        <div style={{ gridColumn: "1/-1" }}>
+          <label style={lbl}>Description</label>
+          <textarea 
+            value={form.description} 
+            onChange={e => setForm({ ...form, description: e.target.value })} 
+            placeholder="Décrivez votre projet..." 
+            rows={4} 
+            style={{ ...inp, resize: "vertical" }}
+          />
+        </div>
       </div>
 
-      {/* ── Demandes en attente ── */}
-      {demandesEnAttente.length > 0 && (
-        <div className="card" style={{ marginBottom:24, borderLeft:"4px solid #D97706" }}>
-          <h3 style={{ marginBottom:16, color:"#D97706", display:"flex", alignItems:"center", gap:8 }}>
-            <Clock size={18}/> Demandes en attente ({demandesEnAttente.length})
-          </h3>
-          <div className="table-container">
-            <table>
-              <thead><tr><th>Projet</th><th>Date début</th><th>Date fin</th><th>Statut</th><th style={{ textAlign:"center" }}>Actions</th></tr></thead>
-              <tbody>
-                {demandesEnAttente.map(p => (
-                  <tr key={p._id}>
-                    {editingId === p._id ? (
-                      <td colSpan={5} style={{ padding:"16px 12px" }}>
-                        <form onSubmit={handleEditSubmit}>
-                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12, marginBottom:12 }}>
-                            <div><label style={lbl}>Nom *</label><input value={editForm.nom} onChange={e=>setEditForm({...editForm,nom:e.target.value})} required style={inp}/></div>
-                            <div>
-                              <label style={lbl}>Date début *</label>
-                              <input type="date" value={editForm.date_début} min={today}
-                                onChange={e=>{const d=e.target.value;const f=editForm.date_fin&&editForm.date_fin<d?"":editForm.date_fin;setEditForm({...editForm,date_début:d,date_fin:f});setEditErrors(validerDates(d,f));}}
-                                required style={editErrors.date_début?inpErr:inp}/>
-                              <FieldError msg={editErrors.date_début}/>
-                            </div>
-                            <div>
-                              <label style={lbl}>Date fin *</label>
-                              <input type="date" value={editForm.date_fin} min={editForm.date_début||today}
-                                onChange={e=>{const f=e.target.value;setEditForm({...editForm,date_fin:f});setEditErrors(validerDates(editForm.date_début,f));}}
-                                required style={editErrors.date_fin?inpErr:inp}/>
-                              <FieldError msg={editErrors.date_fin}/>
-                            </div>
-                            <div><label style={lbl}>Description</label><input value={editForm.description} onChange={e=>setEditForm({...editForm,description:e.target.value})} style={inp}/></div>
-                          </div>
-                          <div style={{ display:"flex", gap:8 }}>
-                            <button type="submit" disabled={sending||!!editErrors.date_début||!!editErrors.date_fin} style={{ display:"flex", alignItems:"center", gap:6, background:sending?"#93C5FD":"#2563EB", color:"white", border:"none", borderRadius:8, padding:"8px 16px", cursor:sending?"not-allowed":"pointer", fontWeight:600, fontSize:13, opacity:(editErrors.date_début||editErrors.date_fin)?0.5:1 }}>
-                              {sending?<Loader size={14}/>:<CheckCircle size={14}/>}{sending?"Sauvegarde...":"Sauvegarder"}
-                            </button>
-                            <button type="button" onClick={()=>setEditingId(null)} style={{ display:"flex", alignItems:"center", gap:6, background:"#F1F5F9", color:"#64748B", border:"1px solid #E2E8F0", borderRadius:8, padding:"8px 16px", cursor:"pointer", fontWeight:600, fontSize:13 }}>
-                              <X size={14}/> Annuler
-                            </button>
-                          </div>
-                        </form>
-                      </td>
-                    ) : (
-                      <>
-                        <td><div style={{ fontWeight:600 }}>{p.nom}</div>{p.description&&<div style={{ fontSize:12, color:"#94A3B8" }}>{p.description.slice(0,60)}...</div>}</td>
-                        <td style={{ fontSize:13, color:"#64748B" }}>{new Date(p.date_début).toLocaleDateString("fr-FR")}</td>
-                        <td style={{ fontSize:13, color:"#64748B" }}>{new Date(p.date_fin).toLocaleDateString("fr-FR")}</td>
-                        <td><span style={{ background:"rgba(217,119,6,0.1)", color:"#D97706", borderRadius:20, padding:"4px 12px", fontSize:12, fontWeight:600 }}>⏳ En attente admin</span></td>
-                        <td style={{ textAlign:"center" }}>
-                          <div style={{ display:"flex", justifyContent:"center", gap:8 }}>
-                            <button onClick={()=>startEdit(p)} style={{ ...btnSmallAction, color:"#2563EB", background:"rgba(37,99,235,0.08)" }}><Edit2 size={13}/> Modifier</button>
-                            <button onClick={()=>handleAnnuler(p)} style={{ ...btnSmallAction, color:"#DC2626", background:"rgba(220,38,38,0.08)" }}><X size={13}/> Annuler</button>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* Bouton Envoyer */}
+      <button 
+        type="submit" 
+        disabled={sending} 
+        style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: 8, 
+          background: sending ? "#93C5FD" : "#2563EB", 
+          color: "white", 
+          border: "none", 
+          borderRadius: 10, 
+          padding: "12px 24px", 
+          cursor: sending ? "not-allowed" : "pointer", 
+          fontWeight: 600, 
+          fontSize: 14 
+        }}
+      >
+        {sending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
+        {sending ? "Envoi..." : "Envoyer la demande"}
+      </button>
+    </form>
+  </div>
+)}
 
+      {/* ── Demandes en attente ── */}
+     {demandesEnAttente.length > 0 && (
+  <div className="card" style={{ marginBottom: 24, borderLeft: "4px solid #D97706" }}>
+    <h3 style={{ marginBottom: 16, color: "#D97706", display: "flex", alignItems: "center", gap: 8 }}>
+      <Clock size={18}/> Demandes en attente ({demandesEnAttente.length})
+    </h3>
+    <div className="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Projet</th>
+            <th>Date début</th>
+            <th>Date fin</th>
+            <th>Statut</th>
+            <th style={{ textAlign: "center" }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {demandesEnAttente.map(p => (
+            <tr key={p._id}>
+              {editingId === p._id ? (
+                <td colSpan={5} style={{ padding: "16px 12px" }}>
+                  <form onSubmit={handleEditSubmit}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                      {/* Nom */}
+                      <div>
+                        <label style={lbl}>Nom *</label>
+                        <input value={editForm.nom} onChange={e => setEditForm({ ...editForm, nom: e.target.value })} required style={inp} />
+                      </div>
+
+                      {/* Date début - MODIFIÉE : min={today} supprimé */}
+                      <div>
+                        <label style={lbl}>Date début *</label>
+                        <input 
+                          type="date" 
+                          value={editForm.date_début} 
+                          // Pas de restriction min ici pour permettre aujourd'hui/passé
+                          onChange={e => {
+                            const d = e.target.value;
+                            const f = editForm.date_fin && editForm.date_fin < d ? "" : editForm.date_fin;
+                            setEditForm({ ...editForm, date_début: d, date_fin: f });
+                            setEditErrors(validerDates(d, f));
+                          }}
+                          required 
+                          style={editErrors.date_début ? inpErr : inp} 
+                        />
+                        <FieldError msg={editErrors.date_début} />
+                      </div>
+
+                      {/* Date fin */}
+                      <div>
+                        <label style={lbl}>Date fin *</label>
+                        <input 
+                          type="date" 
+                          value={editForm.date_fin} 
+                          // On garde min sur la date de début pour la cohérence
+                          min={editForm.date_début || ""} 
+                          onChange={e => {
+                            const f = e.target.value;
+                            setEditForm({ ...editForm, date_fin: f });
+                            setEditErrors(validerDates(editForm.date_début, f));
+                          }}
+                          required 
+                          style={editErrors.date_fin ? inpErr : inp} 
+                        />
+                        <FieldError msg={editErrors.date_fin} />
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label style={lbl}>Description</label>
+                        <input value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} style={inp} />
+                      </div>
+                    </div>
+
+                    {/* Actions Formulaire */}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button 
+                        type="submit" 
+                        disabled={sending || !!editErrors.date_début || !!editErrors.date_fin} 
+                        style={{ 
+                          display: "flex", alignItems: "center", gap: 6, 
+                          background: sending ? "#93C5FD" : "#2563EB", 
+                          color: "white", border: "none", borderRadius: 8, padding: "8px 16px", 
+                          cursor: sending ? "not-allowed" : "pointer", fontWeight: 600, fontSize: 13, 
+                          opacity: (editErrors.date_début || editErrors.date_fin) ? 0.5 : 1 
+                        }}
+                      >
+                        {sending ? <Loader size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                        {sending ? "Sauvegarde..." : "Sauvegarder"}
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setEditingId(null)} 
+                        style={{ 
+                          display: "flex", alignItems: "center", gap: 6, 
+                          background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", 
+                          borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, fontSize: 13 
+                        }}
+                      >
+                        <X size={14}/> Annuler
+                      </button>
+                    </div>
+                  </form>
+                </td>
+              ) : (
+                <>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{p.nom}</div>
+                    {p.description && <div style={{ fontSize: 12, color: "#94A3B8" }}>{p.description.slice(0, 60)}...</div>}
+                  </td>
+                  <td style={{ fontSize: 13, color: "#64748B" }}>{new Date(p.date_début).toLocaleDateString("fr-FR")}</td>
+                  <td style={{ fontSize: 13, color: "#64748B" }}>{new Date(p.date_fin).toLocaleDateString("fr-FR")}</td>
+                  <td>
+                    <span style={{ background: "rgba(217,119,6,0.1)", color: "#D97706", borderRadius: 20, padding: "4px 12px", fontSize: 12, fontWeight: 600 }}>
+                      ⏳ En attente admin
+                    </span>
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+                      <button onClick={() => startEdit(p)} style={{ ...btnSmallAction, color: "#2563EB", background: "rgba(37,99,235,0.08)" }}>
+                        <Edit2 size={13}/> Modifier
+                      </button>
+                      <button onClick={() => handleAnnuler(p)} style={{ ...btnSmallAction, color: "#DC2626", background: "rgba(220,38,38,0.08)" }}>
+                        <X size={13}/> Annuler
+                      </button>
+                    </div>
+                  </td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
       {/* ── Projets actifs ── */}
       <div className="card">
         <h3 style={{ marginBottom:20 }}>Mes projets ({projetsActifs.length})</h3>

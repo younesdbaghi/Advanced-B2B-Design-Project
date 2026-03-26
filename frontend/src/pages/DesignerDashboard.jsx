@@ -150,6 +150,12 @@ const DesignerDashboard = () => {
   const enCours    = affProjets.filter(p => p?.statut === "En cours").length;
   const termines   = affProjets.filter(p => p?.statut === "Terminé").length;
 
+  // 🎯 Projets acceptés et assignés au designer (filtrés)
+  const projetsAcceptes = affectations
+    .map(a => a.id_projet)
+    .filter(Boolean)
+    .map(p => p._id);
+
   const stats = [
     { label: "Designs créés",    value: maquettes.length,    color: "#6366F1", bg: "rgba(99,102,241,0.1)",  icon: <Palette size={20} color="#6366F1"/> },
     { label: "Projets assignés", value: affectations.length, color: "#0EA5E9", bg: "rgba(14,165,233,0.1)",  icon: <LayoutGrid size={20} color="#0EA5E9"/> },
@@ -614,10 +620,23 @@ const DesignerDashboard = () => {
             </div>
             <form onSubmit={startDesign} className="modal-form">
               <input type="text" placeholder="Nom du design *" required className="inp" onChange={e => setFormData({ ...formData, nom: e.target.value })}/>
+              
+              {/* 🎯 SELECT FILTRÉE - Afficher uniquement les projets acceptés/assignés */}
               <select required className="inp" onChange={e => setFormData({ ...formData, id_projet: e.target.value })}>
-                <option value="">— Assigner à un projet —</option>
-                {projets.map(p => <option key={p._id} value={p._id}>{p.nom}</option>)}
+                <option value="">— Assigner à un projet accepté —</option>
+                {projets
+                  .filter(p => projetsAcceptes.includes(p._id))
+                  .map(p => <option key={p._id} value={p._id}>{p.nom}</option>)
+                }
               </select>
+
+              {/* Message si aucun projet accepté */}
+              {projets.filter(p => projetsAcceptes.includes(p._id)).length === 0 && (
+                <p style={{ fontSize: 12, color: "#F59E0B", fontWeight: 600, margin: "4px 0 0" }}>
+                  ℹ️ Aucun projet accepté disponible pour le moment.
+                </p>
+              )}
+
               <label className="upload-zone">
                 <Upload size={22} color="#6366F1"/>
                 <span>{formData.image_fond ? "Image prête ✅" : "Importer une image de fond"}</span>
@@ -642,10 +661,16 @@ const DesignerDashboard = () => {
             <form onSubmit={updateInfo} className="modal-form">
               <input type="text" value={editData.nom} required className="inp" onChange={e => setEditData({ ...editData, nom: e.target.value })}/>
               <textarea value={editData.description} placeholder="Description" className="inp" rows={3} onChange={e => setEditData({ ...editData, description: e.target.value })}/>
+              
+              {/* 🎯 SELECT FILTRÉE AUSSI POUR L'ÉDITION */}
               <select value={editData.id_projet} required className="inp" onChange={e => setEditData({ ...editData, id_projet: e.target.value })}>
-                <option value="">— Assigner à un projet —</option>
-                {projets.map(p => <option key={p._id} value={p._id}>{p.nom}</option>)}
+                <option value="">— Assigner à un projet accepté —</option>
+                {projets
+                  .filter(p => projetsAcceptes.includes(p._id))
+                  .map(p => <option key={p._id} value={p._id}>{p.nom}</option>)
+                }
               </select>
+
               <button type="submit" className="btn-submit" disabled={isUpdating}>
                 {isUpdating ? <><Loader size={16} className="spin"/> Sauvegarde…</> : "Enregistrer les modifications"}
               </button>

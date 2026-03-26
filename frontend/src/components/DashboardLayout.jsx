@@ -2,19 +2,22 @@ import { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import {
   LogOut, History, UserCircle, Briefcase, FileSignature,
-  Layers, Users, FolderOpen, Bell, X, MessageSquare
+  Layers, Users, FolderOpen, Bell, X, MessageSquare, Key
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import API from '../api';
 
 const DashboardLayout = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount]     = useState(0);
-  const [showNotif, setShowNotif]         = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotif, setShowNotif] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const notifRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   // ── Fetch selon le rôle ───────────────────────────────────
   const fetchNotifs = async () => {
@@ -46,10 +49,15 @@ const DashboardLayout = ({ children }) => {
     }
   }, [user]);
 
-  // Fermer si clic dehors
+  // Fermer les menus si clic dehors
   useEffect(() => {
     const handle = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotif(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false);
+      }
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
@@ -91,7 +99,7 @@ const DashboardLayout = ({ children }) => {
     const d = Math.floor((new Date() - new Date(date)) / 60000);
     const h = Math.floor(d / 60);
     const j = Math.floor(h / 24);
-    if (d < 1)  return "À l'instant";
+    if (d < 1) return "À l'instant";
     if (d < 60) return `Il y a ${d} min`;
     if (h < 24) return `Il y a ${h}h`;
     return `Il y a ${j}j`;
@@ -101,23 +109,33 @@ const DashboardLayout = ({ children }) => {
     validation: '✅', refus: '❌', demande: '📋', correction: '⚠️',
   }[type] || '🔔');
 
+  const handleChangePassword = () => {
+    setShowUserMenu(false);
+    navigate('/change');
+  };
+
+  const handleLogout = () => {
+    setShowUserMenu(false);
+    logout();
+  };
+
   if (!user) return children;
 
   const menuItems = {
     admin: [
-      { path: '/admin/utilisateurs', icon: <Users size={20} />,         label: 'Utilisateurs' },
-      { path: '/admin/projets',      icon: <FolderOpen size={20} />,    label: 'Projets' },
-      { path: '/admin/demandes',     icon: <Bell size={20} />,          label: 'Demandes' },
-      { path: '/admin/feedbacks',    icon: <MessageSquare size={20} />, label: 'Feedbacks' },
-      { path: '/admin/history',      icon: <History size={20} />,       label: 'Rapport Historique' },
+      { path: '/admin/utilisateurs', icon: <Users size={20} />, label: 'Utilisateurs' },
+      { path: '/admin/projets', icon: <FolderOpen size={20} />, label: 'Projets' },
+      { path: '/admin/demandes', icon: <Bell size={20} />, label: 'Demandes' },
+      { path: '/admin/feedbacks', icon: <MessageSquare size={20} />, label: 'Feedbacks' },
+      { path: '/admin/history', icon: <History size={20} />, label: 'Rapport Historique' },
     ],
     client: [
-      { path: '/client',           icon: <Briefcase size={20} />,     label: 'Mes Projets' },
+      { path: '/client', icon: <Briefcase size={20} />, label: 'Mes Projets' },
       { path: '/client/feedbacks', icon: <MessageSquare size={20} />, label: 'Feedbacks' },
     ],
     designer: [
-      { path: '/designer',         icon: <FileSignature size={20} />, label: 'Tableau de bord' },
-      { path: '/designer/history', icon: <History size={20} />,       label: 'Rapport Historique' },
+      { path: '/designer', icon: <FileSignature size={20} />, label: 'Tableau de bord' },
+      { path: '/designer/history', icon: <History size={20} />, label: 'Rapport Historique' },
     ],
   };
 
@@ -154,7 +172,7 @@ const DashboardLayout = ({ children }) => {
           ))}
         </div>
 
-        <button onClick={logout} className="menu-item logout-btn">
+        <button onClick={handleLogout} className="menu-item logout-btn">
           <LogOut size={20} />
           Déconnexion
         </button>
@@ -271,19 +289,97 @@ const DashboardLayout = ({ children }) => {
               </div>
             )}
 
-            {/* Profil utilisateur */}
-            <div className="user-profile">
-              <div className="user-info">
-                <span className="user-name">{user.nom}</span>
-                <span className="user-role">{user.rôle}</span>
+            {/* Profil utilisateur avec dropdown */}
+            <div style={{ position: 'relative' }} ref={userMenuRef}>
+              <div 
+                className="user-profile"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="user-info">
+                  <span className="user-name">{user.nom}</span>
+                  <span className="user-role">{user.rôle}</span>
+                </div>
+                <div className="user-avatar">
+                  {user.nom?.charAt(0)?.toUpperCase() || <UserCircle size={22} />}
+                </div>
               </div>
-              <div className="user-avatar">
-                {user.nom?.charAt(0)?.toUpperCase() || <UserCircle size={22} />}
-              </div>
-            </div>
 
-            {/* Lien change password — ajouté depuis HEAD */}
-            <Link to="/change">change password</Link>
+              {/* Dropdown Menu */}
+              {showUserMenu && (
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 8px)',
+                  width: 240,
+                  background: 'white',
+                  borderRadius: 12,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  border: '1px solid #E2E8F0',
+                  zIndex: 9999,
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    padding: '12px 16px',
+                    borderBottom: '1px solid #F1F5F9',
+                    background: '#FAFBFF'
+                  }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#1E293B' }}>
+                      {user.nom}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                      {user.email}
+                    </div>
+                  </div>
+                  
+                  <div style={{ padding: '8px 0' }}>
+                    <button
+                      onClick={handleChangePassword}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        border: 'none',
+                        background: 'white',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        color: '#334155',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <Key size={18} color="#64748B" />
+                      Changer le mot de passe
+                    </button>
+                    
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        border: 'none',
+                        background: 'white',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        color: '#DC2626',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#FEF2F2'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <LogOut size={18} color="#DC2626" />
+                      Déconnexion
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
           </div>
         </div>
@@ -296,6 +392,43 @@ const DashboardLayout = ({ children }) => {
       <style>{`
         .logout-btn { color: var(--danger) !important; margin-top: 8px; border-top: 1px solid var(--border-light); padding-top: 16px; }
         .logout-btn:hover { background: var(--danger-bg) !important; color: var(--danger) !important; }
+        .user-profile {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 6px 12px;
+          border-radius: 12px;
+          transition: background 0.2s;
+        }
+        .user-profile:hover {
+          background: #F8FAFC;
+        }
+        .user-info {
+          text-align: right;
+        }
+        .user-name {
+          font-size: 14px;
+          font-weight: 600;
+          color: #1E293B;
+          display: block;
+        }
+        .user-role {
+          font-size: 11px;
+          color: #64748B;
+          text-transform: capitalize;
+        }
+        .user-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: 600;
+          font-size: 16px;
+        }
       `}</style>
     </div>
   );

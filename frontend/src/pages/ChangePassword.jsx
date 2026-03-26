@@ -11,13 +11,40 @@ const ChangePassword = () => {
     const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // Fonction de validation du mot de passe fort
+    const validatePasswordStrength = (password) => {
+        if (password.length < 8) {
+            return "Le mot de passe doit contenir au moins 8 caractères";
+        }
+        if (!/[A-Z]/.test(password)) {
+            return "Le mot de passe doit contenir au moins une majuscule";
+        }
+        if (!/[a-z]/.test(password)) {
+            return "Le mot de passe doit contenir au moins une minuscule";
+        }
+        if (!/\d/.test(password)) {
+            return "Le mot de passe doit contenir au moins un chiffre";
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            return "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&* etc.)";
+        }
+        return null;
+    };
+
     const handleChangePassword = async (e) => {
         e.preventDefault();
         setError("");
         setSuccess("");
 
+        // Vérifier si les mots de passe correspondent
         if (newPassword !== confirmPassword) {
             return setError("Les mots de passe ne correspondent pas");
+        }
+
+        // Vérifier la force du mot de passe
+        const passwordError = validatePasswordStrength(newPassword);
+        if (passwordError) {
+            return setError(passwordError);
         }
 
         try {
@@ -33,7 +60,7 @@ const ChangePassword = () => {
             setNewPassword("");
             setConfirmPassword("");
         } catch (err) {
-            setError(err.response.data.message);
+            setError(err.response?.data?.message || "Une erreur est survenue");
         } finally {
             setLoading(false);
         }
@@ -80,6 +107,9 @@ const ChangePassword = () => {
                             required
                         />
                     </div>
+                    <small style={{ color: "#64748B", fontSize: "12px", marginTop: "4px", display: "block" }}>
+                        Doit contenir : 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial
+                    </small>
                 </div>
 
                 <div className="input-group">
