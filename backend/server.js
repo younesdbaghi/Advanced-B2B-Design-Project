@@ -47,10 +47,10 @@ const projetSchema = new mongoose.Schema(
 const Projet = mongoose.model("Projet", projetSchema);
 
 const affectationSchema = new mongoose.Schema({
-  id_projet:        { type: mongoose.Schema.Types.ObjectId, ref: "Projet",      required: true },
-  id_designer:      { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
+  id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
+  id_designer: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
   date_affectation: { type: Date, default: Date.now },
-  lu:               { type: Boolean, default: false }, // ← designer a confirmé la lecture
+  lu: { type: Boolean, default: false }, // ← designer a confirmé la lecture
 });
 affectationSchema.index({ id_projet: 1, id_designer: 1 }, { unique: true });
 const Affectation = mongoose.model("Affectation", affectationSchema);
@@ -115,11 +115,11 @@ const ConnexionLog = mongoose.model("ConnexionLog", connexionLogSchema);
 
 const commentaireElementSchema = new mongoose.Schema(
   {
-    validation_id:       { type: mongoose.Schema.Types.ObjectId, ref: "Validation", required: true },
-    id_element:          { type: String, required: true },
-    label_element:       { type: String, default: "" },
-    commentaire_client:  { type: String, default: "" },
-    commentaire_admin:   { type: String, default: "" },
+    validation_id: { type: mongoose.Schema.Types.ObjectId, ref: "Validation", required: true },
+    id_element: { type: String, required: true },
+    label_element: { type: String, default: "" },
+    commentaire_client: { type: String, default: "" },
+    commentaire_admin: { type: String, default: "" },
   },
   { timestamps: { createdAt: "date_creation", updatedAt: false } }
 );
@@ -127,13 +127,13 @@ const CommentaireElement = mongoose.model("CommentaireElement", commentaireEleme
 
 const validationSchema = new mongoose.Schema(
   {
-    maquette_id:       { type: mongoose.Schema.Types.ObjectId, ref: "Maquette",    required: true },
-    version_id:        { type: mongoose.Schema.Types.ObjectId, ref: "Version",     required: true },
-    client_id:         { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
-    statut:            { type: String, enum: ["validé", "à corriger"],             required: true },
+    maquette_id: { type: mongoose.Schema.Types.ObjectId, ref: "Maquette", required: true },
+    version_id: { type: mongoose.Schema.Types.ObjectId, ref: "Version", required: true },
+    client_id: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
+    statut: { type: String, enum: ["validé", "à corriger"], required: true },
     transmis_designer: { type: Boolean, default: false },
     date_transmission: { type: Date },
-    lu_designer:       { type: Boolean, default: false },
+    lu_designer: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: "date_validation", updatedAt: false } }
 );
@@ -141,12 +141,12 @@ const Validation = mongoose.model("Validation", validationSchema);
 
 const notificationSchema = new mongoose.Schema(
   {
-    message:         { type: String, required: true },
-    type:            { type: String, enum: ["validation", "refus", "demande", "info", "correction"], default: "info" },
-    lu:              { type: Boolean, default: false },
-    id_projet:       { type: mongoose.Schema.Types.ObjectId, ref: "Projet",      default: null },
-    id_version:      { type: mongoose.Schema.Types.ObjectId, ref: "Version",     default: null },
-    id_client:       { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", default: null },
+    message: { type: String, required: true },
+    type: { type: String, enum: ["validation", "refus", "demande", "info", "correction"], default: "info" },
+    lu: { type: Boolean, default: false },
+    id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", default: null },
+    id_version: { type: mongoose.Schema.Types.ObjectId, ref: "Version", default: null },
+    id_client: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", default: null },
     id_destinataire: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", default: null },
   },
   { timestamps: true }
@@ -522,11 +522,11 @@ apiRouter.post("/maquettes", verifyToken, checkRole(['designer', 'admin']), asyn
     const maquette = await Maquette.create({ nom, description, id_projet, id_createur: req.user.id, image_fond });
 
     const version = await Version.create({
-      id_maquette:    maquette._id,
+      id_maquette: maquette._id,
       numéro_version: 1,
-      contenu:        { version: "5.3.0", objects: [] },
-      commentaire:    "Version initiale",
-      statut:         "En cours",
+      contenu: { version: "5.3.0", objects: [] },
+      commentaire: "Version initiale",
+      statut: "En cours",
     });
 
     res.status(201).json({ maquette, version });
@@ -569,11 +569,11 @@ apiRouter.get("/maquettes/:id/latest-version", verifyToken, async (req, res) => 
       const maquette = await Maquette.findById(req.params.id);
       if (!maquette) return res.status(404).json({ message: "Maquette introuvable" });
       version = await Version.create({
-        id_maquette:    req.params.id,
+        id_maquette: req.params.id,
         numéro_version: 1,
-        contenu:        { version: "5.3.0", objects: [] },
-        commentaire:    "Version initiale (auto)",
-        statut:         "En cours",
+        contenu: { version: "5.3.0", objects: [] },
+        commentaire: "Version initiale (auto)",
+        statut: "En cours",
       });
     }
 
@@ -651,11 +651,11 @@ apiRouter.delete("/versions/:id", verifyToken, checkRole(['designer', 'admin']),
     if (!version) return res.status(404).json({ message: "Version introuvable" });
 
     // ✅ Vérifier qu'il y a au moins une autre version de cette maquette
-    const versionCount = await Version.countDocuments({ 
-      id_maquette: version.id_maquette, 
-      est_auto_save: { $ne: true } 
+    const versionCount = await Version.countDocuments({
+      id_maquette: version.id_maquette,
+      est_auto_save: { $ne: true }
     });
-    if (versionCount <= 1) 
+    if (versionCount <= 1)
       return res.status(400).json({ message: "Impossible de supprimer la dernière version d'une maquette" });
 
     // ✅ Supprimer les validations et commentaires associés
@@ -670,8 +670,8 @@ apiRouter.delete("/versions/:id", verifyToken, checkRole(['designer', 'admin']),
     await Version.findByIdAndDelete(req.params.id);
 
     res.json({ message: "✅ Version supprimée avec succès" });
-  } catch (err) { 
-    res.status(500).json({ message: "Erreur suppression version", error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ message: "Erreur suppression version", error: err.message });
   }
 });
 
@@ -796,8 +796,8 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
     if (!["validé", "à corriger"].includes(statut))
       return res.status(400).json({ message: "statut doit être 'validé' ou 'à corriger'." });
 
-    const version  = await Version.findOne({ _id: version_id, id_maquette: maquette_id });
-    if (!version)  return res.status(404).json({ message: "Version introuvable." });
+    const version = await Version.findOne({ _id: version_id, id_maquette: maquette_id });
+    if (!version) return res.status(404).json({ message: "Version introuvable." });
     const maquette = await Maquette.findById(maquette_id).populate("id_projet");
     if (!maquette) return res.status(404).json({ message: "Maquette introuvable." });
 
@@ -812,11 +812,11 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
     let commentairesInseres = [];
     if (statut === "à corriger" && Array.isArray(commentaires) && commentaires.length > 0) {
       const docs = commentaires.map(c => ({
-        validation_id:      validation._id,
-        id_element:         c.id_element,
-        label_element:      c.label_element || "",
+        validation_id: validation._id,
+        id_element: c.id_element,
+        label_element: c.label_element || "",
         commentaire_client: c.commentaire_client || "",
-        commentaire_admin:  "",
+        commentaire_admin: "",
       }));
       commentairesInseres = await CommentaireElement.insertMany(docs);
       await Version.findByIdAndUpdate(version_id, { statut: "À corriger" });
@@ -863,12 +863,12 @@ apiRouter.get("/validations", verifyToken, async (req, res) => {
   try {
     const filter = {};
     if (req.query.maquette_id) filter.maquette_id = req.query.maquette_id;
-    if (req.query.version_id)  filter.version_id  = req.query.version_id;
-    if (req.query.statut)      filter.statut      = req.query.statut;
+    if (req.query.version_id) filter.version_id = req.query.version_id;
+    if (req.query.statut) filter.statut = req.query.statut;
 
     const validations = await Validation.find(filter)
-      .populate("client_id",   "nom email")
-      .populate("version_id",  "numéro_version statut")
+      .populate("client_id", "nom email")
+      .populate("version_id", "numéro_version statut")
       .populate({ path: "maquette_id", select: "nom id_projet", populate: { path: "id_projet", select: "nom" } })
       .sort({ date_validation: -1 });
     res.json(validations);
@@ -879,19 +879,31 @@ apiRouter.get("/validations", verifyToken, async (req, res) => {
 
 apiRouter.get("/validations/maquette/:id_maquette", verifyToken, async (req, res) => {
   try {
-    const versionIds = (await Version.find({ id_maquette: req.params.id_maquette }).select("_id")).map(v => v._id);
+    const versionIds = (await Version.find({
+      id_maquette: req.params.id_maquette
+    }).select("_id")).map(v => v._id);
 
-    const validations = await Validation.find({ version_id: { $in: versionIds } })
+    const validations = await Validation.find({
+      version_id: { $in: versionIds }
+    })
       .populate("client_id", "nom email")
       .populate("version_id", "numéro_version statut")
       .sort({ date_validation: -1 });
 
-    const feedbacks = await Feedback.find({ id_version: { $in: versionIds }, type: { $in: ["Val", "Refus"] } })
+    const feedbacks = await Feedback.find({
+      id_version: { $in: versionIds }
+    })
       .populate("id_auteur", "nom email")
       .populate("id_version", "numéro_version")
       .sort({ date_creation: -1 });
 
-    res.json({ validations, feedbacks });
+    // ✅ NEW: get commentaires elements
+    const commentaires = await CommentaireElement.find({
+      validation_id: { $in: validations.map(v => v._id) }
+    });
+
+    res.json({ validations, feedbacks, commentaires });
+
   } catch (err) {
     res.status(500).json({ message: "Erreur.", error: err.message });
   }
@@ -918,18 +930,18 @@ apiRouter.get("/validations/a-corriger", verifyToken, checkRole(["admin"]), asyn
 apiRouter.get("/validations/corrections-designer", verifyToken, checkRole(["designer"]), async (req, res) => {
   try {
     const mesMaquettes = await Maquette.find({ id_createur: req.user.id }).select("_id id_projet nom").populate("id_projet", "nom");
-    const maquetteIds  = mesMaquettes.map(m => m._id);
-    const versionIds   = (await Version.find({ id_maquette: { $in: maquetteIds } }).select("_id")).map(v => v._id);
+    const maquetteIds = mesMaquettes.map(m => m._id);
+    const versionIds = (await Version.find({ id_maquette: { $in: maquetteIds } }).select("_id")).map(v => v._id);
 
     const corrections = await Validation.find({
-      version_id:        { $in: versionIds },
-      statut:            "à corriger",
+      version_id: { $in: versionIds },
+      statut: "à corriger",
       transmis_designer: true,
-      lu_designer:       false,
+      lu_designer: false,
     })
-    .populate("client_id", "nom email")
-    .populate({ path: "version_id", select: "numéro_version id_maquette", populate: { path: "id_maquette", select: "nom id_projet", populate: { path: "id_projet", select: "nom" } } })
-    .sort({ date_validation: -1 });
+      .populate("client_id", "nom email")
+      .populate({ path: "version_id", select: "numéro_version id_maquette", populate: { path: "id_maquette", select: "nom id_projet", populate: { path: "id_projet", select: "nom" } } })
+      .sort({ date_validation: -1 });
 
     const result = await Promise.all(corrections.map(async c => {
       const commentaires = await CommentaireElement.find({
@@ -976,22 +988,22 @@ apiRouter.patch("/validations/:id/transmettre", verifyToken, checkRole(["admin"]
       { transmis_designer: true, date_transmission: new Date() },
       { returnDocument: "after" }
     )
-    .populate("client_id", "nom email")
-    .populate({ path: "version_id", select: "numéro_version id_maquette", populate: { path: "id_maquette", select: "nom id_projet id_createur", populate: { path: "id_projet", select: "nom" } } });
+      .populate("client_id", "nom email")
+      .populate({ path: "version_id", select: "numéro_version id_maquette", populate: { path: "id_maquette", select: "nom id_projet id_createur", populate: { path: "id_projet", select: "nom" } } });
 
     if (!validation) return res.status(404).json({ message: "Validation introuvable." });
 
-    const clientNom  = validation.client_id?.nom    || "Un client";
-    const projetNom  = validation.version_id?.id_maquette?.id_projet?.nom || "Projet";
+    const clientNom = validation.client_id?.nom || "Un client";
+    const projetNom = validation.version_id?.id_maquette?.id_projet?.nom || "Projet";
     const versionNum = validation.version_id?.numéro_version || "?";
     const designerId = validation.version_id?.id_maquette?.id_createur || null;
 
     await creerNotification({
       message: `⚠️ ${clientNom} a rejeté la version ${versionNum} du projet "${projetNom}" — des corrections sont à apporter`,
       type: "correction",
-      id_projet:       validation.version_id?.id_maquette?.id_projet?._id || null,
-      id_version:      validation.version_id?._id || null,
-      id_client:       validation.client_id?._id  || null,
+      id_projet: validation.version_id?.id_maquette?.id_projet?._id || null,
+      id_version: validation.version_id?._id || null,
+      id_client: validation.client_id?._id || null,
       id_destinataire: designerId,
     });
 
@@ -1001,15 +1013,137 @@ apiRouter.patch("/validations/:id/transmettre", verifyToken, checkRole(["admin"]
   }
 });
 
+// Add this after the envoyerEmailBienvenue function
+const envoyerEmailCorrectionLue = async (clientEmail, clientNom, projetNom, versionNum, commentaires) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  });
+
+  // Format commentaires for email
+  const commentairesHtml = commentaires && commentaires.length > 0
+    ? `<div style="margin-top: 20px; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #ff9800;">
+         <h3 style="margin-top: 0;">Commentaires de correction :</h3>
+         <ul>
+           ${commentaires.map(c => `<li><strong>${c.label_element || 'Élément'}</strong>: ${c.commentaire_client || c.commentaire_admin || 'Aucun commentaire'}</li>`).join('')}
+         </ul>
+       </div>`
+    : '';
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: clientEmail,
+    subject: ` Le designer a pris en charge vos corrections - ${projetNom}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Bonjour ${clientNom},</h2>
+        
+        <p>Le designer a bien <strong style="color: #4CAF50;">pris en charge et lu</strong> vos demandes de correction pour :</p>
+        
+        <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 0;"><strong> Projet :</strong> ${projetNom}</p>
+          <p style="margin: 10px 0 0 0;"><strong> Version :</strong> ${versionNum}</p>
+        </div>
+        
+        ${commentairesHtml}
+        
+        <p>Le designer va maintenant procéder aux corrections demandées. Vous serez notifié dès qu'une nouvelle version sera disponible.</p>
+        
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+        
+        <p style="color: #666; font-size: 12px;">
+          Cet email est un message automatique. Merci de ne pas y répondre directement.
+        </p>
+      </div>
+    `,
+  });
+};
+
 apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designer"]), async (req, res) => {
   try {
-    const v = await Validation.findByIdAndUpdate(req.params.id, { lu_designer: true }, { returnDocument: "after" });
-    if (!v) return res.status(404).json({ message: "Introuvable." });
-    res.json({ message: "Marqué comme lu.", validation: v });
+    // First, get the validation with all needed populated data
+    const validation = await Validation.findById(req.params.id)
+      .populate("client_id", "nom email")
+      .populate({
+        path: "version_id",
+        select: "numéro_version id_maquette",
+        populate: {
+          path: "id_maquette",
+          select: "nom id_projet",
+          populate: {
+            path: "id_projet",
+            select: "nom"
+          }
+        }
+      });
+
+    if (!validation) {
+      return res.status(404).json({ message: "Validation introuvable." });
+    }
+
+    // Check if already marked as read
+    if (validation.lu_designer) {
+      return res.status(400).json({ message: "Cette correction a déjà été marquée comme lue." });
+    }
+
+    // Get all commentaires for this validation
+    const commentaires = await CommentaireElement.find({ validation_id: validation._id });
+
+    // Mark as read
+    validation.lu_designer = true;
+    await validation.save();
+
+    // Send email to client
+    try {
+      if (validation.client_id && validation.client_id.email) {
+        await envoyerEmailCorrectionLue(
+          validation.client_id.email,
+          validation.client_id.nom || "Client",
+          validation.version_id?.id_maquette?.id_projet?.nom || "Projet",
+          validation.version_id?.numéro_version || "?",
+          commentaires
+        );
+        console.log(`✅ Email de notification envoyé à ${validation.client_id.email}`);
+      } else {
+        console.log("⚠️ Client email non trouvé, impossible d'envoyer la notification");
+      }
+    } catch (emailError) {
+      console.error("❌ Erreur lors de l'envoi de l'email:", emailError.message);
+      // Continue even if email fails - we don't want to block the UI
+    }
+
+    // Create a notification for the client (optional, if you have notification system)
+    try {
+      await creerNotification({
+        message: `Le designer a pris en charge les corrections pour la version ${validation.version_id?.numéro_version || ""} du projet "${validation.version_id?.id_maquette?.id_projet?.nom || ""}"`,
+        type: "correction",
+        id_projet: validation.version_id?.id_maquette?.id_projet?._id || null,
+        id_version: validation.version_id?._id || null,
+        id_destinataire: validation.client_id?._id || null,
+      });
+    } catch (notifError) {
+      console.error("❌ Erreur création notification:", notifError.message);
+    }
+
+    res.json({
+      message: "✅ Correction marquée comme lue. Le client a été notifié par email.",
+      validation
+    });
   } catch (err) {
-    res.status(500).json({ message: "Erreur.", error: err.message });
+    console.error("Erreur dans lu-designer:", err);
+    res.status(500).json({ message: "Erreur lors du traitement.", error: err.message });
   }
 });
+
+// apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designer"]), async (req, res) => {
+//   try {
+//     const v = await Validation.findByIdAndUpdate(req.params.id, { lu_designer: true }, { returnDocument: "after" });
+//     if (!v) return res.status(404).json({ message: "Introuvable." });
+//     res.json({ message: "Marqué comme lu.", validation: v });
+//   } catch (err) {
+//     res.status(500).json({ message: "Erreur.", error: err.message });
+//   }
+// });
 
 // ==========================================
 // ROUTES RAPPORTS QUOTIDIENS
@@ -1112,10 +1246,10 @@ apiRouter.get("/notifications/designer", verifyToken, checkRole(["designer"]), a
       id_destinataire: req.user.id,
       lu: false,
     })
-    .sort({ createdAt: -1 })
-    .populate("id_client",  "nom email")
-    .populate("id_projet",  "nom")
-    .populate("id_version", "numéro_version");
+      .sort({ createdAt: -1 })
+      .populate("id_client", "nom email")
+      .populate("id_projet", "nom")
+      .populate("id_version", "numéro_version");
     res.status(200).json(notifs);
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });

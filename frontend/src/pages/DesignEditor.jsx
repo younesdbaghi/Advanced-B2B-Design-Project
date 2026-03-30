@@ -376,7 +376,7 @@ const DesignEditor = () => {
         ? data.filter(c => c.version_id?._id === versionId)
         : [];
       setCorrections(filtered);
-    } catch (_) {}
+    } catch (_) { }
   }, [id, isDesigner]);
 
   const [corrections, setCorrections] = useState([]);
@@ -594,10 +594,10 @@ const DesignEditor = () => {
     setDeletingVersionId(versionId);
     try {
       const response = await API.delete(`/versions/${versionId}`);
-      
+
       // Recharger la liste des versions
       await fetchVersions();
-      
+
       // Si la version supprimée était la version courante, charger la dernière version disponible
       if (versionId === currentVersionIdRef.current) {
         try {
@@ -608,7 +608,7 @@ const DesignEditor = () => {
           setSaveStatus("Erreur lors du chargement de la dernière version ❌");
         }
       }
-      
+
       setValidationToast({ type: "success", msg: "✅ Version supprimée avec succès" });
       setTimeout(() => setValidationToast(null), 3000);
     } catch (err) {
@@ -616,8 +616,8 @@ const DesignEditor = () => {
       console.error("Erreur suppression version :", err);
       setValidationToast({ type: "error", msg: `❌ ${errorMsg}` });
       setTimeout(() => setValidationToast(null), 4000);
-    } finally { 
-      setDeletingVersionId(null); 
+    } finally {
+      setDeletingVersionId(null);
     }
   };
 
@@ -666,7 +666,7 @@ const DesignEditor = () => {
         ctx.save(); ctx.translate(offX, offY); ctx.scale(scale, scale);
         obj.render(ctx); ctx.restore();
         thumbnail = tmpCanvas.toDataURL("image/png");
-      } catch (_) {}
+      } catch (_) { }
       const couleur = (typeof obj.fill === "string" && obj.fill && obj.fill !== "transparent") ? obj.fill : (obj.stroke || "#94A3B8");
       const texte = (obj.type === "i-text" || obj.type === "textbox") ? (obj.text || "").slice(0, 50) : "";
       const typeIcon = { "i-text": "T", "textbox": "T", "rect": "▭", "circle": "◯", "ellipse": "◯", "triangle": "△", "line": "—", "image": "🖼", "group": "⊞" }[obj.type] || "◆";
@@ -972,8 +972,8 @@ const DesignEditor = () => {
                             <span>{projet?.nom || "Projet"} · v{vNum} · {c.client_id?.nom || "—"}</span>
                             <button className="btn-mark-read" onClick={async e => {
                               e.stopPropagation();
-                              try { await API.patch(`/validations/${c._id}/lu-designer`); setCorrections(prev => prev.filter(x => x._id !== c._id)); } catch (_) {}
-                            }}>✓ Marquer lu</button>
+                              try { await API.patch(`/validations/${c._id}/lu-designer`); setCorrections(prev => prev.filter(x => x._id !== c._id)); } catch (_) { }
+                            }}>✓ Marquer corrigé</button>
                           </div>
                           {(c.commentaires || []).filter(cm => cm.commentaire_admin || cm.commentaire_client).map(cm => (
                             <div key={cm._id} className="correction-comment">
