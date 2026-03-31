@@ -59,6 +59,7 @@ const maquetteSchema = new mongoose.Schema(
   {
     nom: { type: String, required: true, maxlength: 150 },
     description: { type: String },
+    image_fond: { type: String },
     id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
     id_createur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
   },
@@ -72,7 +73,7 @@ const versionSchema = new mongoose.Schema(
     contenu: { type: mongoose.Schema.Types.Mixed, required: true },
     commentaire: { type: String },
     id_maquette: { type: mongoose.Schema.Types.ObjectId, ref: "Maquette", required: true },
-    statut: { type: String, enum: ["En cours", "En validation", "À corriger", "Validé", "Refusé"], default: "En cours" },
+    statut: { type: String, enum: ["En cours", "En validation", "À corriger", "Validé", "Refusé", "Traité"], default: "En cours" },
     est_auto_save: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: "date_creation", updatedAt: false } }
@@ -518,6 +519,7 @@ apiRouter.delete("/affectations/:id", verifyToken, checkRole(['admin']), async (
 apiRouter.post("/maquettes", verifyToken, checkRole(['designer', 'admin']), async (req, res) => {
   try {
     const { nom, description, id_projet, image_fond } = req.body;
+    console.log("Création maquette - données reçues :", { nom, description, id_projet, image_fond });
     if (!nom || !id_projet) return res.status(400).json({ message: "nom et id_projet sont requis" });
     const maquette = await Maquette.create({ nom, description, id_projet, id_createur: req.user.id, image_fond });
 
@@ -819,6 +821,7 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
         commentaire_admin: "",
       }));
       commentairesInseres = await CommentaireElement.insertMany(docs);
+      console.log("CommentaireElement insérés :", commentairesInseres);
       await Version.findByIdAndUpdate(version_id, { statut: "À corriger" });
       await Projet.findByIdAndUpdate(maquette.id_projet, { statut: "En révision" });
     }
@@ -856,6 +859,23 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
     });
   } catch (err) {
     res.status(500).json({ message: "Erreur validation.", error: err.message });
+  }
+});
+
+apiRouter.put("/commentaires/:id", verifyToken, checkRole(["client"]), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { commentaire_client } = req.body;
+
+    if (!commentaire_client)
+      return res.status(400).json({ message: "Le commentaire est requis." });
+
+    const commentaire = await CommentaireElement.findByIdAndUpdate(id, { commentaire_client }, { new: true });
+    if (!commentaire) return res.status(404).json({ message: "Commentaire introuvable." });
+
+    res.json(commentaire);
+  } catch (err) {
+    res.status(500).json({ message: "Erreur mise à jour commentaire.", error: err.message });
   }
 });
 
@@ -1038,7 +1058,7 @@ const envoyerEmailCorrectionLue = async (clientEmail, clientNom, projetNom, vers
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Bonjour ${clientNom},</h2>
         
-        <p>Le designer a bien <strong style="color: #4CAF50;">pris en charge et lu</strong> vos demandes de correction pour :</p>
+        <p>Le designer a bien <strong style="color: #4CAF50;">pris en charge et corrigé</strong> vos demandes de correction pour :</p>
         
         <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p style="margin: 0;"><strong> Projet :</strong> ${projetNom}</p>
@@ -1066,7 +1086,7 @@ apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designe
       .populate("client_id", "nom email")
       .populate({
         path: "version_id",
-        select: "numéro_version id_maquette",
+        select: "numéro_version id_maquette statut",
         populate: {
           path: "id_maquette",
           select: "nom id_projet",
@@ -1092,6 +1112,12 @@ apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designe
     // Mark as read
     validation.lu_designer = true;
     await validation.save();
+
+    console.log(`✅ Validation ${validation} marked as read by designer.`);
+    if (validation.version_id && validation.version_id.statut === "À corriger") {
+      await Version.findByIdAndUpdate(validation.version_id._id, { statut: "Traité" });
+      console.log(`✅ Version ${validation.version_id.numéro_version} status updated to "Traité"`);
+    }
 
     // Send email to client
     try {

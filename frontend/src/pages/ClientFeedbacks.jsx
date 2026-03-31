@@ -150,6 +150,8 @@ const ClientFeedbacks = () => {
     setSelectedComments([]);
   };
 
+  const [editingComment, setEditingComment] = useState(null);
+  const [newText, setNewText] = useState("");
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div>
@@ -302,7 +304,7 @@ const ClientFeedbacks = () => {
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {console.log("kk", data)}
+                                        {console.log("kk", data.versions)}
                                         {data.versions.map((v, vi) => {
                                           const commentaires = data.commentaires || [];
                                           const validations = data.validations || [];// ⚠️ in your case validations = feedbacks
@@ -443,19 +445,131 @@ const ClientFeedbacks = () => {
 
                                                     {/* Content */}
                                                     {selectedComments.length > 0 ? (
-                                                      selectedComments.map((c, i) => (
-                                                        <div key={i} style={{
-                                                          background: "#FFF7ED",
-                                                          border: "1px solid #FDBA74",
-                                                          padding: "10px",
-                                                          borderRadius: 8,
-                                                          marginBottom: 10,
-                                                          fontSize: 13
-                                                        }}>
-                                                          🧩 <strong>{c.label_element}</strong><br />
-                                                          💬 {c.commentaire_client}
-                                                        </div>
-                                                      ))
+                                                      <div>
+                                                        {selectedComments.map((c, i) => (
+                                                          <>
+                                                            <div key={i} style={{
+                                                              background: "#FFF7ED",
+                                                              border: "1px solid #FDBA74",
+                                                              padding: "10px",
+                                                              borderRadius: 8,
+                                                              marginBottom: 10,
+                                                              fontSize: 13
+                                                            }}>
+                                                              🧩 <strong>{c.label_element}</strong><br />
+                                                              💬 {c.commentaire_client}
+
+                                                            </div>
+                                                            <button
+                                                              style={{
+                                                                background: "linear-gradient(135deg,green,green)",
+                                                                color: "white",
+                                                                border: "none",
+                                                                borderRadius: 8,
+                                                                padding: "6px 14px",
+                                                                cursor: "pointer",
+                                                                fontSize: 12,
+                                                                fontWeight: 600,
+                                                                boxShadow: "0 4px 10px rgba(99,102,241,0.4)",
+                                                                transition: "0.2s"
+                                                              }}
+                                                              onClick={() => {
+                                                                setEditingComment(c._id);
+                                                                setNewText(c.commentaire_client);
+                                                              }}
+                                                            >
+                                                              Modifier
+                                                            </button>
+                                                            {editingComment === c._id && (
+                                                              <>
+                                                                <textarea
+                                                                  value={newText}
+                                                                  onChange={(e) => setNewText(e.target.value)}
+                                                                  style={{
+                                                                    width: "100%",
+                                                                    borderRadius: 10,
+                                                                    border: "1px solid #CBD5F5",
+                                                                    padding: "10px",
+                                                                    fontSize: 13,
+                                                                    outline: "none",
+                                                                    resize: "none",
+                                                                    minHeight: "70px",
+                                                                    background: "#F8FAFC",
+                                                                    transition: "0.2s"
+                                                                  }}
+                                                                  onFocus={(e) => e.target.style.border = "1px solid #6366F1"}
+                                                                  onBlur={(e) => e.target.style.border = "1px solid #CBD5F5"}
+                                                                />
+
+                                                                <div style={{
+                                                                  display: "flex",
+                                                                  justifyContent: "flex-end",
+                                                                  gap: 8,
+                                                                  marginTop: 8
+                                                                }}>
+
+                                                                  <button
+                                                                    onClick={() => setEditingComment(null)}
+                                                                    style={{
+                                                                      background: "#F1F5F9",
+                                                                      border: "1px solid #E2E8F0",
+                                                                      borderRadius: 8,
+                                                                      padding: "6px 12px",
+                                                                      cursor: "pointer",
+                                                                      fontSize: 12,
+                                                                      fontWeight: 600,
+                                                                      color: "#334155"
+                                                                    }}
+                                                                  >
+                                                                    Annuler
+                                                                  </button>
+
+                                                                  <button
+                                                                    onClick={async () => {
+                                                                      try {
+                                                                        await API.put(`/commentaires/${c._id}`, {
+                                                                          commentaire_client: newText
+                                                                        });
+
+                                                                        setSelectedComments(prev =>
+                                                                          prev.map(cm =>
+                                                                            cm._id === c._id
+                                                                              ? { ...cm, commentaire_client: newText }
+                                                                              : cm
+                                                                          )
+                                                                        );
+
+                                                                        setEditingComment(null);
+                                                                      } catch (err) {
+                                                                        console.error(err);
+                                                                      }
+                                                                    }}
+                                                                    style={{
+                                                                      background: "linear-gradient(135deg,#4F46E5,#6366F1)",
+                                                                      color: "white",
+                                                                      border: "none",
+                                                                      borderRadius: 8,
+                                                                      padding: "6px 14px",
+                                                                      cursor: "pointer",
+                                                                      fontSize: 12,
+                                                                      fontWeight: 600,
+                                                                      boxShadow: "0 4px 10px rgba(99,102,241,0.4)",
+                                                                      transition: "0.2s"
+                                                                    }}
+                                                                    onMouseEnter={(e) => e.target.style.opacity = 0.9}
+                                                                    onMouseLeave={(e) => e.target.style.opacity = 1}
+                                                                  >
+                                                                    Enregistrer
+                                                                  </button>
+
+                                                                </div>
+
+
+                                                              </>
+                                                            )}
+                                                          </>
+                                                        ))}
+                                                      </div>
                                                     ) : (
                                                       <p style={{ color: "#94A3B8" }}>Aucun commentaire</p>
                                                     )}
