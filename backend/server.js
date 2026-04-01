@@ -50,7 +50,7 @@ const affectationSchema = new mongoose.Schema({
   id_projet: { type: mongoose.Schema.Types.ObjectId, ref: "Projet", required: true },
   id_designer: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
   date_affectation: { type: Date, default: Date.now },
-  lu: { type: Boolean, default: false }, // ← designer a confirmé la lecture
+  lu: { type: Boolean, default: false },
 });
 affectationSchema.index({ id_projet: 1, id_designer: 1 }, { unique: true });
 const Affectation = mongoose.model("Affectation", affectationSchema);
@@ -314,33 +314,17 @@ apiRouter.delete("/utilisateurs/:id", verifyToken, checkRole(['admin']), async (
 apiRouter.get("/designers", verifyToken, checkRole(['admin']), async (req, res) => {
   try {
     const affectations = await Affectation.aggregate([
-      {
-        $group: {
-          _id: "$id_designer",
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $match: {
-          count: { $gte: 3 }
-        }
-      }
+      { $group: { _id: "$id_designer", count: { $sum: 1 } } },
+      { $match: { count: { $gte: 3 } } }
     ]);
-
     const busyDesigners = affectations.map(a => a._id);
-
     const designers = await Utilisateur.find({
       rôle: "designer",
       _id: { $nin: busyDesigners }
     }).select("-mot_de_passe");
-
     res.status(200).json(designers);
-
   } catch (error) {
-    res.status(500).json({
-      message: "Erreur récupération designers",
-      error: error.message
-    });
+    res.status(500).json({ message: "Erreur récupération designers", error: error.message });
   }
 });
 
@@ -646,13 +630,11 @@ apiRouter.put("/versions/:id", verifyToken, checkRole(['designer', 'admin']), as
   } catch (err) { res.status(500).json({ message: "Erreur", error: err.message }); }
 });
 
-// ✅ NOUVELLE ROUTE : DELETE /versions/:id
 apiRouter.delete("/versions/:id", verifyToken, checkRole(['designer', 'admin']), async (req, res) => {
   try {
     const version = await Version.findById(req.params.id);
     if (!version) return res.status(404).json({ message: "Version introuvable" });
 
-    // ✅ Vérifier qu'il y a au moins une autre version de cette maquette
     const versionCount = await Version.countDocuments({
       id_maquette: version.id_maquette,
       est_auto_save: { $ne: true }
@@ -660,15 +642,12 @@ apiRouter.delete("/versions/:id", verifyToken, checkRole(['designer', 'admin']),
     if (versionCount <= 1)
       return res.status(400).json({ message: "Impossible de supprimer la dernière version d'une maquette" });
 
-    // ✅ Supprimer les validations et commentaires associés
     const validations = await Validation.find({ version_id: req.params.id });
     for (const val of validations) {
       await CommentaireElement.deleteMany({ validation_id: val._id });
     }
     await Validation.deleteMany({ version_id: req.params.id });
     await Feedback.deleteMany({ id_version: req.params.id });
-
-    // ✅ Supprimer la version
     await Version.findByIdAndDelete(req.params.id);
 
     res.json({ message: "✅ Version supprimée avec succès" });
@@ -917,7 +896,6 @@ apiRouter.get("/validations/maquette/:id_maquette", verifyToken, async (req, res
       .populate("id_version", "numéro_version")
       .sort({ date_creation: -1 });
 
-    // ✅ NEW: get commentaires elements
     const commentaires = await CommentaireElement.find({
       validation_id: { $in: validations.map(v => v._id) }
     });
@@ -986,6 +964,79 @@ apiRouter.get("/validations/:id/commentaires", verifyToken, async (req, res) => 
   }
 });
 
+// ==========================================
+// ✅ NOUVELLE ROUTE : Téléchargement rapport corrections (JSON)
+// GET /validations/:id/download
+// ==========================================
+apiRouter.get("/validations/:id/download", verifyToken, checkRole(["designer"]), async (req, res) => {
+  try {
+    const validation = await Validation.findById(req.params.id)
+      .populate("client_id", "nom email")
+      .populate({
+        path: "version_id",
+        select: "numéro_version id_maquette date_creation",
+        populate: {
+          path: "id_maquette",
+          select: "nom id_projet",
+          populate: { path: "id_projet", select: "nom description date_début date_fin" }
+        }
+      });
+
+    if (!validation) return res.status(404).json({ message: "Validation introuvable." });
+
+    const commentaires = await CommentaireElement.find({ validation_id: validation._id });
+
+    // Construire un rapport structuré lisible
+    const rapport = {
+      rapport_corrections: {
+        genere_le: new Date().toLocaleDateString("fr-FR", {
+          day: "2-digit", month: "long", year: "numeric",
+          hour: "2-digit", minute: "2-digit"
+        }),
+        projet: {
+          nom: validation.version_id?.id_maquette?.id_projet?.nom || "—",
+          description: validation.version_id?.id_maquette?.id_projet?.description || "—",
+          date_début: validation.version_id?.id_maquette?.id_projet?.date_début || null,
+          date_fin: validation.version_id?.id_maquette?.id_projet?.date_fin || null,
+        },
+        maquette: {
+          nom: validation.version_id?.id_maquette?.nom || "—",
+          version: `v${validation.version_id?.numéro_version || "?"}`,
+        },
+        demande_par: {
+          nom: validation.client_id?.nom || "—",
+          email: validation.client_id?.email || "—",
+        },
+        date_rejet: validation.date_validation
+          ? new Date(validation.date_validation).toLocaleDateString("fr-FR", {
+            day: "2-digit", month: "long", year: "numeric"
+          })
+          : "—",
+        statut: validation.statut,
+        nombre_corrections: commentaires.length,
+        corrections: commentaires.map((c, i) => ({
+          numero: i + 1,
+          element: c.label_element || c.id_element || `Élément ${i + 1}`,
+          id_element: c.id_element,
+          remarque_client: c.commentaire_client || "(aucune)",
+          note_admin: c.commentaire_admin || "(aucune)",
+        })),
+        instructions: commentaires.length === 0
+          ? "Rejet général sans remarques spécifiques. Veuillez contacter le client pour plus de détails."
+          : `Veuillez apporter les ${commentaires.length} correction(s) listées ci-dessus, puis soumettre une nouvelle version.`,
+      }
+    };
+
+    const filename = `corrections_${(validation.version_id?.id_maquette?.nom || "maquette").replace(/\s+/g, "_")}_v${validation.version_id?.numéro_version || "1"}_${Date.now()}.json`;
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.status(200).send(JSON.stringify(rapport, null, 2));
+  } catch (err) {
+    res.status(500).json({ message: "Erreur génération rapport.", error: err.message });
+  }
+});
+
 apiRouter.patch("/commentaires-elements/:id", verifyToken, checkRole(["admin"]), async (req, res) => {
   try {
     const { commentaire_admin } = req.body;
@@ -1033,14 +1084,12 @@ apiRouter.patch("/validations/:id/transmettre", verifyToken, checkRole(["admin"]
   }
 });
 
-// Add this after the envoyerEmailBienvenue function
 const envoyerEmailCorrectionLue = async (clientEmail, clientNom, projetNom, versionNum, commentaires) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
   });
 
-  // Format commentaires for email
   const commentairesHtml = commentaires && commentaires.length > 0
     ? `<div style="margin-top: 20px; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #ff9800;">
          <h3 style="margin-top: 0;">Commentaires de correction :</h3>
@@ -1053,7 +1102,7 @@ const envoyerEmailCorrectionLue = async (clientEmail, clientNom, projetNom, vers
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
     to: clientEmail,
-    subject: ` Le designer a pris en charge vos corrections - ${projetNom}`,
+    subject: `Le designer a pris en charge vos corrections - ${projetNom}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Bonjour ${clientNom},</h2>
@@ -1061,19 +1110,13 @@ const envoyerEmailCorrectionLue = async (clientEmail, clientNom, projetNom, vers
         <p>Le designer a bien <strong style="color: #4CAF50;">pris en charge et corrigé</strong> vos demandes de correction pour :</p>
         
         <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p style="margin: 0;"><strong> Projet :</strong> ${projetNom}</p>
-          <p style="margin: 10px 0 0 0;"><strong> Version :</strong> ${versionNum}</p>
+          <p style="margin: 0;"><strong>Projet :</strong> ${projetNom}</p>
+          <p style="margin: 10px 0 0 0;"><strong>Version :</strong> ${versionNum}</p>
         </div>
-        
         ${commentairesHtml}
-        
         <p>Le designer va maintenant procéder aux corrections demandées. Vous serez notifié dès qu'une nouvelle version sera disponible.</p>
-        
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-        
-        <p style="color: #666; font-size: 12px;">
-          Cet email est un message automatique. Merci de ne pas y répondre directement.
-        </p>
+        <p style="color: #666; font-size: 12px;">Cet email est un message automatique. Merci de ne pas y répondre directement.</p>
       </div>
     `,
   });
@@ -1081,7 +1124,6 @@ const envoyerEmailCorrectionLue = async (clientEmail, clientNom, projetNom, vers
 
 apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designer"]), async (req, res) => {
   try {
-    // First, get the validation with all needed populated data
     const validation = await Validation.findById(req.params.id)
       .populate("client_id", "nom email")
       .populate({
@@ -1090,26 +1132,18 @@ apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designe
         populate: {
           path: "id_maquette",
           select: "nom id_projet",
-          populate: {
-            path: "id_projet",
-            select: "nom"
-          }
+          populate: { path: "id_projet", select: "nom" }
         }
       });
 
-    if (!validation) {
-      return res.status(404).json({ message: "Validation introuvable." });
-    }
+    if (!validation) return res.status(404).json({ message: "Validation introuvable." });
 
-    // Check if already marked as read
     if (validation.lu_designer) {
       return res.status(400).json({ message: "Cette correction a déjà été marquée comme lue." });
     }
 
-    // Get all commentaires for this validation
     const commentaires = await CommentaireElement.find({ validation_id: validation._id });
 
-    // Mark as read
     validation.lu_designer = true;
     await validation.save();
 
@@ -1130,15 +1164,11 @@ apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designe
           commentaires
         );
         console.log(`✅ Email de notification envoyé à ${validation.client_id.email}`);
-      } else {
-        console.log("⚠️ Client email non trouvé, impossible d'envoyer la notification");
       }
     } catch (emailError) {
       console.error("❌ Erreur lors de l'envoi de l'email:", emailError.message);
-      // Continue even if email fails - we don't want to block the UI
     }
 
-    // Create a notification for the client (optional, if you have notification system)
     try {
       await creerNotification({
         message: `Le designer a pris en charge les corrections pour la version ${validation.version_id?.numéro_version || ""} du projet "${validation.version_id?.id_maquette?.id_projet?.nom || ""}"`,
@@ -1160,16 +1190,6 @@ apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designe
     res.status(500).json({ message: "Erreur lors du traitement.", error: err.message });
   }
 });
-
-// apiRouter.patch("/validations/:id/lu-designer", verifyToken, checkRole(["designer"]), async (req, res) => {
-//   try {
-//     const v = await Validation.findByIdAndUpdate(req.params.id, { lu_designer: true }, { returnDocument: "after" });
-//     if (!v) return res.status(404).json({ message: "Introuvable." });
-//     res.json({ message: "Marqué comme lu.", validation: v });
-//   } catch (err) {
-//     res.status(500).json({ message: "Erreur.", error: err.message });
-//   }
-// });
 
 // ==========================================
 // ROUTES RAPPORTS QUOTIDIENS
