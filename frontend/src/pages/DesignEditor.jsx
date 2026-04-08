@@ -13,7 +13,8 @@ import {
   Hexagon, Minus, Star, Cloud, ArrowRight,
   MoveDiagonal, Video, Map, Frame,
   CheckSquare, ToggleLeft, SlidersHorizontal, AppWindow, DollarSign,
-  Users, Play, GitBranch, Plus, Check, Clock, RotateCcw
+  Users, Play, GitBranch, Plus, Check, Clock, RotateCcw, Settings, Edit2, Save, X, AlertCircle, Volume2,
+  RefreshCw, Images, MousePointer2, PenTool, Eraser, Highlighter, PanelLeftClose, PanelLeft, PaintBucket, Smile, Table
 } from "lucide-react";
 
 const GRID_SIZE = 20;
@@ -21,14 +22,100 @@ const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.1;
 
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+const ToastNotification = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  return (
+    <div className={`modern-toast modern-toast--${type}`}>
+      <div className="modern-toast__icon">
+        {type === "success" && <Check size={18} />}
+        {(type === "info" || type === "warning") && <AlertCircle size={18} />}
+      </div>
+      <p className="modern-toast__message">{message}</p>
+      <button className="modern-toast__close" onClick={onClose}><X size={14} /></button>
+    </div>
+  );
+};
+
+// ─── SIDEBAR MENU ─────────────────────────────────────────────────────────────
 const SIDEBAR_MENU = [
-  { id: "typography", label: "Typographie", icon: <Type size={16} />, layout: "list", items: [{ id: "text_h1", label: "Titre principal", icon: <Heading1 size={15} />, type: "text", variant: "h1" }, { id: "text_h2", label: "Sous-titre", icon: <Heading2 size={15} />, type: "text", variant: "h2" }, { id: "text_p", label: "Paragraphe", icon: <Pilcrow size={15} />, type: "text", variant: "p" }, { id: "text_ul", label: "Liste à puces", icon: <List size={15} />, type: "text", variant: "ul" }, { id: "text_ol", label: "Liste numérotée", icon: <ListOrdered size={15} />, type: "text", variant: "ol" }, { id: "text_quote", label: "Citation", icon: <Quote size={15} />, type: "text", variant: "quote" }] },
-  { id: "shapes", label: "Formes", icon: <Shapes size={16} />, layout: "grid", items: [{ id: "shape_rect", label: "Rectangle", icon: <Square size={22} />, type: "shape", variant: "rect" }, { id: "shape_circle", label: "Cercle", icon: <Circle size={22} />, type: "shape", variant: "circle" }, { id: "shape_triangle", label: "Triangle", icon: <Triangle size={22} />, type: "shape", variant: "triangle" }, { id: "shape_ellipse", label: "Ellipse", icon: <Circle size={22} style={{ transform: "scaleY(0.6)" }} />, type: "shape", variant: "ellipse" }, { id: "shape_polygon", label: "Polygone", icon: <Hexagon size={22} />, type: "advanced_shape", variant: "polygon" }, { id: "shape_line", label: "Ligne", icon: <Minus size={22} strokeWidth={4} />, type: "shape", variant: "line" }, { id: "shape_star", label: "Étoile", icon: <Star size={22} />, type: "advanced_shape", variant: "star" }, { id: "shape_zap", label: "Éclair", icon: <Zap size={22} />, type: "advanced_shape", variant: "zap" }, { id: "shape_cloud", label: "Nuage", icon: <Cloud size={22} />, type: "advanced_shape", variant: "cloud" }, { id: "arrow_r", label: "Flèche", icon: <ArrowRight size={22} />, type: "advanced_shape", variant: "arrow_r" }, { id: "arrow_double", label: "Double Flèche", icon: <MoveDiagonal size={22} />, type: "advanced_shape", variant: "arrow_double" }] },
-  { id: "media", label: "Médias & Conteneurs", icon: <ImageIcon size={16} />, layout: "list", items: [{ id: "media_img", label: "Image (Upload)", icon: <ImageIcon size={15} />, type: "action_image" }, { id: "media_video", label: "Lecteur Vidéo", icon: <Video size={15} />, type: "complex", variant: "video" }, { id: "media_map", label: "Carte (Map)", icon: <Map size={15} />, type: "complex", variant: "map" }, { id: "cont_frame", label: "Frame / Section", icon: <Frame size={15} />, type: "shape", variant: "frame" }] },
-  { id: "charts", label: "Graphiques", icon: <BarChart3 size={16} />, layout: "list", items: [{ id: "chart_bar", label: "Graphique Barres", icon: <BarChart3 size={15} />, type: "complex", variant: "chart_bar" }] },
-  { id: "layouts", label: "Layouts & Navigation", icon: <Layout size={16} />, layout: "list", items: [{ id: "layout_hero", label: "Hero Section", icon: <LayoutTemplate size={15} />, type: "complex", variant: "hero" }, { id: "nav_menu", label: "Barre de menu", icon: <Minus size={15} />, type: "complex", variant: "nav_menu" }, { id: "nav_tabs", label: "Onglets (Tabs)", icon: <SplitSquareHorizontal size={15} />, type: "complex", variant: "tabs" }] },
-  { id: "ui", label: "UI / Composants", icon: <MousePointerClick size={16} />, layout: "list", items: [{ id: "ui_btn", label: "Bouton d'action", icon: <MousePointerClick size={15} />, type: "complex", variant: "button" }, { id: "ui_input", label: "Champ de texte", icon: <Type size={15} />, type: "complex", variant: "input" }, { id: "ui_check", label: "Checkbox", icon: <CheckSquare size={15} />, type: "complex", variant: "checkbox" }, { id: "ui_toggle", label: "Switch Toggle", icon: <ToggleLeft size={15} />, type: "complex", variant: "toggle" }, { id: "ui_slider", label: "Slider / Jauge", icon: <SlidersHorizontal size={15} />, type: "complex", variant: "slider" }, { id: "ui_modal", label: "Fenêtre Modale", icon: <AppWindow size={15} />, type: "complex", variant: "modal" }] },
-  { id: "blocks", label: "Blocs Prêts", icon: <Package size={16} />, layout: "list", items: [{ id: "block_card", label: "Carte Produit", icon: <Package size={15} />, type: "complex", variant: "card" }, { id: "block_profile", label: "Profil Utilisateur", icon: <Users size={15} />, type: "complex", variant: "profile" }, { id: "block_pricing", label: "Tableau de Prix", icon: <DollarSign size={15} />, type: "complex", variant: "pricing" }] }
+  {
+    id: "typography", label: "Typographie", icon: <Type size={16} />, layout: "list",
+    items: [
+      { id: "text_h1", label: "Titre principal", icon: <Heading1 size={15} />, type: "text", variant: "h1" },
+      { id: "text_h2", label: "Sous-titre", icon: <Heading2 size={15} />, type: "text", variant: "h2" },
+      { id: "text_p", label: "Paragraphe", icon: <Pilcrow size={15} />, type: "text", variant: "p" },
+      { id: "text_ul", label: "Liste à puces", icon: <List size={15} />, type: "text", variant: "ul" },
+      { id: "text_ol", label: "Liste numérotée", icon: <ListOrdered size={15} />, type: "text", variant: "ol" },
+      { id: "text_quote", label: "Citation", icon: <Quote size={15} />, type: "text", variant: "quote" },
+    ]
+  },
+  {
+    id: "shapes", label: "Formes", icon: <Shapes size={16} />, layout: "grid",
+    items: [
+      { id: "shape_rect", label: "Rectangle", icon: <Square size={22} />, type: "shape", variant: "rect" },
+      { id: "shape_circle", label: "Cercle", icon: <Circle size={22} />, type: "shape", variant: "circle" },
+      { id: "shape_triangle", label: "Triangle", icon: <Triangle size={22} />, type: "shape", variant: "triangle" },
+      { id: "shape_ellipse", label: "Ellipse", icon: <Circle size={22} style={{ transform: "scaleY(0.6)" }} />, type: "shape", variant: "ellipse" },
+      { id: "shape_polygon", label: "Polygone", icon: <Hexagon size={22} />, type: "advanced_shape", variant: "polygon" },
+      { id: "shape_line", label: "Ligne", icon: <Minus size={22} strokeWidth={4} />, type: "shape", variant: "line" },
+      { id: "shape_star", label: "Étoile", icon: <Star size={22} />, type: "advanced_shape", variant: "star" },
+      { id: "shape_zap", label: "Éclair", icon: <Zap size={22} />, type: "advanced_shape", variant: "zap" },
+      { id: "shape_cloud", label: "Nuage", icon: <Cloud size={22} />, type: "advanced_shape", variant: "cloud" },
+      { id: "arrow_r", label: "Flèche", icon: <ArrowRight size={22} />, type: "advanced_shape", variant: "arrow_r" },
+      { id: "arrow_double", label: "Double Flèche", icon: <MoveDiagonal size={22} />, type: "advanced_shape", variant: "arrow_double" },
+    ]
+  },
+  {
+    id: "media", label: "Médias & Conteneurs", icon: <ImageIcon size={16} />, layout: "list",
+    items: [
+      { id: "media_img", label: "Image (Upload)", icon: <ImageIcon size={15} />, type: "action_image" },
+      { id: "media_video", label: "Lecteur Vidéo", icon: <Video size={15} />, type: "complex", variant: "video" },
+      { id: "media_map", label: "Carte (Map)", icon: <Map size={15} />, type: "complex", variant: "map" },
+      { id: "cont_frame", label: "Frame / Section", icon: <Frame size={15} />, type: "shape", variant: "frame" },
+    ]
+  },
+  {
+    id: "charts", label: "Graphiques", icon: <BarChart3 size={16} />, layout: "list",
+    items: [
+      { id: "chart_bar", label: "Graphique Barres", icon: <BarChart3 size={15} />, type: "complex", variant: "chart_bar" },
+    ]
+  },
+  {
+    id: "layouts", label: "Layouts & Navigation", icon: <Layout size={16} />, layout: "list",
+    items: [
+      { id: "layout_hero", label: "Hero Section", icon: <LayoutTemplate size={15} />, type: "complex", variant: "hero" },
+      { id: "nav_menu", label: "Barre de menu", icon: <Minus size={15} />, type: "complex", variant: "nav_menu" },
+      { id: "nav_tabs", label: "Onglets (Tabs)", icon: <SplitSquareHorizontal size={15} />, type: "complex", variant: "tabs" },
+    ]
+  },
+  {
+    id: "ui", label: "UI / Composants", icon: <MousePointerClick size={16} />, layout: "list",
+    items: [
+      { id: "ui_btn", label: "Bouton d'action", icon: <MousePointerClick size={15} />, type: "complex", variant: "button", interactive: true },
+      { id: "ui_input", label: "Champ de texte", icon: <Type size={15} />, type: "complex", variant: "input", interactive: true },
+      { id: "ui_check", label: "Checkbox", icon: <CheckSquare size={15} />, type: "complex", variant: "checkbox", interactive: true },
+      { id: "ui_toggle", label: "Switch Toggle", icon: <ToggleLeft size={15} />, type: "complex", variant: "toggle", interactive: true },
+      { id: "ui_slider", label: "Slider / Jauge", icon: <SlidersHorizontal size={15} />, type: "complex", variant: "slider", interactive: true },
+      { id: "ui_modal", label: "Fenêtre Modale", icon: <AppWindow size={15} />, type: "complex", variant: "modal", interactive: true },
+    ]
+  },
+  {
+    id: "blocks", label: "Blocs Prêts", icon: <Package size={16} />, layout: "list",
+    items: [] // Static section - items are rendered directly in JSX
+  },
+  {
+    id: "templates", label: "Modèles de pages", icon: <AppWindow size={16} />, layout: "list",
+    items: [
+      { id: "tpl_home", label: "Page d'accueil", icon: <Layout size={15} />, type: "complex", variant: "tpl_home" },
+      { id: "tpl_about", label: "Page À Propos", icon: <Users size={15} />, type: "complex", variant: "tpl_about" },
+      { id: "tpl_cart", label: "Panier (Cart)", icon: <Package size={15} />, type: "complex", variant: "tpl_cart" },
+      { id: "tpl_login", label: "Connexion (Login)", icon: <Lock size={15} />, type: "complex", variant: "tpl_login" },
+    ]
+  },
 ];
 
 const snapToGrid = (value, gridSize) => Math.round(value / gridSize) * gridSize;
@@ -43,23 +130,747 @@ const getObjectLabel = (obj) => {
   if (obj.type === "triangle") return "Triangle";
   if (obj.type === "polygon") return "Forme Avancée";
   if (obj.type === "line") return "Ligne";
-  if (obj.type === "image") return "Image";
-  if (obj.type === "group") return "Composant UI";
+  if (obj.type === "image") return obj.customName || "Image";
+  if (obj.type === "group") {
+    if (obj.customVariant === "button") return "Bouton";
+    if (obj.customVariant === "checkbox") return "Checkbox";
+    if (obj.customVariant === "toggle") return "Switch";
+    if (obj.customVariant === "slider") return "Slider";
+    if (obj.customVariant === "input") return "Champ de texte";
+    if (obj.customVariant === "modal") return "Modal";
+    if (obj.customVariant === "profile") return "Profil Utilisateur";
+    if (obj.customVariant === "pricing") return "Tableau de Prix";
+    if (obj.customVariant === "card") return "Carte Produit";
+    if (obj.customVariant === "nav_menu") return "Menu NavBar";
+    if (obj.customVariant === "hero") return "Section Hero";
+    if (obj.customVariant === "tabs") return "Onglets de Navigation";
+    return "Composant UI";
+  }
   return obj.type || "Objet";
 };
 
-// ─── PROPERTIES PANEL ────────────────────────────────────────────────────────
-const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
-  const [props, setProps] = useState({});
+// ─── MODERN MODAL ─────────────────────────────────────────────────────────────
+const ModernModal = ({ isOpen, onClose, title, content, onAction }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="modern-modal-overlay" onClick={onClose}>
+      <div className="modern-modal" onClick={e => e.stopPropagation()}>
+        <div className="modern-modal__header">
+          <h3>{title || "Notification"}</h3>
+          <button className="modern-modal__close" onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="modern-modal__body"><p>{content || "Action effectuée avec succès !"}</p></div>
+        <div className="modern-modal__footer">
+          <button className="modern-modal__btn modern-modal__btn--secondary" onClick={onClose}>Fermer</button>
+          <button className="modern-modal__btn modern-modal__btn--primary" onClick={onAction || onClose}>Confirmer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── IMAGE HISTORY PANEL ──────────────────────────────────────────────────────
+const ImageHistoryPanel = ({ imageHistory, onReplaceImage, onSelectImage, canvas }) => {
+  const fileInputRef = useRef(null);
+  const [replacingId, setReplacingId] = useState(null);
+
+  const handleReplaceClick = (imgEntry) => {
+    setReplacingId(imgEntry.id);
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file || !replacingId) return;
+    const reader = new FileReader();
+    reader.onload = (f) => {
+      onReplaceImage(replacingId, f.target.result, file.name);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = null;
+    setReplacingId(null);
+  };
+
+  if (imageHistory.length === 0) {
+    return (
+      <div className="img-history-empty">
+        <Images size={28} />
+        <p>Aucune image importée</p>
+        <span>Importez une image depuis la barre latérale</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="img-history-panel">
+      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
+      {imageHistory.map((img) => (
+        <div key={img.id} className="img-history-item" onClick={() => onSelectImage(img.id)}>
+          <div className="img-history-thumb-wrap">
+            <img src={img.src} alt={img.name} className="img-history-thumb" />
+          </div>
+          <div className="img-history-info">
+            <span className="img-history-name">{img.name}</span>
+            <span className="img-history-meta">{img.width}×{img.height}px</span>
+          </div>
+          <div className="img-history-actions">
+            <button
+              className="img-history-btn"
+              title="Remplacer l'image"
+              onClick={(e) => { e.stopPropagation(); handleReplaceClick(img); }}
+            >
+              <RefreshCw size={13} />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─── BUTTON EDITOR ────────────────────────────────────────────────────────────
+const ButtonEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [text, setText] = useState("Bouton");
+  const [color, setColor] = useState("#6366f1");
+  const [textColor, setTextColor] = useState("#ffffff");
+  const [size, setSize] = useState("medium");
+  const [borderRadius, setBorderRadius] = useState(10);
+  const [actionType, setActionType] = useState("modal");
 
   useEffect(() => {
-    if (!selectedObject) { setProps({}); return; }
+    if (isOpen && component) {
+      setText(component.buttonText || "Bouton");
+      setColor(component.buttonColor || "#6366f1");
+      setTextColor(component.buttonTextColor || "#ffffff");
+      setSize(component.buttonSize || "medium");
+      setBorderRadius(component.borderRadius ?? 10);
+      setActionType(component.actionType || "modal");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  const sizeMap = { small: { width: 110, height: 38, fontSize: 12 }, medium: { width: 150, height: 46, fontSize: 15 }, large: { width: 190, height: 56, fontSize: 18 } };
+  const dims = sizeMap[size];
+
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header">
+          <h3>✏️ Modifier le bouton</h3>
+          <button onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="component-editor-body">
+          <div className="editor-field"><label>Texte</label><input type="text" value={text} onChange={e => setText(e.target.value)} /></div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Couleur de fond</label><div className="color-picker-wrap"><input type="color" value={color} onChange={e => setColor(e.target.value)} /><span>{color}</span></div></div>
+            <div className="editor-field"><label>Couleur du texte</label><div className="color-picker-wrap"><input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} /><span>{textColor}</span></div></div>
+          </div>
+          <div className="editor-field"><label>Taille — {dims.width}×{dims.height}px</label>
+            <div className="size-selector">
+              {["small", "medium", "large"].map(s => (
+                <button key={s} className={`size-btn ${size === s ? "active" : ""}`} onClick={() => setSize(s)}>{s === "small" ? "Petit" : s === "medium" ? "Moyen" : "Grand"}</button>
+              ))}
+            </div>
+          </div>
+          <div className="editor-field"><label>Arrondi — {borderRadius}px</label><input type="range" value={borderRadius} onChange={e => setBorderRadius(+e.target.value)} min="0" max="50" className="range-input" /></div>
+          <div className="editor-field"><label>Action au clic</label>
+            <select value={actionType} onChange={e => setActionType(e.target.value)}>
+              <option value="modal">Ouvrir une fenêtre modale</option>
+              <option value="toast">Afficher une notification</option>
+            </select>
+          </div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ buttonText: text, buttonColor: color, buttonTextColor: textColor, buttonSize: size, borderRadius, actionType }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── INPUT EDITOR ─────────────────────────────────────────────────────────────
+const InputEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [placeholder, setPlaceholder] = useState("Entrez du texte...");
+  const [width, setWidth] = useState(280);
+  const [height, setHeight] = useState(44);
+  const [borderColor, setBorderColor] = useState("#e2e8f0");
+  const [bgColor, setBgColor] = useState("#ffffff");
+  const [textColor, setTextColor] = useState("#0f172a");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setPlaceholder(component.placeholder || "Entrez du texte...");
+      setWidth(component.inputWidth || 280);
+      setHeight(component.inputHeight || 44);
+      setBorderColor(component.borderColor || "#e2e8f0");
+      setBgColor(component.bgColor || "#ffffff");
+      setTextColor(component.textColor || "#0f172a");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Modifier le champ de texte</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-field"><label>Placeholder</label><input type="text" value={placeholder} onChange={e => setPlaceholder(e.target.value)} /></div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Largeur (px)</label><input type="number" value={width} onChange={e => setWidth(+e.target.value)} min="100" max="600" /></div>
+            <div className="editor-field"><label>Hauteur (px)</label><input type="number" value={height} onChange={e => setHeight(+e.target.value)} min="30" max="100" /></div>
+          </div>
+          <div className="editor-row-3">
+            <div className="editor-field"><label>Fond</label><div className="color-picker-wrap"><input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} /><span>{bgColor}</span></div></div>
+            <div className="editor-field"><label>Bordure</label><div className="color-picker-wrap"><input type="color" value={borderColor} onChange={e => setBorderColor(e.target.value)} /><span>{borderColor}</span></div></div>
+            <div className="editor-field"><label>Texte</label><div className="color-picker-wrap"><input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} /><span>{textColor}</span></div></div>
+          </div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ placeholder, inputWidth: width, inputHeight: height, borderColor, bgColor, textColor }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── PROFILE EDITOR ───────────────────────────────────────────────────────────
+const ProfileEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [name, setName] = useState("Marie Dupont");
+  const [role, setRole] = useState("Chef de projet");
+  const [email, setEmail] = useState("marie@exemple.com");
+  const [avatarColor, setAvatarColor] = useState("#6366f1");
+  const [layout, setLayout] = useState("horizontal");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setName(component.profileName || "Marie Dupont");
+      setRole(component.profileRole || "Chef de projet");
+      setEmail(component.profileEmail || "marie@exemple.com");
+      setAvatarColor(component.avatarColor || "#6366f1");
+      setLayout(component.profileLayout || "horizontal");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Modifier le profil</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-field"><label>Nom complet</label><input type="text" value={name} onChange={e => setName(e.target.value)} /></div>
+          <div className="editor-field"><label>Rôle / Titre</label><input type="text" value={role} onChange={e => setRole(e.target.value)} /></div>
+          <div className="editor-field"><label>Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
+          <div className="editor-field"><label>Couleur de l'avatar</label><div className="color-picker-wrap"><input type="color" value={avatarColor} onChange={e => setAvatarColor(e.target.value)} /><span>{avatarColor}</span></div></div>
+          <div className="editor-field"><label>Disposition</label>
+            <div className="size-selector">
+              {["horizontal", "vertical", "compact"].map(l => (
+                <button key={l} className={`size-btn ${layout === l ? "active" : ""}`} onClick={() => setLayout(l)}>{l.charAt(0).toUpperCase() + l.slice(1)}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ profileName: name, profileRole: role, profileEmail: email, avatarColor, profileLayout: layout }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── PRICING EDITOR ───────────────────────────────────────────────────────────
+const PricingEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [rows, setRows] = useState([
+    { name: "Basique", price: "0€", features: ["Fonctionnalité 1", "Fonctionnalité 2"], color: "#6b7280", popular: false },
+    { name: "Pro", price: "29€", features: ["Fonctionnalité 1", "Fonctionnalité 2", "Fonctionnalité 3"], color: "#6366f1", popular: true },
+    { name: "Premium", price: "99€", features: ["Toutes les fonctionnalités", "Support prioritaire", "API dédiée"], color: "#10b981", popular: false },
+  ]);
+
+  useEffect(() => {
+    if (isOpen && component?.pricingRows) setRows(component.pricingRows);
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  const updateRow = (i, field, val) => setRows(r => r.map((row, idx) => idx === i ? { ...row, [field]: val } : row));
+  const addRow = () => setRows(r => [...r, { name: "Nouveau plan", price: "0€", features: ["Nouvelle fonctionnalité"], color: "#9ca3af", popular: false }]);
+  const removeRow = i => setRows(r => r.filter((_, idx) => idx !== i));
+  const addFeature = ri => setRows(r => r.map((row, i) => i === ri ? { ...row, features: [...row.features, "Nouvelle fonctionnalité"] } : row));
+  const removeFeature = (ri, fi) => setRows(r => r.map((row, i) => i === ri ? { ...row, features: row.features.filter((_, j) => j !== fi) } : row));
+  const updateFeature = (ri, fi, val) => setRows(r => r.map((row, i) => i === ri ? { ...row, features: row.features.map((f, j) => j === fi ? val : f) } : row));
+
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal pricing-editor" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Tableau de prix</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          {rows.map((row, idx) => (
+            <div key={idx} className="pricing-row-editor">
+              <div className="pricing-row-header">
+                <h4>Plan {idx + 1}</h4>
+                <button className="btn-icon-danger" onClick={() => removeRow(idx)}><Trash2 size={14} /></button>
+              </div>
+              <div className="editor-row-2">
+                <div className="editor-field"><label>Nom</label><input type="text" value={row.name} onChange={e => updateRow(idx, "name", e.target.value)} /></div>
+                <div className="editor-field"><label>Prix</label><input type="text" value={row.price} onChange={e => updateRow(idx, "price", e.target.value)} /></div>
+              </div>
+              <div className="editor-row-2">
+                <div className="editor-field"><label>Couleur</label><div className="color-picker-wrap"><input type="color" value={row.color} onChange={e => updateRow(idx, "color", e.target.value)} /><span>{row.color}</span></div></div>
+                <div className="editor-field"><label>Populaire</label><label className="toggle-wrap"><input type="checkbox" checked={row.popular} onChange={e => updateRow(idx, "popular", e.target.checked)} /><span className="toggle-slider-ui" /></label></div>
+              </div>
+              <div className="editor-field"><label>Fonctionnalités</label>
+                {row.features.map((f, fi) => (
+                  <div key={fi} className="feature-item">
+                    <input type="text" value={f} onChange={e => updateFeature(idx, fi, e.target.value)} />
+                    <button className="btn-icon-sm" onClick={() => removeFeature(idx, fi)}><X size={12} /></button>
+                  </div>
+                ))}
+                <button className="btn-add-feature" onClick={() => addFeature(idx)}>+ Ajouter une fonctionnalité</button>
+              </div>
+            </div>
+          ))}
+          <button className="btn-add-row" onClick={addRow}>+ Ajouter un plan</button>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ pricingRows: rows }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── CARD EDITOR ──────────────────────────────────────────────────────────────
+const CardEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [title, setTitle] = useState("Produit Premium");
+  const [description, setDescription] = useState("Description courte du produit");
+  const [price, setPrice] = useState("29€");
+  const [primaryColor, setPrimaryColor] = useState("#6366f1");
+  const [rating, setRating] = useState(5);
+  const [reviews, setReviews] = useState("128");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setTitle(component.productTitle || "Produit Premium");
+      setDescription(component.productDesc || "Description courte du produit");
+      setPrice(component.productPrice || "29€");
+      setPrimaryColor(component.productColor || "#6366f1");
+      setRating(component.productRating || 5);
+      setReviews(component.productReviews || "128");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  const stars = "★".repeat(Math.floor(rating)) + "☆".repeat(5 - Math.floor(rating));
+
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Modifier la carte produit</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-field"><label>Titre produit</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} /></div>
+          <div className="editor-field"><label>Description</label><textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} className="editor-textarea" /></div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Prix</label><input type="text" value={price} onChange={e => setPrice(e.target.value)} /></div>
+            <div className="editor-field"><label>Couleur principale</label><div className="color-picker-wrap"><input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} /><span>{primaryColor}</span></div></div>
+          </div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Note (1-5)</label><input type="number" value={rating} onChange={e => setRating(Math.min(5, Math.max(1, +e.target.value)))} min="1" max="5" step="0.5" /></div>
+            <div className="editor-field"><label>Avis</label><input type="text" value={reviews} onChange={e => setReviews(e.target.value)} /></div>
+          </div>
+          <div className="editor-field"><label>Aperçu étoiles</label><div style={{ fontSize: 14, letterSpacing: 2, color: "#f59e0b" }}>{stars}</div></div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ productTitle: title, productDesc: description, productPrice: price, productColor: primaryColor, productRating: rating, productReviews: reviews }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── SLIDER EDITOR ────────────────────────────────────────────────────────────
+const SliderEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [min, setMin] = useState(0);
+  const [max, setMax] = useState(100);
+  const [value, setValue] = useState(50);
+  const [unit, setUnit] = useState("%");
+  const [color, setColor] = useState("#6366f1");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setMin(component.min ?? 0);
+      setMax(component.max ?? 100);
+      setValue(component.sliderValue ?? 50);
+      setUnit(component.unit || "%");
+      setColor(component.sliderColor || "#6366f1");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Configurer le Slider</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Minimum</label><input type="number" value={min} onChange={e => setMin(+e.target.value)} /></div>
+            <div className="editor-field"><label>Maximum</label><input type="number" value={max} onChange={e => setMax(+e.target.value)} /></div>
+          </div>
+          <div className="editor-field"><label>Valeur par défaut — {value}{unit}</label><input type="range" value={value} onChange={e => setValue(+e.target.value)} min={min} max={max} className="range-input" /></div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Unité</label><input type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="%, €, px…" /></div>
+            <div className="editor-field"><label>Couleur</label><div className="color-picker-wrap"><input type="color" value={color} onChange={e => setColor(e.target.value)} /><span>{color}</span></div></div>
+          </div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ min, max, sliderValue: value, unit, sliderColor: color }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── MODAL EDITOR ─────────────────────────────────────────────────────────────
+const ModalEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [title, setTitle] = useState("Fenêtre modale");
+  const [content, setContent] = useState("Contenu de la modal.");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setTitle(component.modalTitle || "Fenêtre modale");
+      setContent(component.modalContent || "Contenu de la modal.");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Modifier la Modale</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-field"><label>Titre de la pop-up</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} /></div>
+          <div className="editor-field"><label>Contenu</label><textarea rows={3} value={content} onChange={e => setContent(e.target.value)} className="editor-textarea" /></div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ modalTitle: title, modalContent: content }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── NAV MENU EDITOR ────────────────────────────────────────────────────────
+const NavMenuEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [logoTxt, setLogoTxt] = useState("◈ Logo");
+  const [nav1, setNav1] = useState("Accueil");
+  const [nav2, setNav2] = useState("À propos");
+  const [nav3, setNav3] = useState("Contact");
+  const [btnTxt, setBtnTxt] = useState("Connexion");
+  const [color, setColor] = useState("#6366f1");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setLogoTxt(component.navLogo || "◈ Logo");
+      setNav1(component.nav1 || "Accueil");
+      setNav2(component.nav2 || "À propos");
+      setNav3(component.nav3 || "Contact");
+      setBtnTxt(component.navBtn || "Connexion");
+      setColor(component.navColor || "#6366f1");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Modifier Nav Menu</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Texte Logo</label><input type="text" value={logoTxt} onChange={e => setLogoTxt(e.target.value)} /></div>
+            <div className="editor-field"><label>Couleur d'accent</label><div className="color-picker-wrap"><input type="color" value={color} onChange={e => setColor(e.target.value)} /><span>{color}</span></div></div>
+          </div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Lien 1</label><input type="text" value={nav1} onChange={e => setNav1(e.target.value)} /></div>
+            <div className="editor-field"><label>Lien 2</label><input type="text" value={nav2} onChange={e => setNav2(e.target.value)} /></div>
+          </div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Lien 3</label><input type="text" value={nav3} onChange={e => setNav3(e.target.value)} /></div>
+            <div className="editor-field"><label>Texte du bouton</label><input type="text" value={btnTxt} onChange={e => setBtnTxt(e.target.value)} /></div>
+          </div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ navLogo: logoTxt, nav1, nav2, nav3, navBtn: btnTxt, navColor: color }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── HERO EDITOR ────────────────────────────────────────────────────────────
+const HeroEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [title, setTitle] = useState("Titre Principal");
+  const [subtitle, setSubtitle] = useState("Sous-titre descriptif accrocheur pour présenter votre produit");
+  const [btnTxt, setBtnTxt] = useState("Commencer");
+  const [badgeTxt, setBadgeTxt] = useState("✨ NOUVEAU DESIGN");
+  const [btnOutlineTxt, setBtnOutlineTxt] = useState("En savoir plus");
+  const [bgColor, setBgColor] = useState("#4f46e5");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setTitle(component.heroTitle || "Titre Principal");
+      setSubtitle(component.heroSub || "Sous-titre descriptif accrocheur pour présenter votre produit");
+      setBtnTxt(component.heroBtn || "Commencer");
+      setBadgeTxt(component.heroBadge || "✨ NOUVEAU DESIGN");
+      setBtnOutlineTxt(component.heroBtnOutline || "En savoir plus");
+      setBgColor(component.heroBg || "#4f46e5");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Modifier Section Hero</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Texte du Badge</label><input type="text" value={badgeTxt} onChange={e => setBadgeTxt(e.target.value)} /></div>
+            <div className="editor-field"><label>Couleur principale</label><div className="color-picker-wrap"><input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} /><span>{bgColor}</span></div></div>
+          </div>
+          <div className="editor-field"><label>Titre principal</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} /></div>
+          <div className="editor-field"><label>Sous-titre</label><textarea rows={2} value={subtitle} onChange={e => setSubtitle(e.target.value)} className="editor-textarea" /></div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Bouton Action</label><input type="text" value={btnTxt} onChange={e => setBtnTxt(e.target.value)} /></div>
+            <div className="editor-field"><label>Bouton Secondaire</label><input type="text" value={btnOutlineTxt} onChange={e => setBtnOutlineTxt(e.target.value)} /></div>
+          </div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ heroTitle: title, heroSub: subtitle, heroBtn: btnTxt, heroBadge: badgeTxt, heroBtnOutline: btnOutlineTxt, heroBg: bgColor }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// ─── TABS EDITOR ────────────────────────────────────────────────────────────
+const TabsEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [tab1, setTab1] = useState("Général");
+  const [tab2, setTab2] = useState("Sécurité");
+  const [tab3, setTab3] = useState("Avancé");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setTab1(component.tab1 || "Général");
+      setTab2(component.tab2 || "Sécurité");
+      setTab3(component.tab3 || "Avancé");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Modifier les Onglets</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-field"><label>Onglet Actif (Sélectionné)</label><input type="text" value={tab1} onChange={e => setTab1(e.target.value)} /></div>
+          <div className="editor-field"><label>Onglet 2</label><input type="text" value={tab2} onChange={e => setTab2(e.target.value)} /></div>
+          <div className="editor-field"><label>Onglet 3</label><input type="text" value={tab3} onChange={e => setTab3(e.target.value)} /></div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ tab1, tab2, tab3 }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── EMOJI PICKER ─────────────────────────────────────────────────────────────
+const EmojiPickerModal = ({ isOpen, onClose, onSelect }) => {
+  const categories = [
+    { name: "Sourires & Visages", emojis: ["😀","😂","🥰","😎","🤩","🤔","😴","🥳","🤯","🤬","😱","👽","🤖","💩","👾","👻"] },
+    { name: "Gestes & Corps", emojis: ["👍","👎","👏","🤝","✌️","🤞","💪","👀","🧠","🔥","❤️","💔","✨","💅","🙏"] },
+    { name: "Objets & Fun", emojis: ["💻","📱","💡","🎉","🎈","🎁","🏆","🚀","🎨","🎵","📸","🍔","🍕","☕","🍹"] },
+    { name: "Symboles", emojis: ["✅","❌","💯","⚠️","✔️","🔔","🚩","💬","💭","❓","❕","📍","🛑","⚡","⭐"] }
+  ];
+
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
+      <div className="component-editor-modal" style={{ maxWidth: 400, padding: 16 }} onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header">
+          <h3 style={{ margin: 0, fontSize: 16 }}>Sélectionner un Emoji</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
+        </div>
+        <div style={{ maxHeight: 300, overflowY: "auto", marginTop: 15, paddingRight: 5 }}>
+          {categories.map(cat => (
+            <div key={cat.name} style={{ marginBottom: 15 }}>
+              <h4 style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", marginBottom: 8, marginTop: 0 }}>{cat.name}</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 6 }}>
+                {cat.emojis.map((emoji, idx) => (
+                  <button key={idx} onClick={() => { onSelect(emoji); onClose(); }} style={{ fontSize: 24, padding: 4, background: "transparent", border: "none", cursor: "pointer", borderRadius: 4, display: "flex", justifyContent: "center" }}>
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── STICKER PICKER ─────────────────────────────────────────────────────────
+const STICKERS_LIBRARY = [
+  { name: "Bulle de BD", width: 100, height: 100, path: "M 0 0 C 40 -20 100 -20 140 0 C 160 20 160 60 140 80 C 100 100 40 100 0 80 C -20 60 -20 20 0 0 Z", fill: "#3ecf8e" },
+  { name: "Étoile", width: 40, height: 40, path: "M 12 2 L 15.09 8.26 L 22 9.27 L 17 14.14 L 18.18 21.02 L 12 17.77 L 5.82 21.02 L 7 14.14 L 2 9.27 L 8.91 8.26 Z", fill: "#fde047" },
+  { name: "Punaise", width: 24, height: 24, path: "M 16 10 C 16 6.686 13.314 4 10 4 C 6.686 4 4 6.686 4 10 L 2 16 L 10 16 L 10 22 L 12 22 L 12 16 L 18 16 L 16 10 Z", fill: "#ef4444" },
+  { name: "Tag Jaune", width: 100, height: 50, path: "M 0 0 L 80 0 L 100 25 L 80 50 L 0 50 Z", fill: "#eab308" },
+  { name: "Badge Nouveau", width: 100, height: 100, path: "M 50 0 L 65 15 L 85 10 L 90 30 L 105 40 L 90 55 L 95 75 L 75 75 L 60 90 L 45 75 L 25 80 L 30 60 L 15 50 L 30 35 L 20 15 L 40 20 Z", fill: "#6366f1" }
+];
+
+const StickerPickerModal = ({ isOpen, onClose, onSelect }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="component-editor-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
+      <div className="component-editor-modal" style={{ maxWidth: 450, padding: 16 }} onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header">
+          <h3 style={{ margin: 0, fontSize: 16 }}>Stickers</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 15, maxHeight: 300, overflowY: "auto" }}>
+          {STICKERS_LIBRARY.map((s, idx) => (
+            <button key={idx} onClick={() => { onSelect(s); onClose(); }} className="sticker-btn" style={{ padding: 16, border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+              <svg viewBox={`0 0 ${s.width} ${s.height}`} style={{ width: 40, height: 40, overflow: "visible" }}><path d={s.path} fill={s.fill} /></svg>
+              <span style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>{s.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── TABLE EDITOR ───────────────────────────────────────────────────────────
+const TableEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [rows, setRows] = useState(3);
+  const [cols, setCols] = useState(3);
+  const [tableData, setTableData] = useState([
+    ["En-tête 1", "En-tête 2", "En-tête 3"],
+    ["Valeur A1", "Valeur B1", "Valeur C1"],
+    ["Valeur A2", "Valeur B2", "Valeur C2"]
+  ]);
+  const [headerBg, setHeaderBg] = useState("#f1f5f9");
+  const [rowBg, setRowBg] = useState("#ffffff");
+  const [strokeColor, setStrokeColor] = useState("#cbd5e1");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setRows(component.rows || 3);
+      setCols(component.cols || 3);
+      setTableData(component.tableData || [["En-tête 1", "En-tête 2", "En-tête 3"], ["Valeur A1", "Valeur B1", "Valeur C1"], ["Valeur A2", "Valeur B2", "Valeur C2"]]);
+      setHeaderBg(component.headerBg || "#f1f5f9");
+      setRowBg(component.rowBg || "#ffffff");
+      setStrokeColor(component.strokeColor || "#cbd5e1");
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+
+  const handleDataChange = (r, c, val) => {
+    const newData = [...tableData];
+    if (!newData[r]) newData[r] = [];
+    newData[r][c] = val;
+    setTableData(newData);
+  };
+
+  const handleRowsChange = (newR) => {
+    if (newR < 1) newR = 1;
+    const newData = [...tableData];
+    while (newData.length < newR) newData.push(new Array(cols).fill(""));
+    while (newData.length > newR) newData.pop();
+    setRows(newR); setTableData(newData);
+  };
+  const handleColsChange = (newC) => {
+    if (newC < 1) newC = 1;
+    const newData = tableData.map(row => {
+      const arr = [...row];
+      while (arr.length < newC) arr.push("");
+      while (arr.length > newC) arr.pop();
+      return arr;
+    });
+    setCols(newC); setTableData(newData);
+  };
+
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" style={{ maxWidth: 650 }} onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Éditer le Tableau</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Lignes</label><input type="number" value={rows} onChange={e => handleRowsChange(+e.target.value)} min="1" max="12" /></div>
+            <div className="editor-field"><label>Colonnes</label><input type="number" value={cols} onChange={e => handleColsChange(+e.target.value)} min="1" max="8" /></div>
+          </div>
+          <div className="editor-row-3">
+            <div className="editor-field"><label>Couleur En-tête</label><div className="color-picker-wrap"><input type="color" value={headerBg} onChange={e => setHeaderBg(e.target.value)} /><span>{headerBg}</span></div></div>
+            <div className="editor-field"><label>Couleur Cellules</label><div className="color-picker-wrap"><input type="color" value={rowBg} onChange={e => setRowBg(e.target.value)} /><span>{rowBg}</span></div></div>
+            <div className="editor-field"><label>Couleur Bordures</label><div className="color-picker-wrap"><input type="color" value={strokeColor} onChange={e => setStrokeColor(e.target.value)} /><span>{strokeColor}</span></div></div>
+          </div>
+          <div className="editor-field">
+            <label>Contenu des Cellules</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, overflowX: "auto" }}>
+              {tableData.map((rowArr, rowIndex) => (
+                <div key={rowIndex} style={{ display: "flex", gap: 4, minWidth: "max-content" }}>
+                  {rowArr.map((cellTxt, colIndex) => (
+                    <input 
+                      key={colIndex} 
+                      type="text" 
+                      value={cellTxt || ""} 
+                      onChange={e => handleDataChange(rowIndex, colIndex, e.target.value)}
+                      style={{ width: 120, padding: 6, fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 4, background: rowIndex === 0 ? "rgba(0,0,0,0.02)" : "white", fontWeight: rowIndex === 0 ? "bold" : "normal" }}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { onSave({ rows, cols, tableData, headerBg, rowBg, strokeColor }); onClose(); }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// ─── PROPERTIES PANEL ────────────────────────────────────────────────────────
+const PropertiesPanel = ({
+  selectedObject, canvas, onUpdate,
+  imageHistory, onReplaceImage, onSelectImageFromHistory, refreshKey
+}) => {
+  const [props, setProps] = useState({});
+  const [showComponentEditor, setShowComponentEditor] = useState(false);
+  const [editorVariant, setEditorVariant] = useState(null);
+  const [editorData, setEditorData] = useState(null);
+
+  useEffect(() => {
+    if (!selectedObject) { setProps({}); setEditorVariant(null); setEditorData(null); return; }
     const o = selectedObject;
     const shadow = o.shadow || {};
     setProps({
       left: Math.round(o.left || 0), top: Math.round(o.top || 0),
       width: Math.round((o.width || 0) * (o.scaleX || 1)), height: Math.round((o.height || 0) * (o.scaleY || 1)),
-      fill: o.fill || "#000000", opacity: Math.round((o.opacity ?? 1) * 100),
+      fill: (typeof o.fill === "string" && o.fill) ? o.fill : "#000000",
+      opacity: Math.round((o.opacity ?? 1) * 100),
       angle: Math.round(o.angle || 0), fontSize: o.fontSize || 24,
       fontFamily: o.fontFamily || "Inter", fontWeight: o.fontWeight || "normal",
       fontStyle: o.fontStyle || "normal", textAlign: o.textAlign || "left",
@@ -72,8 +883,18 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
       shadowBlur: shadow.blur || 10,
       shadowOffsetX: shadow.offsetX !== undefined ? shadow.offsetX : 5,
       shadowOffsetY: shadow.offsetY !== undefined ? shadow.offsetY : 5,
+      // For images
+      imageShape: o.customImageShape || "rect"
     });
-  }, [selectedObject]);
+
+    if (o.customVariant && o.componentData) {
+      setEditorVariant(o.customVariant);
+      setEditorData({ ...o.componentData, variant: o.customVariant });
+    } else {
+      setEditorVariant(null);
+      setEditorData(null);
+    }
+  }, [selectedObject, refreshKey]);
 
   const apply = (key, value) => {
     if (!selectedObject || !canvas) return;
@@ -86,12 +907,33 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
     setProps(p => ({ ...p, [key]: value }));
   };
 
+  const applyImageShape = (shapeType) => {
+    if (!selectedObject || !canvas || selectedObject.type !== "image") return;
+    const w = selectedObject.width;
+    const h = selectedObject.height;
+
+    let clipPath = null;
+    if (shapeType === "circle") {
+      const radius = Math.min(w, h) / 2;
+      clipPath = new fabric.Circle({ radius, originX: "center", originY: "center" });
+    } else if (shapeType === "rounded") {
+      clipPath = new fabric.Rect({ width: w, height: h, rx: Math.min(w, h) * 0.2, ry: Math.min(w, h) * 0.2, originX: "center", originY: "center" });
+    } else if (shapeType === "triangle") {
+      clipPath = new fabric.Triangle({ width: w, height: h, originX: "center", originY: "center" });
+    }
+
+    selectedObject.customImageShape = shapeType;
+    selectedObject.set("clipPath", clipPath);
+    canvas.renderAll(); onUpdate?.();
+    setProps(p => ({ ...p, imageShape: shapeType }));
+  };
+
   const applyPadding = (side, value) => {
     if (!selectedObject || !canvas) return;
     const o = selectedObject;
     const key = `boxPadding${side}`;
     o.set(key, value);
-    o.set('padding', Math.max(o.boxPaddingTop || 0, o.boxPaddingRight || 0, o.boxPaddingBottom || 0, o.boxPaddingLeft || 0));
+    o.set("padding", Math.max(o.boxPaddingTop || 0, o.boxPaddingRight || 0, o.boxPaddingBottom || 0, o.boxPaddingLeft || 0));
     o.setCoords(); canvas.renderAll(); onUpdate?.();
     setProps(p => ({ ...p, [key]: value }));
   };
@@ -113,6 +955,251 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
     canvas.renderAll(); onUpdate?.();
   };
 
+  // FIX: handleComponentSave now reads from canvas object directly and updates both canvas + state
+  const handleComponentSave = (updatedData) => {
+    if (!selectedObject || !canvas) return;
+
+    // Merge updated data into the canvas object's componentData
+    selectedObject.componentData = { ...(selectedObject.componentData || {}), ...updatedData };
+
+    const variant = selectedObject.customVariant;
+    if (variant === "button") updateButtonOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "input") updateInputOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "profile") updateProfileOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "pricing") updatePricingOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "slider") updateSliderOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "card") updateCardOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "modal") updateModalOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "nav_menu") updateNavMenuOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "hero") updateHeroOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "tabs") updateTabsOnCanvas(selectedObject, selectedObject.componentData);
+    else if (variant === "table") updateTableOnCanvas(selectedObject, selectedObject.componentData);
+
+    canvas.renderAll();
+    onUpdate?.();
+
+    // FIX: Update local state so panel reflects new values
+    setEditorData({ ...selectedObject.componentData, variant });
+    setShowComponentEditor(false);
+  };
+
+  const handleUngroup = () => {
+    if (!selectedObject || !canvas || selectedObject.type !== "group") return;
+    
+    // We get all items inside the group
+    const items = [...selectedObject.getObjects()];
+    
+    // Store their absolute transform matrices before destroying the group
+    const transforms = items.map(child => fabric.util.qrDecompose(child.calcTransformMatrix()));
+    
+    // Remove the group from the canvas
+    canvas.remove(selectedObject);
+    
+    // Add each child back to the canvas globally with the correct absolute positions
+    items.forEach((child, i) => {
+        const opt = transforms[i];
+        child.set({
+            left: opt.translateX,
+            top: opt.translateY,
+            scaleX: opt.scaleX,
+            scaleY: opt.scaleY,
+            angle: opt.angle,
+            skewX: opt.skewX,
+            skewY: opt.skewY,
+            group: null // explicitly detach
+        });
+        child.setCoords();
+        canvas.add(child);
+    });
+    
+    // Deselect everything so the user can immediately click individual elements
+    canvas.discardActiveObject();
+    canvas.requestRenderAll();
+    onUpdate?.();
+  };
+
+  // ── Component update helpers ──────────────────────────────────────────────
+  const updateButtonOnCanvas = (group, data) => {
+    const sizeMap = {
+      small: { width: 110, height: 38, fontSize: 12 },
+      medium: { width: 150, height: 46, fontSize: 15 },
+      large: { width: 190, height: 56, fontSize: 18 },
+    };
+    const dims = sizeMap[data.buttonSize] || sizeMap.medium;
+    const bg = group._objects?.[0];
+    const txt = group._objects?.[1];
+    if (bg) bg.set({ width: dims.width, height: dims.height, fill: data.buttonColor, rx: data.borderRadius, ry: data.borderRadius });
+    if (txt) txt.set({ text: data.buttonText, fontSize: dims.fontSize, fill: data.buttonTextColor });
+    group._objects?.forEach(o => o.setCoords?.());
+  };
+
+  const updateInputOnCanvas = (group, data) => {
+    const bg = group._objects?.[0];
+    const placeholder = group._objects?.[2];
+    if (bg) bg.set({ width: data.inputWidth, height: data.inputHeight, fill: data.bgColor, stroke: data.borderColor });
+    if (placeholder) placeholder.set({ text: data.placeholder, fill: "#94a3b8" });
+    group._objects?.forEach(o => o.setCoords?.());
+  };
+
+  const updateProfileOnCanvas = (group, data) => {
+    if (!group._objects) return;
+    const avatar = group._objects.find(o => o.type === "circle");
+    const texts = group._objects.filter(o => o.type === "i-text" || o.type === "text");
+    if (avatar) avatar.set({ fill: data.avatarColor });
+    if (texts[0]) texts[0].set({ text: data.profileName });
+    if (texts[1]) texts[1].set({ text: data.profileRole });
+    if (texts[2]) texts[2].set({ text: data.profileEmail });
+    group._objects.forEach(o => o.setCoords?.());
+  };
+
+  const updatePricingOnCanvas = (group, data) => {
+    if (!data.pricingRows || !group._objects) return;
+    const bg = group._objects[0];
+    const toRemove = group._objects.slice(1);
+    toRemove.forEach(o => group.remove(o));
+
+    const startX = -175, colWidth = 200;
+    data.pricingRows.forEach((row, idx) => {
+      const x = startX + idx * colWidth;
+      const colBg = new fabric.Rect({ width: 185, height: 295, fill: row.color + "12", stroke: row.color, strokeWidth: row.popular ? 2.5 : 1.5, rx: 14, ry: 14, left: x, top: 0, originX: "center", originY: "center" });
+      const title = new fabric.Text(row.name, { fontSize: 16, fontWeight: "800", fill: row.color, fontFamily: "Inter", left: x, top: -130, originX: "center" });
+      const price = new fabric.Text(row.price, { fontSize: 28, fontWeight: "900", fill: row.color, fontFamily: "Inter", left: x, top: -102, originX: "center" });
+      group.add(colBg, title, price);
+      if (row.popular) {
+        const badge = new fabric.Text("⭐ POPULAIRE", { fontSize: 8, fontWeight: "800", fill: "white", fontFamily: "Inter", left: x, top: -148, originX: "center", backgroundColor: row.color, padding: 5 });
+        group.add(badge);
+      }
+      row.features.forEach((f, fi) => {
+        const ft = new fabric.Text(`✓  ${f}`, { fontSize: 11, fill: "#374151", fontFamily: "Inter", left: x, top: -60 + fi * 22, originX: "center" });
+        group.add(ft);
+      });
+      const btnBg = new fabric.Rect({ width: 155, height: 32, rx: 8, ry: 8, fill: row.color, left: x, top: 120, originX: "center", originY: "center" });
+      const btnT = new fabric.Text("Choisir ce plan", { fontSize: 10, fontWeight: "700", fill: "white", fontFamily: "Inter", left: x, top: 120, originX: "center", originY: "center" });
+      group.add(btnBg, btnT);
+    });
+    group._objects.forEach(o => o.setCoords?.());
+  };
+
+  const updateSliderOnCanvas = (group, data) => {
+    const pct = (data.sliderValue - data.min) / (data.max - data.min);
+    const newX = -75 + pct * 150;
+    const lineActive = group._objects?.[1];
+    const handle = group._objects?.[2];
+    const valueText = group._objects?.[3];
+    if (lineActive) lineActive.set({ x2: newX, stroke: data.sliderColor });
+    if (handle) handle.set({ left: newX, stroke: data.sliderColor });
+    if (valueText) valueText.set({ text: `${data.sliderValue}${data.unit}`, fill: data.sliderColor });
+    group._objects?.forEach(o => o.setCoords?.());
+  };
+
+  const updateModalOnCanvas = (group, data) => {
+    // Data is merged, no visual update needed directly except re-render
+  };
+
+  const updateCardOnCanvas = (group, data) => {
+    if (!group._objects) return;
+    // Find objects by index positions from the factory (more reliable than text matching)
+    const allObjs = group._objects;
+    // cardBg=0, imgZone=1, imgIcon=2, titleTxt=3, descTxt=4, starRow=5, priceTxt=6, btnBg=7, btnTxt=8
+    if (allObjs[3]) allObjs[3].set({ text: data.productTitle || "Produit Premium" });
+    if (allObjs[4]) allObjs[4].set({ text: data.productDesc || "Description courte du produit" });
+    if (allObjs[6]) allObjs[6].set({ text: data.productPrice || "29€", fill: data.productColor || "#6366f1" });
+    if (allObjs[5]) {
+      const stars = "★".repeat(Math.floor(data.productRating || 5)) + "☆".repeat(5 - Math.floor(data.productRating || 5));
+      allObjs[5].set({ text: `${stars}  (${data.productReviews || "128"})` });
+    }
+    if (allObjs[7]) allObjs[7].set({ fill: data.productColor || "#6366f1" });
+
+    if (data.productImageUrl && data.productImageUrl !== group.componentData?.lastProductImageUrl) {
+      fabric.Image.fromURL(data.productImageUrl).then(img => {
+        const imgZone = allObjs[1];
+        if (imgZone) {
+          img.scaleToWidth(256);
+          img.set({
+            originX: "center", originY: "top",
+            left: imgZone.left, top: imgZone.top,
+            clipPath: new fabric.Rect({ width: 256, height: 160, rx: 10, ry: 10, originX: "center", originY: "top" })
+          });
+          if (allObjs[2]) allObjs[2].set({ opacity: 0 }); // hide icon
+          if (allObjs.length > 9) group.remove(allObjs[9]); // replace previous
+          group.add(img);
+          group.componentData.lastProductImageUrl = data.productImageUrl;
+          group.canvas?.renderAll();
+        }
+      });
+    }
+    group._objects?.forEach(o => o.setCoords?.());
+  };
+
+  const updateNavMenuOnCanvas = (group, data) => {
+    if (!group._objects) return;
+    const allObjs = group._objects;
+    // bg=0, logo=1, nav1=2, navUnderline=3, nav2=4, nav3=5, ctaBg=6, ctaTxt=7
+    if (allObjs[1]) allObjs[1].set({ text: data.navLogo || "◈ Logo", fill: data.navColor || "#6366f1" });
+    if (allObjs[2]) allObjs[2].set({ text: data.nav1 || "Accueil" });
+    if (allObjs[3]) allObjs[3].set({ fill: data.navColor || "#6366f1", left: (allObjs[2]?.left || -60) + (allObjs[2]?.width || 50) / 2 - 10 });
+    if (allObjs[4]) allObjs[4].set({ text: data.nav2 || "À propos", left: (allObjs[2]?.left || -60) + (allObjs[2]?.width || 50) + 40 });
+    if (allObjs[5]) allObjs[5].set({ text: data.nav3 || "Contact", left: (allObjs[4]?.left || 20) + (allObjs[4]?.width || 50) + 40 });
+    if (allObjs[6]) allObjs[6].set({ fill: data.navColor || "#6366f1" });
+    if (allObjs[7]) allObjs[7].set({ text: data.navBtn || "Connexion" });
+    group._objects?.forEach(o => o.setCoords?.());
+  };
+
+  const updateHeroOnCanvas = (group, data) => {
+    if (!group._objects) return;
+    const allObjs = group._objects;
+    // bg=0, dec1=1, dec2=2, badgeBg=3, badgeTxt=4, h1=5, sub=6, btn=7, btnTxt=8, btnOutline=9, btnOutlineTxt=10
+    if (allObjs[0]) allObjs[0].set({ fill: data.heroBg || "#4f46e5" });
+    if (allObjs[4]) allObjs[4].set({ text: data.heroBadge || "✨ NOUVEAU DESIGN" });
+    if (allObjs[5]) allObjs[5].set({ text: data.heroTitle || "Titre Principal" });
+    if (allObjs[6]) allObjs[6].set({ text: data.heroSub || "Sous-titre descriptif accrocheur pour présenter votre produit" });
+    if (allObjs[7]) allObjs[7].set({ fill: data.heroBtnBg || "#ffffff" });
+    if (allObjs[8]) allObjs[8].set({ text: data.heroBtn || "Commencer", fill: data.heroBg || "#4f46e5" });
+    if (allObjs[10]) allObjs[10].set({ text: data.heroBtnOutline || "En savoir plus" });
+    group._objects?.forEach(o => o.setCoords?.());
+  };
+
+  const updateTabsOnCanvas = (group, data) => {
+    if (!group._objects) return;
+    const allObjs = group._objects;
+    // bg=0, tab1Bg=1, t1=2, t2=3, t3=4
+    if (allObjs[2]) allObjs[2].set({ text: data.tab1 || "Général" });
+    if (allObjs[3]) allObjs[3].set({ text: data.tab2 || "Sécurité" });
+    if (allObjs[4]) allObjs[4].set({ text: data.tab3 || "Avancé" });
+    group._objects?.forEach(o => o.setCoords?.());
+  };
+
+  const updateTableOnCanvas = (group, data) => {
+    if (!group._objects || !data.tableData) return;
+    const r = data.rows || 3, c = data.cols || 3;
+    const cellW = 120, cellH = 50;
+    
+    // Vider le group pour recréer proprement
+    const oldObjs = [...group._objects];
+    oldObjs.forEach(o => group.remove(o));
+
+    const totalW = c * cellW;
+    const totalH = r * cellH;
+    const startX = -totalW / 2;
+    const startY = -totalH / 2;
+
+    for (let i = 0; i < r; i++) {
+      for (let j = 0; j < c; j++) {
+        const bg = new fabric.Rect({
+          left: startX + j * cellW, top: startY + i * cellH, width: cellW, height: cellH,
+          fill: i === 0 ? data.headerBg : data.rowBg, stroke: data.strokeColor, strokeWidth: 1
+        });
+        const txt = new fabric.Text(data.tableData[i]?.[j] || "", {
+          left: startX + j * cellW + 16, top: startY + i * cellH + 16,
+          fontSize: 14, fill: i === 0 ? "#0f172a" : "#475569",
+          fontWeight: i === 0 ? "bold" : "normal", fontFamily: "Inter"
+        });
+        group.add(bg, txt);
+      }
+    }
+    group._objects?.forEach(o => o.setCoords?.());
+  };
+
   if (!selectedObject) return (
     <div className="props-empty">
       <div className="props-empty-icon"><LayoutTemplate size={28} /></div>
@@ -123,113 +1210,194 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
   const isText = ["i-text", "textbox"].includes(selectedObject.type);
   const isLine = selectedObject.type === "line";
   const isGroup = selectedObject.type === "group";
+  const isInteractiveComponent = isGroup && editorVariant && ["button", "checkbox", "toggle", "slider", "modal", "input", "nav_menu", "hero", "tabs", "table"].includes(editorVariant);
 
   const v = {
     left: props.left ?? 0, top: props.top ?? 0, width: props.width ?? 0, height: props.height ?? 0,
     angle: props.angle ?? 0, opacity: props.opacity ?? 100, fontSize: props.fontSize ?? 24,
     fontFamily: props.fontFamily ?? "Inter", fontWeight: props.fontWeight ?? "normal",
     fontStyle: props.fontStyle ?? "normal", textAlign: props.textAlign ?? "left",
-    fill: props.fill ?? "#000000", stroke: props.stroke ?? "#000000", strokeWidth: props.strokeWidth ?? 0,
-    rx: props.rx ?? 0, backgroundColor: props.backgroundColor ?? "",
+    fill: (typeof props.fill === "string" && props.fill.startsWith("#")) ? props.fill : "#000000",
+    stroke: (typeof props.stroke === "string" && props.stroke.startsWith("#")) ? props.stroke : "#000000",
+    strokeWidth: props.strokeWidth ?? 0, rx: props.rx ?? 0,
+    backgroundColor: props.backgroundColor ?? "",
     boxPaddingTop: props.boxPaddingTop ?? 0, boxPaddingRight: props.boxPaddingRight ?? 0,
     boxPaddingBottom: props.boxPaddingBottom ?? 0, boxPaddingLeft: props.boxPaddingLeft ?? 0,
-    boxStroke: props.boxStroke ?? "#000000", boxStrokeWidth: props.boxStrokeWidth ?? 0,
+    boxStroke: (typeof props.boxStroke === "string" && props.boxStroke.startsWith("#")) ? props.boxStroke : "#000000",
+    boxStrokeWidth: props.boxStrokeWidth ?? 0,
     shadowEnabled: props.shadowEnabled ?? false, shadowColor: props.shadowColor ?? "rgba(0,0,0,0.3)",
     shadowBlur: props.shadowBlur ?? 10, shadowOffsetX: props.shadowOffsetX ?? 5, shadowOffsetY: props.shadowOffsetY ?? 5,
   };
 
   return (
-    <div className="props-content fade-in">
-      <section className="props-section">
-        <h4 className="props-section-title">Dimensions & Position</h4>
-        <div className="props-grid-2">
-          <PropField label="X" value={v.left} onChange={val => apply("left", +val)} type="number" />
-          <PropField label="Y" value={v.top} onChange={val => apply("top", +val)} type="number" />
-          <PropField label="Largeur" value={v.width} onChange={val => apply("width", +val)} type="number" />
-          <PropField label="Hauteur" value={v.height} onChange={val => apply("height", +val)} type="number" />
-          <PropField label="Angle °" value={v.angle} onChange={val => apply("angle", +val)} type="number" />
-          <PropField label="Opacité %" value={v.opacity} onChange={val => apply("opacity", +val)} type="number" min="0" max="100" />
-        </div>
-      </section>
+    <>
+      <div className="props-content fade-in">
+        {isInteractiveComponent && (
+          <section className="props-section">
+            <button className="btn-edit-component" onClick={() => setShowComponentEditor(true)}>
+              <Edit2 size={14} /> Modifier le composant
+            </button>
+          </section>
+        )}
 
-      {isText && (
+        {isGroup && (
+          <section className="props-section">
+            <button className="btn-edit-component" onClick={handleUngroup} style={{ backgroundColor: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', marginTop: isInteractiveComponent ? '10px' : '0' }}>
+              <Unlock size={14} /> Dégrouper les éléments
+            </button>
+          </section>
+        )}
+
         <section className="props-section">
-          <h4 className="props-section-title">Typographie</h4>
-          <div className="props-row">
-            <select value={v.fontFamily} onChange={e => apply("fontFamily", e.target.value)} className="props-select w-full">
-              {["Inter", "Arial", "Georgia", "Courier New", "Verdana", "Trebuchet MS", "Impact"].map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
+          <h4 className="props-section-title">Dimensions & Position</h4>
+          <div className="props-grid-2">
+            <PropField label="X" value={v.left} onChange={val => apply("left", +val)} type="number" />
+            <PropField label="Y" value={v.top} onChange={val => apply("top", +val)} type="number" />
+            <PropField label="Largeur" value={v.width} onChange={val => apply("width", +val)} type="number" />
+            <PropField label="Hauteur" value={v.height} onChange={val => apply("height", +val)} type="number" />
+            <PropField label="Angle °" value={v.angle} onChange={val => apply("angle", +val)} type="number" />
+            <PropField label="Opacité %" value={v.opacity} onChange={val => apply("opacity", +val)} type="number" min="0" max="100" />
           </div>
-          <div className="props-row">
-            <label className="props-label">Taille</label>
-            <input type="number" value={v.fontSize} min="6" max="200" onChange={e => apply("fontSize", +e.target.value)} className="props-input-sm" />
-          </div>
-          <div className="props-row">
-            <div className="btn-group">
-              <button className={`props-toggle ${v.fontWeight === "bold" ? "active" : ""}`} onClick={() => apply("fontWeight", v.fontWeight === "bold" ? "normal" : "bold")}><Bold size={13} /></button>
-              <button className={`props-toggle ${v.fontStyle === "italic" ? "active" : ""}`} onClick={() => apply("fontStyle", v.fontStyle === "italic" ? "normal" : "italic")}><Italic size={13} /></button>
-            </div>
-            <div className="btn-group">
-              {[["left", <AlignLeft size={13} />], ["center", <AlignCenter size={13} />], ["right", <AlignRight size={13} />]].map(([a, icon]) => (
-                <button key={a} className={`props-toggle ${v.textAlign === a ? "active" : ""}`} onClick={() => apply("textAlign", a)}>{icon}</button>
-              ))}
-            </div>
-          </div>
-          <div className="props-row"><label className="props-label">Couleur du texte</label><div className="color-row"><input type="color" value={v.fill.startsWith("#") ? v.fill : "#000000"} onChange={e => apply("fill", e.target.value)} className="props-color" /><span className="color-hex">{v.fill.startsWith("#") ? v.fill : "—"}</span></div></div>
-          <div className="props-row"><label className="props-label">Contour texte</label><div className="color-row"><input type="color" value={v.stroke.startsWith("#") ? v.stroke : "#000000"} onChange={e => apply("stroke", e.target.value)} className="props-color" /><input type="number" value={v.strokeWidth} min="0" max="10" onChange={e => apply("strokeWidth", +e.target.value)} className="props-input-sm" /></div></div>
         </section>
-      )}
 
-      {isText && (
-        <section className="props-section">
-          <h4 className="props-section-title">Fond de la boîte</h4>
-          <div className="props-row">
-            <label className="props-label">Activer</label>
-            <input type="checkbox" checked={!!v.backgroundColor} onChange={e => apply("backgroundColor", e.target.checked ? "#e2e8f0" : "")} className="custom-checkbox" />
-          </div>
-          {!!v.backgroundColor && (
-            <div className="fade-in">
-              <div className="props-row"><label className="props-label">Couleur de fond</label><div className="color-row"><input type="color" value={v.backgroundColor} onChange={e => apply("backgroundColor", e.target.value)} className="props-color" /><span className="color-hex">{v.backgroundColor}</span></div></div>
-              <div className="props-row" style={{ marginBottom: 4 }}><label className="props-label" style={{ fontSize: 11 }}>Padding (H, Dr, B, G)</label></div>
-              <div className="props-grid-4">
-                <input type="number" value={v.boxPaddingTop} onChange={e => applyPadding("Top", +e.target.value)} className="props-input-xs" />
-                <input type="number" value={v.boxPaddingRight} onChange={e => applyPadding("Right", +e.target.value)} className="props-input-xs" />
-                <input type="number" value={v.boxPaddingBottom} onChange={e => applyPadding("Bottom", +e.target.value)} className="props-input-xs" />
-                <input type="number" value={v.boxPaddingLeft} onChange={e => applyPadding("Left", +e.target.value)} className="props-input-xs" />
+        {isText && (
+          <section className="props-section">
+            <h4 className="props-section-title">Typographie</h4>
+            <div className="props-row">
+              <select value={v.fontFamily} onChange={e => apply("fontFamily", e.target.value)} className="props-select w-full">
+                {["Inter", "Arial", "Georgia", "Courier New", "Verdana", "Trebuchet MS", "Impact"].map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div className="props-row">
+              <label className="props-label">Taille</label>
+              <input type="number" value={v.fontSize} min="6" max="200" onChange={e => apply("fontSize", +e.target.value)} className="props-input-sm" />
+            </div>
+            <div className="props-row">
+              <div className="btn-group">
+                <button className={`props-toggle ${v.fontWeight === "bold" ? "active" : ""}`} onClick={() => apply("fontWeight", v.fontWeight === "bold" ? "normal" : "bold")}><Bold size={13} /></button>
+                <button className={`props-toggle ${v.fontStyle === "italic" ? "active" : ""}`} onClick={() => apply("fontStyle", v.fontStyle === "italic" ? "normal" : "italic")}><Italic size={13} /></button>
               </div>
-              <div className="props-row"><label className="props-label">Bordure</label><div className="color-row"><input type="color" value={v.boxStroke.startsWith("#") ? v.boxStroke : "#000000"} onChange={e => apply("boxStroke", e.target.value)} className="props-color" /><input type="number" value={v.boxStrokeWidth} min="0" max="50" onChange={e => apply("boxStrokeWidth", +e.target.value)} className="props-input-sm" /></div></div>
-              <div className="props-row"><label className="props-label">Arrondi</label><input type="number" value={v.rx} min="0" max="200" onChange={e => { apply("rx", +e.target.value); apply("ry", +e.target.value); }} className="props-input-sm" /></div>
+              <div className="btn-group">
+                {[["left", <AlignLeft size={13} />], ["center", <AlignCenter size={13} />], ["right", <AlignRight size={13} />]].map(([a, icon]) => (
+                  <button key={a} className={`props-toggle ${v.textAlign === a ? "active" : ""}`} onClick={() => apply("textAlign", a)}>{icon}</button>
+                ))}
+              </div>
+            </div>
+            <div className="props-row"><label className="props-label">Couleur du texte</label><div className="color-row"><input type="color" value={v.fill} onChange={e => apply("fill", e.target.value)} className="props-color" /><span className="color-hex">{v.fill}</span></div></div>
+            <div className="props-row"><label className="props-label">Contour texte</label><div className="color-row"><input type="color" value={v.stroke} onChange={e => apply("stroke", e.target.value)} className="props-color" /><input type="number" value={v.strokeWidth} min="0" max="10" onChange={e => apply("strokeWidth", +e.target.value)} className="props-input-sm" /></div></div>
+          </section>
+        )}
+
+        {isText && (
+          <section className="props-section">
+            <h4 className="props-section-title">Fond de la boîte</h4>
+            <div className="props-row">
+              <label className="props-label">Activer</label>
+              <input type="checkbox" checked={!!v.backgroundColor} onChange={e => apply("backgroundColor", e.target.checked ? "#e2e8f0" : "")} className="custom-checkbox" />
+            </div>
+            {!!v.backgroundColor && (
+              <div className="fade-in">
+                <div className="props-row"><label className="props-label">Couleur de fond</label><div className="color-row"><input type="color" value={v.backgroundColor} onChange={e => apply("backgroundColor", e.target.value)} className="props-color" /><span className="color-hex">{v.backgroundColor}</span></div></div>
+                <div className="props-row" style={{ marginBottom: 4 }}><label className="props-label" style={{ fontSize: 11 }}>Padding (H, Dr, B, G)</label></div>
+                <div className="props-grid-4">
+                  <input type="number" value={v.boxPaddingTop} onChange={e => applyPadding("Top", +e.target.value)} className="props-input-xs" />
+                  <input type="number" value={v.boxPaddingRight} onChange={e => applyPadding("Right", +e.target.value)} className="props-input-xs" />
+                  <input type="number" value={v.boxPaddingBottom} onChange={e => applyPadding("Bottom", +e.target.value)} className="props-input-xs" />
+                  <input type="number" value={v.boxPaddingLeft} onChange={e => applyPadding("Left", +e.target.value)} className="props-input-xs" />
+                </div>
+                <div className="props-row"><label className="props-label">Bordure</label><div className="color-row"><input type="color" value={v.boxStroke} onChange={e => apply("boxStroke", e.target.value)} className="props-color" /><input type="number" value={v.boxStrokeWidth} min="0" max="50" onChange={e => apply("boxStrokeWidth", +e.target.value)} className="props-input-sm" /></div></div>
+                <div className="props-row"><label className="props-label">Arrondi</label><input type="number" value={v.rx} min="0" max="200" onChange={e => { apply("rx", +e.target.value); apply("ry", +e.target.value); }} className="props-input-sm" /></div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {!isGroup && !isText && (
+          <section className="props-section">
+            <h4 className="props-section-title">Apparence</h4>
+            {!isLine && <div className="props-row"><label className="props-label">Remplissage</label><div className="color-row"><input type="color" value={v.fill} onChange={e => apply("fill", e.target.value)} className="props-color" /><span className="color-hex">{v.fill}</span></div></div>}
+            <div className="props-row"><label className="props-label">Contour</label><div className="color-row"><input type="color" value={v.stroke} onChange={e => apply("stroke", e.target.value)} className="props-color" /><input type="number" value={v.strokeWidth} min="0" max="50" onChange={e => apply("strokeWidth", +e.target.value)} className="props-input-sm" /></div></div>
+            {selectedObject.type === "rect" && <div className="props-row"><label className="props-label">Arrondi</label><input type="number" value={v.rx} min="0" max="200" onChange={e => { apply("rx", +e.target.value); apply("ry", +e.target.value); }} className="props-input-sm" /></div>}
+          </section>
+        )}
+
+        <section className="props-section">
+          <div className="props-row" style={{ marginBottom: v.shadowEnabled ? 12 : 0 }}>
+            <h4 className="props-section-title" style={{ borderBottom: "none", marginBottom: 0, paddingBottom: 0 }}>Ombre portée</h4>
+            <input type="checkbox" checked={v.shadowEnabled} onChange={e => applyShadow("shadowEnabled", e.target.checked)} className="custom-checkbox" />
+          </div>
+          {v.shadowEnabled && (
+            <div className="fade-in">
+              <div className="props-row"><label className="props-label">Couleur</label><div className="color-row"><input type="color" value={v.shadowColor.startsWith("#") ? v.shadowColor : "#000000"} onChange={e => applyShadow("shadowColor", e.target.value)} className="props-color" /></div></div>
+              <div className="props-row"><label className="props-label">Flou</label><input type="number" value={v.shadowBlur} min="0" max="100" onChange={e => applyShadow("shadowBlur", +e.target.value)} className="props-input-sm" /></div>
+              <div className="props-grid-2">
+                <PropField label="Décalage X" value={v.shadowOffsetX} onChange={val => applyShadow("shadowOffsetX", +val)} type="number" />
+                <PropField label="Décalage Y" value={v.shadowOffsetY} onChange={val => applyShadow("shadowOffsetY", +val)} type="number" />
+              </div>
             </div>
           )}
         </section>
-      )}
 
-      {!isGroup && !isText && (
-        <section className="props-section">
-          <h4 className="props-section-title">Apparence</h4>
-          {!isLine && (<div className="props-row"><label className="props-label">Remplissage</label><div className="color-row"><input type="color" value={v.fill.startsWith("#") ? v.fill : "#000000"} onChange={e => apply("fill", e.target.value)} className="props-color" /><span className="color-hex">{v.fill.startsWith("#") ? v.fill : "—"}</span></div></div>)}
-          <div className="props-row"><label className="props-label">Contour</label><div className="color-row"><input type="color" value={v.stroke.startsWith("#") ? v.stroke : "#000000"} onChange={e => apply("stroke", e.target.value)} className="props-color" /><input type="number" value={v.strokeWidth} min="0" max="50" onChange={e => apply("strokeWidth", +e.target.value)} className="props-input-sm" /></div></div>
-          {selectedObject.type === "rect" && (<div className="props-row"><label className="props-label">Arrondi</label><input type="number" value={v.rx} min="0" max="200" onChange={e => { apply("rx", +e.target.value); apply("ry", +e.target.value); }} className="props-input-sm" /></div>)}
-        </section>
-      )}
+        {selectedObject.type === "image" && (
+          <>
+            <section className="props-section fade-in">
+              <h4 className="props-section-title">Forme de l'image</h4>
+              <div className="btn-group" style={{ marginBottom: "16px" }}>
+                <button className={`props-toggle ${props.imageShape === "rect" || !props.imageShape ? "active" : ""}`} onClick={() => applyImageShape("rect")}>Carré</button>
+                <button className={`props-toggle ${props.imageShape === "rounded" ? "active" : ""}`} onClick={() => applyImageShape("rounded")}>Arrondi</button>
+                <button className={`props-toggle ${props.imageShape === "circle" ? "active" : ""}`} onClick={() => applyImageShape("circle")}>Cercle</button>
+                <button className={`props-toggle ${props.imageShape === "triangle" ? "active" : ""}`} onClick={() => applyImageShape("triangle")}>Triangle</button>
+              </div>
+            </section>
 
-      <section className="props-section">
-        <div className="props-row" style={{ marginBottom: v.shadowEnabled ? 12 : 0 }}>
-          <h4 className="props-section-title" style={{ borderBottom: "none", marginBottom: 0, paddingBottom: 0 }}>Ombre portée</h4>
-          <input type="checkbox" checked={v.shadowEnabled} onChange={e => applyShadow("shadowEnabled", e.target.checked)} className="custom-checkbox" />
-        </div>
-        {v.shadowEnabled && (
-          <div className="fade-in">
-            <div className="props-row"><label className="props-label">Couleur</label><div className="color-row"><input type="color" value={v.shadowColor.startsWith("#") ? v.shadowColor : "#000000"} onChange={e => applyShadow("shadowColor", e.target.value)} className="props-color" /></div></div>
-            <div className="props-row"><label className="props-label">Flou</label><input type="number" value={v.shadowBlur} min="0" max="100" onChange={e => applyShadow("shadowBlur", +e.target.value)} className="props-input-sm" /></div>
-            <div className="props-grid-2">
-              <PropField label="Décalage X" value={v.shadowOffsetX} onChange={val => applyShadow("shadowOffsetX", +val)} type="number" />
-              <PropField label="Décalage Y" value={v.shadowOffsetY} onChange={val => applyShadow("shadowOffsetY", +val)} type="number" />
-            </div>
-          </div>
+            <section className="props-section fade-in">
+              <h4 className="props-section-title">Historique des images</h4>
+              <ImageHistoryPanel
+                imageHistory={imageHistory}
+                onReplaceImage={onReplaceImage}
+                onSelectImage={onSelectImageFromHistory}
+                canvas={canvas}
+              />
+            </section>
+          </>
         )}
-      </section>
-    </div>
+      </div>
+
+      {/* FIX: Component editors now use editorVariant + editorData for reliable rendering */}
+      {editorVariant === "button" && (
+        <ButtonEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "input" && (
+        <InputEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "profile" && (
+        <ProfileEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "pricing" && (
+        <PricingEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "slider" && (
+        <SliderEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "modal" && (
+        <ModalEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "card" && (
+        <CardEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "nav_menu" && (
+        <NavMenuEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "hero" && (
+        <HeroEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "tabs" && (
+        <TabsEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+      {editorVariant === "table" && (
+        <TableEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+      )}
+    </>
   );
 };
 
@@ -280,7 +1448,14 @@ const LayersPanel = ({ canvas, selectedObject, onSelectObject, refreshKey }) => 
   );
 };
 
-// ─── COMPOSANT PRINCIPAL ─────────────────────────────────────────────────────
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+const customFabricReviver = (o, object) => {
+  const customProps = ["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", "imageHistoryId"];
+  customProps.forEach(key => {
+    if (o[key] !== undefined) object[key] = o[key];
+  });
+};
+
 const DesignEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -297,9 +1472,11 @@ const DesignEditor = () => {
   const [designData, setDesignData] = useState(null);
   const [saveStatus, setSaveStatus] = useState("Chargement...");
   const [selectedObj, setSelectedObj] = useState(null);
+  const [selectedObjects, setSelectedObjects] = useState([]); // Multiple selection
   const [zoom, setZoom] = useState(1);
   const [gridEnabled, setGridEnabled] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(false);
+  const [smartGuidesEnabled, setSmartGuidesEnabled] = useState(true);
   const [rightTab, setRightTab] = useState("props");
   const [layersKey, setLayersKey] = useState(0);
   const [openMenu, setOpenMenu] = useState("typography");
@@ -310,15 +1487,58 @@ const DesignEditor = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loadingVersion, setLoadingVersion] = useState(false);
   const [deletingVersionId, setDeletingVersionId] = useState(null);
-
+  const [activeModal, setActiveModal] = useState(null);
+  const [toast, setToast] = useState(null);
   const [validating, setValidating] = useState(false);
   const [validationDone, setValidationDone] = useState(null);
-  const [validationToast, setValidationToast] = useState(null);
+  
+  // Text formatting toolbar state
+  const [textToolbarVisible, setTextToolbarVisible] = useState(false);
+  const [textToolbarPosition, setTextToolbarPosition] = useState({ x: 0, y: 0 });
+  
+  // Professional features state
+  const [isMultiSelecting, setIsMultiSelecting] = useState(false);
+  const [selectionBox, setSelectionBox] = useState(null);
+  const [showAlignmentGuides, setShowAlignmentGuides] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [corrections, setCorrections] = useState([]);
+  const [showCorrections, setShowCorrections] = useState(false);
+  const [rejetModal, setRejetModal] = useState(false);
+  const [rejetElements, setRejetElements] = useState([]);
+  const [rejetSubmitting, setRejetSubmitting] = useState(false);
+
+  // FIX: Use a ref for clipboard to avoid stale closure in keyboard handler
+  const clipboardRef = useRef(null);
+
+  // Tool pickers state
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+
+  // Image history state
+  const [imageHistory, setImageHistory] = useState([]);
+  // FIX: Map from imageId -> fabricCanvas image object reference
+  const imageObjMapRef = useRef({});
+
+  // Double-click-to-drag state
+  const [draggableId, setDraggableId] = useState(null);
+
+  // Tools & Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Collapsed by default
+  const [activeDrawingTool, setActiveDrawingTool] = useState(null); // 'pen', 'marker', 'highlighter', 'eraser'\n  const [activeBottomTool, setActiveBottomTool] = useState(null); // 'pen', 'marker', 'highlighter', 'eraser'
+  const [drawingColor, setDrawingColor] = useState("#ef4444");
+  const [drawingWidth, setDrawingWidth] = useState(3);
 
   const dropdownRef = useRef(null);
   const maquetteIdRef = useRef(null);
   const currentVersionIdRef = useRef(null);
   const isSwitchingVersion = useRef(false);
+  const fabricCanvasRef = useRef(null);
+
+  const showToast = (message, type = "success") => setToast({ message, type });
+  const showModal = (title, content) => setActiveModal({ title, content });
+
+  // Keep fabricCanvasRef in sync
+  useEffect(() => { fabricCanvasRef.current = fabricCanvas; }, [fabricCanvas]);
 
   useEffect(() => {
     const handleClickOutside = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
@@ -328,7 +1548,7 @@ const DesignEditor = () => {
 
   const lockCanvasObjects = useCallback((canvas) => {
     canvas.selection = false; canvas.skipTargetFind = true;
-    canvas.forEachObject((obj) => {
+    canvas.forEachObject(obj => {
       obj.selectable = false; obj.evented = false; obj.hasControls = false;
       obj.hasBorders = false; obj.lockMovementX = true; obj.lockMovementY = true;
       obj.lockRotation = true; obj.lockScalingX = true; obj.lockScalingY = true;
@@ -336,6 +1556,7 @@ const DesignEditor = () => {
     canvas.renderAll();
   }, []);
 
+  // Custom textbox background rendering
   useEffect(() => {
     if (fabric.Textbox && !fabric.Textbox.prototype.__customRenderBgSet) {
       fabric.Textbox.prototype._renderBackground = function (ctx) {
@@ -343,7 +1564,11 @@ const DesignEditor = () => {
         const pTop = this.boxPaddingTop || 0, pRight = this.boxPaddingRight || 0, pBottom = this.boxPaddingBottom || 0, pLeft = this.boxPaddingLeft || 0;
         const w = this.width + pLeft + pRight, h = this.height + pTop + pBottom;
         const x = -this.width / 2 - pLeft, y = -this.height / 2 - pTop, rx = this.rx || 0, ry = this.ry || 0;
-        ctx.beginPath(); ctx.moveTo(x + rx, y); ctx.lineTo(x + w - rx, y); ctx.quadraticCurveTo(x + w, y, x + w, y + ry); ctx.lineTo(x + w, y + h - ry); ctx.quadraticCurveTo(x + w, y + h, x + w - rx, y + h); ctx.lineTo(x + rx, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - ry); ctx.lineTo(x, y + ry); ctx.quadraticCurveTo(x, y, x + rx, y); ctx.closePath();
+        ctx.beginPath();
+        ctx.moveTo(x + rx, y); ctx.lineTo(x + w - rx, y); ctx.quadraticCurveTo(x + w, y, x + w, y + ry);
+        ctx.lineTo(x + w, y + h - ry); ctx.quadraticCurveTo(x + w, y + h, x + w - rx, y + h);
+        ctx.lineTo(x + rx, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - ry);
+        ctx.lineTo(x, y + ry); ctx.quadraticCurveTo(x, y, x + rx, y); ctx.closePath();
         if (this.backgroundColor) { ctx.fillStyle = this.backgroundColor; ctx.fill(); }
         if (this.boxStroke && this.boxStrokeWidth) { ctx.strokeStyle = this.boxStroke; ctx.lineWidth = this.boxStrokeWidth; ctx.stroke(); }
       };
@@ -351,6 +1576,7 @@ const DesignEditor = () => {
     }
   }, []);
 
+  // Load initial data
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
@@ -372,21 +1598,14 @@ const DesignEditor = () => {
     if (!isDesigner || !id || !versionId) return;
     try {
       const { data } = await API.get("/validations/corrections-designer");
-      const filtered = Array.isArray(data)
-        ? data.filter(c => c.version_id?._id === versionId)
-        : [];
+      const filtered = Array.isArray(data) ? data.filter(c => c.version_id?._id === versionId) : [];
       setCorrections(filtered);
     } catch (_) { }
   }, [id, isDesigner]);
 
-  const [corrections, setCorrections] = useState([]);
-  const [showCorrections, setShowCorrections] = useState(false);
-
   useEffect(() => {
     if (!isDesigner || !id) return;
-    if (currentVersionIdRef.current) {
-      fetchCorrectionsForVersion(currentVersionIdRef.current);
-    }
+    if (currentVersionIdRef.current) fetchCorrectionsForVersion(currentVersionIdRef.current);
   }, [id, isDesigner, fetchCorrectionsForVersion]);
 
   const fetchVersions = async () => {
@@ -395,6 +1614,114 @@ const DesignEditor = () => {
     catch (err) { console.error("Erreur chargement versions", err); }
   };
 
+  // Interactive component handlers
+  const handleButtonClick = useCallback((group, componentData) => {
+    if (componentData.actionType === "modal") {
+      showModal(componentData.buttonText || "Notification", `${componentData.buttonText || "Bouton"} cliqué avec succès !`);
+    } else {
+      showToast(`${componentData.buttonText || "Bouton"} cliqué !`, "success");
+    }
+  }, []);
+
+  const handleModalOpen = useCallback((group, componentData) => {
+    showModal(componentData.modalTitle || "Fenêtre modale", componentData.modalContent || "Contenu de la fenêtre modale.");
+  }, []);
+
+  const updateSliderFromEvent = useCallback((e, group) => {
+    const pointer = group.canvas?.getPointer(e.e);
+    if (!pointer) return;
+    const groupLeft = group.left;
+    const minX = -75 + groupLeft, maxX = 75 + groupLeft;
+    const valueX = Math.min(maxX, Math.max(minX, pointer.x));
+    const pct = (valueX - minX) / (maxX - minX);
+    const val = group.componentData.min + pct * (group.componentData.max - group.componentData.min);
+    const rounded = Math.round(val);
+    group.componentData.sliderValue = rounded;
+    const pctNew = (rounded - group.componentData.min) / (group.componentData.max - group.componentData.min);
+    const newX = -75 + pctNew * 150;
+    const lineActive = group._objects?.[1];
+    const handle = group._objects?.[2];
+    const valueText = group._objects?.[3];
+    if (lineActive) lineActive.set({ x2: newX });
+    if (handle) handle.set({ left: newX });
+    if (valueText) valueText.set({ text: `${rounded}${group.componentData.unit || ""}` });
+    group.canvas?.renderAll();
+  }, []);
+
+  const restoreInteractivity = useCallback((obj) => {
+    // Make ALL elements editable, not just ones with customVariant
+    if (!obj) return;
+    
+    // Enable text editing for ALL text elements
+    if (obj.type === "text" || obj.type === "i-text" || obj.type === "textbox") {
+      obj.on("mousedblclick", () => {
+        if (fabricCanvas) {
+          fabricCanvas.setActiveObject(obj);
+          obj.enterEditing();
+          obj.selectAll();
+          fabricCanvas.renderAll();
+        }
+      });
+    }
+    
+    // Enable color editing for all elements with fill
+    obj.on("selected", () => {
+      if (fabricCanvas && obj.fill) {
+        // Update color picker when element is selected
+        const colorInput = document.querySelector('input[type="color"]');
+        if (colorInput && obj.fill) {
+          colorInput.value = obj.fill;
+        }
+      }
+    });
+    
+    // Handle template pages
+    if (obj.componentData && obj.componentData.templateType) {
+      // Make template elements editable
+      obj.on("mousedown", () => {
+        if (fabricCanvas) {
+          fabricCanvas.setActiveObject(obj);
+          fabricCanvas.renderAll();
+        }
+      });
+      return;
+    }
+    
+    // Existing interactions for components
+    if (obj.customVariant === "button") {
+      obj.on("mousedown", () => handleButtonClick(obj, obj.componentData));
+    } else if (obj.customVariant === "checkbox") {
+      obj.on("mousedown", () => {
+        const newChecked = !obj.componentData.checked;
+        obj.componentData.checked = newChecked;
+        const t = obj._objects[0], ck = obj._objects[1];
+        if (t) t.set({ fill: newChecked ? "#6366f1" : "#e2e8f0" });
+        if (ck) ck.set({ visible: newChecked });
+        obj.canvas?.renderAll();
+        showToast(`Checkbox ${newChecked ? "cochée" : "décochée"}`, "info");
+      });
+    } else if (obj.customVariant === "toggle") {
+      obj.on("mousedown", () => {
+        const on = !obj.componentData.toggled;
+        obj.componentData.toggled = on;
+        const tk = obj._objects[0], kn = obj._objects[1], lb = obj._objects[2];
+        if (tk) tk.set({ fill: on ? "#10b981" : "#94a3b8" });
+        if (kn) kn.set({ left: on ? 14 : -14 });
+        if (lb) lb.set({ text: on ? "ON " : "OFF", fill: on ? "#10b981" : "#64748b" });
+        obj.canvas?.renderAll();
+        showToast(`Switch ${on ? "activé" : "désactivé"}`, "info");
+      });
+    } else if (obj.customVariant === "slider") {
+      let isDragging = false;
+      obj.on("mousedown", (e) => { isDragging = true; updateSliderFromEvent(e, obj); });
+      obj.on("mouseup", () => { isDragging = false; });
+      obj.on("mousemove", (e) => { if (isDragging) updateSliderFromEvent(e, obj); });
+    } else if (obj.customVariant === "modal") {
+      obj.on("mousedown", () => handleModalOpen(obj, obj.componentData));
+    }
+  }, [handleButtonClick, handleModalOpen, updateSliderFromEvent]);
+
+  // Init canvas
   useEffect(() => {
     if (!designData?.maquette?._id) return;
     setSaveStatus("Initialisation…");
@@ -405,47 +1732,279 @@ const DesignEditor = () => {
     const canvas = new fabric.Canvas(el, { width: 1000, height: 700, backgroundColor: "#ffffff", preserveObjectStacking: true });
     setFabricCanvas(canvas);
 
-    const initCanvasState = async () => {
+    const init = async () => {
       try {
+        // Reset zoom to 100% before loading content
+        canvas.setZoom(1);
+        setZoom(100);
+        
         if (designData.version?.contenu?.objects?.length) {
-          const loadRes = canvas.loadFromJSON(designData.version.contenu);
-          if (loadRes && typeof loadRes.then === "function") await loadRes;
+          await new Promise(resolve => canvas.loadFromJSON(designData.version.contenu, resolve, customFabricReviver));
+          canvas.getObjects().forEach(restoreInteractivity);
         }
-        canvas.renderAll(); setSaveStatus("À jour ☁️");
+        
+        // Ensure viewport is centered after loading
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        canvas.renderAll();
+        
+        setSaveStatus("À jour ☁️");
         if (!isDesigner) lockCanvasObjects(canvas);
-        if (currentVersionIdRef.current) {
-          await fetchCorrectionsForVersion(currentVersionIdRef.current);
-        }
+        if (currentVersionIdRef.current) await fetchCorrectionsForVersion(currentVersionIdRef.current);
       } catch { setSaveStatus("Erreur d'affichage"); }
     };
-    initCanvasState();
+    init();
     return () => { canvas.dispose(); setFabricCanvas(null); };
-  }, [designData?.maquette?._id]);
+  }, [designData?.maquette?._id, restoreInteractivity, isDesigner]);
 
+  // Canvas event listeners
   useEffect(() => {
     if (!fabricCanvas) return;
-    const updateSelection = (e) => { setSelectedObj(e.selected?.[0] || fabricCanvas.getActiveObject()); setLayersKey(k => k + 1); };
+    const updateSelection = (e) => { 
+      setSelectedObj(e.selected?.[0] || fabricCanvas.getActiveObject()); 
+      setLayersKey(k => k + 1);
+      
+      // Show/hide text toolbar based on selection
+      const selected = e.selected?.[0] || fabricCanvas.getActiveObject();
+      if (selected) {
+        showTextToolbar(selected);
+      } else {
+        hideTextToolbar();
+      }
+    };
+    
+    // Global text editing handler for all text objects
+    const handleTextDoubleClick = (e) => {
+      if (!fabricCanvas || !e.target) return;
+      
+      const target = e.target;
+      // Check if it's a text object
+      if (target.type === "text" || target.type === "i-text" || target.type === "textbox") {
+        // Prevent default behavior
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Set as active object
+        fabricCanvas.setActiveObject(target);
+        
+        // Enter editing mode
+        target.enterEditing();
+        target.selectAll();
+        fabricCanvas.renderAll();
+      }
+    };
+    
     fabricCanvas.on("selection:created", updateSelection);
     fabricCanvas.on("selection:updated", updateSelection);
-    fabricCanvas.on("selection:cleared", () => setSelectedObj(null));
+    fabricCanvas.on("selection:cleared", () => {
+      setSelectedObj(null);
+      hideTextToolbar();
+      setLayersKey(k => k + 1);
+    });
     fabricCanvas.on("object:modified", () => setLayersKey(k => k + 1));
     fabricCanvas.on("object:added", () => setLayersKey(k => k + 1));
     fabricCanvas.on("object:removed", () => setLayersKey(k => k + 1));
+
+    // Add global double-click handler for text editing
+    fabricCanvas.on("mouse:dblclick", handleTextDoubleClick);
+
     fabricCanvas.on("object:moving", (e) => {
       if (!snapEnabled) return;
       e.target.set({ left: snapToGrid(e.target.left, GRID_SIZE), top: snapToGrid(e.target.top, GRID_SIZE) });
     });
+
+    fabricCanvas.on("mouse:over", (e) => { if (e.target) fabricCanvas.setCursor("pointer"); });
+    fabricCanvas.on("mouse:out", (e) => { if (e.target) fabricCanvas.setCursor("default"); });
+
     fabricCanvas.on("mouse:wheel", (opt) => {
       opt.e.preventDefault();
+      opt.e.stopPropagation();
       if (isDesigner) {
         let z = fabricCanvas.getZoom();
-        z = opt.e.deltaY > 0 ? Math.max(ZOOM_MIN, z - ZOOM_STEP) : Math.min(ZOOM_MAX, z + ZOOM_STEP);
-        fabricCanvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, z);
+        const delta = opt.e.deltaY || opt.e.detail || opt.e.wheelDelta;
+        z = delta > 0 ? z * 0.95 : z * 1.05;
+        z = Math.min(Math.max(ZOOM_MIN, z), ZOOM_MAX);
+        fabricCanvas.zoomToPoint(new fabric.Point(opt.e.offsetX, opt.e.offsetY), z);
         setZoom(Math.round(z * 100));
       }
     });
-    return () => fabricCanvas.off();
-  }, [fabricCanvas, snapEnabled]);
+
+    return () => {
+      fabricCanvas.off("selection:created", updateSelection);
+      fabricCanvas.off("selection:updated", updateSelection);
+      fabricCanvas.off("selection:cleared");
+      fabricCanvas.off("object:modified");
+      fabricCanvas.off("object:added");
+      fabricCanvas.off("object:removed");
+      fabricCanvas.off("mouse:dblclick", handleTextDoubleClick);
+      fabricCanvas.off("object:moving");
+      fabricCanvas.off("mouse:over");
+      fabricCanvas.off("mouse:out");
+      fabricCanvas.off("mouse:wheel");
+    };
+  }, [fabricCanvas, snapEnabled, isDesigner]);
+
+  // Drawing Mode Hook
+  useEffect(() => {
+    if (!fabricCanvas || !isDesigner) return;
+    if (activeDrawingTool && activeDrawingTool !== "eraser") {
+      fabricCanvas.isDrawingMode = true;
+      const brush = new fabric.PencilBrush(fabricCanvas);
+      if (activeDrawingTool === "highlighter") {
+        brush.color = drawingColor + "66"; // Translucent
+        brush.width = Math.max(16, drawingWidth * 4); 
+      } else if (activeDrawingTool === "marker") {
+        brush.color = drawingColor;
+        brush.width = Math.max(8, drawingWidth * 2);
+      } else { // pen
+        brush.color = drawingColor;
+        brush.width = drawingWidth;
+      }
+      fabricCanvas.freeDrawingBrush = brush;
+    } else {
+      fabricCanvas.isDrawingMode = false;
+    }
+  }, [fabricCanvas, activeDrawingTool, drawingColor, drawingWidth, isDesigner]);
+
+  // Instant elements spawn (Outils)
+  const spawnToolElement = (type) => {
+    if (!fabricCanvas) return;
+    const center = fabricCanvas.getVpCenter();
+    
+    if (type === "emoji") {
+      setShowEmojiPicker(true);
+    } else if (type === "sticker") {
+      setShowStickerPicker(true);
+    } else if (type === "table") {
+      const cellW = 120, cellH = 50;
+      const objs = [];
+      for(let i=0; i<3; i++){
+        for(let j=0; j<3; j++){
+          const bg = new fabric.Rect({ left: j*cellW - (cellW*1.5), top: i*cellH - (cellH*1.5), width: cellW, height: cellH, fill: i===0?"#f1f5f9":"white", stroke: "#cbd5e1" });
+          const txt = new fabric.Text(i===0?`En-tête ${j+1}`:`Valeur ${j+1}`, { left: j*cellW - (cellW*1.5) + 16, top: i*cellH - (cellH*1.5) + 16, fontSize: 14, fill: i===0?"#0f172a":"#475569", fontWeight: i===0?"bold":"normal", fontFamily: "Inter" });
+          objs.push(bg, txt);
+        }
+      }
+      const group = new fabric.Group(objs, { left: center.x, top: center.y, originX: "center", originY: "center", customVariant: "table", componentData: { rows: 3, cols: 3, tableData: [["En-tête 1", "En-tête 2", "En-tête 3"], ["Valeur A1", "Valeur B1", "Valeur C1"], ["Valeur A2", "Valeur B2", "Valeur C2"]], headerBg: "#f1f5f9", rowBg: "#ffffff", strokeColor: "#cbd5e1" } });
+      restoreInteractivity(group);
+      fabricCanvas.add(group);
+      fabricCanvas.setActiveObject(group);
+      fabricCanvas.renderAll();
+      debouncedSave(fabricCanvas, currentVersionIdRef.current);
+      if (!isSidebarOpen) setOpenMenu("");
+    } else if (type === "media_video") {
+      // Lecteur Vidéo
+      const bg = new fabric.Rect({ width: 320, height: 200, fill: "#0f172a", rx: 12, ry: 12, originX: "center", originY: "center" });
+      const playCircle = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" });
+      const playBtn = new fabric.Text("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
+      const label = new fabric.Text("Vidéo", { fontSize: 12, fill: "#94a3b8", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
+      
+      const videoGroup = new fabric.Group([bg, playCircle, playBtn, label], { 
+        left: center.x, 
+        top: center.y, 
+        originX: "center", 
+        originY: "center",
+        customVariant: "video",
+        componentData: { variant: "video" }
+      });
+      restoreInteractivity(videoGroup);
+      fabricCanvas.add(videoGroup);
+      fabricCanvas.setActiveObject(videoGroup);
+      fabricCanvas.renderAll();
+      debouncedSave(fabricCanvas, currentVersionIdRef.current);
+      if (!isSidebarOpen) setOpenMenu("");
+    } else if (type === "media_map") {
+      // Carte (Map)
+      const bg = new fabric.Rect({ width: 400, height: 300, fill: "#f8fafc", stroke: "#e2e8f0", strokeWidth: 2, rx: 8, ry: 8, originX: "center", originY: "center" });
+      const mapPin = new fabric.Path("M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z", {
+        fill: "#ef4444",
+        scaleX: 2,
+        scaleY: 2,
+        originX: "center",
+        originY: "center"
+      });
+      const mapLabel = new fabric.Text("Localisation", { fontSize: 14, fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: 40 });
+      
+      const mapGroup = new fabric.Group([bg, mapPin, mapLabel], { 
+        left: center.x, 
+        top: center.y, 
+        originX: "center", 
+        originY: "center",
+        customVariant: "map",
+        componentData: { variant: "map" }
+      });
+      restoreInteractivity(mapGroup);
+      fabricCanvas.add(mapGroup);
+      fabricCanvas.setActiveObject(mapGroup);
+      fabricCanvas.renderAll();
+      debouncedSave(fabricCanvas, currentVersionIdRef.current);
+      if (!isSidebarOpen) setOpenMenu("");
+    } else if (type === "cont_frame") {
+      // Frame / Section
+      const frame = new fabric.Rect({ 
+        width: 600, 
+        height: 400, 
+        fill: "transparent", 
+        stroke: "#cbd5e1", 
+        strokeWidth: 2, 
+        strokeDashArray: [8, 4],
+        rx: 8, 
+        ry: 8, 
+        originX: "center", 
+        originY: "center" 
+      });
+      const frameLabel = new fabric.Text("Frame / Section", { 
+        fontSize: 12, 
+        fill: "#94a3b8", 
+        fontFamily: "Inter", 
+        originX: "center", 
+        originY: "top",
+        top: -200 - 20
+      });
+      
+      const frameGroup = new fabric.Group([frame, frameLabel], { 
+        left: center.x, 
+        top: center.y, 
+        originX: "center", 
+        originY: "center",
+        customVariant: "frame",
+        componentData: { variant: "frame" }
+      });
+      restoreInteractivity(frameGroup);
+      fabricCanvas.add(frameGroup);
+      fabricCanvas.setActiveObject(frameGroup);
+      fabricCanvas.renderAll();
+      debouncedSave(fabricCanvas, currentVersionIdRef.current);
+      if (!isSidebarOpen) setOpenMenu("");
+    }
+  };
+
+  const spawnRealEmoji = (emoji) => {
+    if (!fabricCanvas) return;
+    const center = fabricCanvas.getVpCenter();
+    const text = new fabric.Text(emoji, { left: center.x, top: center.y, originX: "center", originY: "center", fontSize: 64 });
+    restoreInteractivity(text);
+    fabricCanvas.add(text);
+    fabricCanvas.setActiveObject(text);
+    fabricCanvas.renderAll();
+    debouncedSave(fabricCanvas, currentVersionIdRef.current);
+    if (!isSidebarOpen) setOpenMenu("");
+  };
+
+  const spawnRealSticker = (s) => {
+    if (!fabricCanvas) return;
+    const center = fabricCanvas.getVpCenter();
+    const star = new fabric.Path(s.path, {
+      left: center.x, top: center.y, originX: "center", originY: "center", fill: s.fill, scaleX: 80 / (s.width||100), scaleY: 80 / (s.height||100)
+    });
+    restoreInteractivity(star);
+    fabricCanvas.add(star);
+    fabricCanvas.setActiveObject(star);
+    fabricCanvas.renderAll();
+    debouncedSave(fabricCanvas, currentVersionIdRef.current);
+    if (!isSidebarOpen) setOpenMenu("");
+  };
+
+  // Grid
 
   useEffect(() => {
     if (!fabricCanvas) return;
@@ -461,12 +2020,12 @@ const DesignEditor = () => {
     gridLinesRef.current = lines; fabricCanvas.renderAll();
   }, [fabricCanvas, gridEnabled]);
 
+  // Auto-save
   const triggerSave = async (c, vId) => {
-    if (isSwitchingVersion.current) return;
-    if (!vId || !isDesigner) return;
+    if (isSwitchingVersion.current || !vId || !isDesigner) return;
     setSaveStatus("Sauvegarde…");
     try {
-      const json = c.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry"]);
+      const json = c.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", "imageHistoryId"]);
       json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
       await API.put(`/versions/${vId}`, { contenu: json });
       setSaveStatus("À jour ☁️");
@@ -478,8 +2037,8 @@ const DesignEditor = () => {
   useEffect(() => {
     if (!fabricCanvas || !designData?.version?._id || !isDesigner) return;
     const vId = designData.version._id;
-    const handleChange = () => { if (isSwitchingVersion.current) return; debouncedSave(fabricCanvas, vId); };
-    const handleRemove = () => { if (isSwitchingVersion.current) return; debouncedSave.cancel(); triggerSave(fabricCanvas, vId); };
+    const handleChange = () => { if (!isSwitchingVersion.current) debouncedSave(fabricCanvas, vId); };
+    const handleRemove = () => { if (!isSwitchingVersion.current) { debouncedSave.cancel(); triggerSave(fabricCanvas, vId); } };
     fabricCanvas.on("object:modified", handleChange);
     fabricCanvas.on("object:added", handleChange);
     fabricCanvas.on("object:removed", handleRemove);
@@ -490,31 +2049,136 @@ const DesignEditor = () => {
     };
   }, [fabricCanvas, designData, debouncedSave, isDesigner]);
 
+  // Eraser Hook
+  useEffect(() => {
+    if (!fabricCanvas || !isDesigner) return;
+
+    let isErasing = false;
+    const handleDown = (e) => {
+      if (activeDrawingTool === "eraser") {
+        isErasing = true;
+        if (e.target) {
+          fabricCanvas.remove(e.target);
+          fabricCanvas.renderAll();
+          debouncedSave(fabricCanvas, currentVersionIdRef.current);
+        }
+      }
+    };
+    const handleMove = (e) => {
+      if (activeDrawingTool === "eraser" && isErasing) {
+        const pointer = fabricCanvas.getPointer(e.e);
+        const objs = fabricCanvas.getObjects();
+        const hit = objs.find(o => o.containsPoint(pointer));
+        if (hit) {
+          fabricCanvas.remove(hit);
+          fabricCanvas.renderAll();
+          debouncedSave(fabricCanvas, currentVersionIdRef.current);
+        }
+      }
+    };
+    const handleUp = () => { isErasing = false; };
+
+    fabricCanvas.on('mouse:down', handleDown);
+    fabricCanvas.on('mouse:move', handleMove);
+    fabricCanvas.on('mouse:up', handleUp);
+
+    return () => {
+      fabricCanvas.off('mouse:down', handleDown);
+      fabricCanvas.off('mouse:move', handleMove);
+      fabricCanvas.off('mouse:up', handleUp);
+    };
+  }, [fabricCanvas, activeDrawingTool, isDesigner, debouncedSave]);
+
+  // FIX: Keyboard shortcuts using refs to avoid stale closures
   useEffect(() => {
     const handler = (e) => {
       if (!isDesigner) return;
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+
+      // Delete
       if (e.key === "Delete" || e.key === "Backspace") {
-        const obj = fabricCanvas?.getActiveObject();
-        if (obj && !obj.isEditing) { fabricCanvas.remove(obj); setSelectedObj(null); }
+        const obj = canvas.getActiveObject();
+        if (obj && !obj.isEditing) {
+          canvas.remove(obj);
+          setSelectedObj(null);
+          canvas.renderAll();
+        }
       }
+
+      // Copy (Ctrl+C / Cmd+C)
+      if ((e.metaKey || e.ctrlKey) && e.key === "c") {
+        const obj = canvas.getActiveObject();
+        if (obj && !obj.isEditing) {
+          obj.clone(["customName", "customVariant", "componentData", "imageHistoryId"]).then((cloned) => {
+            // Preserve custom properties explicitly to be safe
+            if (obj.customName) cloned.customName = obj.customName;
+            if (obj.customVariant) cloned.customVariant = obj.customVariant;
+            if (obj.componentData) cloned.componentData = JSON.parse(JSON.stringify(obj.componentData));
+            if (obj.imageHistoryId) cloned.imageHistoryId = obj.imageHistoryId;
+            clipboardRef.current = cloned;
+            showToast("Élément copié", "info");
+          });
+        }
+        e.preventDefault();
+      }
+
+      // Paste (Ctrl+V / Cmd+V)
+      if ((e.metaKey || e.ctrlKey) && e.key === "v") {
+        if (clipboardRef.current) {
+          clipboardRef.current.clone(["customName", "customVariant", "componentData", "imageHistoryId"]).then((cloned) => {
+            cloned.set({
+              left: (clipboardRef.current.left || 0) + 30,
+              top: (clipboardRef.current.top || 0) + 30,
+              evented: true,
+              selectable: true,
+            });
+            // Preserve custom properties on paste
+            if (clipboardRef.current.customName) cloned.customName = clipboardRef.current.customName;
+            if (clipboardRef.current.customVariant) cloned.customVariant = clipboardRef.current.customVariant;
+            if (clipboardRef.current.componentData) cloned.componentData = JSON.parse(JSON.stringify(clipboardRef.current.componentData));
+            if (clipboardRef.current.imageHistoryId) cloned.imageHistoryId = clipboardRef.current.imageHistoryId;
+            if (cloned.customVariant) restoreInteractivity(cloned);
+            canvas.add(cloned);
+            canvas.setActiveObject(cloned);
+            canvas.renderAll();
+            showToast("Élément collé", "success");
+          });
+        }
+        e.preventDefault();
+      }
+
+      // Duplicate (Ctrl+D / Cmd+D)
       if ((e.metaKey || e.ctrlKey) && e.key === "d") {
         e.preventDefault();
-        const obj = fabricCanvas?.getActiveObject();
+        const obj = canvas.getActiveObject();
         if (!obj) return;
-        obj.clone(clone => { clone.set({ left: obj.left + 20, top: obj.top + 20 }); fabricCanvas.add(clone); fabricCanvas.setActiveObject(clone); fabricCanvas.renderAll(); });
+        obj.clone(["customName", "customVariant", "componentData", "imageHistoryId"]).then(clone => {
+          clone.set({ left: obj.left + 20, top: obj.top + 20 });
+          if (obj.customName) clone.customName = obj.customName;
+          if (obj.customVariant) clone.customVariant = obj.customVariant;
+          if (obj.componentData) clone.componentData = JSON.parse(JSON.stringify(obj.componentData));
+          if (obj.imageHistoryId) clone.imageHistoryId = obj.imageHistoryId;
+          if (clone.customVariant) restoreInteractivity(clone);
+          canvas.add(clone);
+          canvas.setActiveObject(clone);
+          canvas.renderAll();
+        });
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [fabricCanvas, isDesigner]);
+  }, [isDesigner, restoreInteractivity]);
 
+  // Version management
   const handleNouvelleVersion = async () => {
     if (!fabricCanvas || !maquetteIdRef.current || creatingVersion || !isDesigner) return;
     setCreatingVersion(true);
     try {
-      const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry"]);
+      const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", "imageHistoryId"]);
       const { data } = await API.post("/versions", { contenu: json, id_maquette: maquetteIdRef.current, commentaire: "Nouvelle version manuelle" });
       const newVersion = data.version;
       setCurrentVersionNum(newVersion.numéro_version);
@@ -524,7 +2188,8 @@ const DesignEditor = () => {
       setVersionSuccess(true);
       setTimeout(() => setVersionSuccess(false), 2000);
       await fetchVersions();
-    } catch { setSaveStatus("Erreur création version ❌"); }
+      showToast("Version créée avec succès !", "success");
+    } catch { setSaveStatus("Erreur création version ❌"); showToast("Erreur lors de la création", "error"); }
     finally { setCreatingVersion(false); }
   };
 
@@ -539,25 +2204,24 @@ const DesignEditor = () => {
         contenu = fullVersion.contenu || fullVersion?.version?.contenu;
       }
       if (contenu?.objects?.length > 0) {
-        const loadRes = fabricCanvas.loadFromJSON(contenu);
-        if (loadRes && typeof loadRes.then === "function") await loadRes;
+        await new Promise(resolve => fabricCanvas.loadFromJSON(contenu, resolve, customFabricReviver));
+        fabricCanvas.getObjects().forEach(restoreInteractivity);
         fabricCanvas.renderAll();
       } else {
         fabricCanvas.remove(...fabricCanvas.getObjects());
-        fabricCanvas.backgroundColor = "#ffffff";
-        fabricCanvas.renderAll();
+        fabricCanvas.backgroundColor = "#ffffff"; fabricCanvas.renderAll();
       }
       if (!isDesigner) lockCanvasObjects(fabricCanvas);
       setCurrentVersionNum(version.numéro_version);
       currentVersionIdRef.current = version._id;
       setDesignData(prev => ({ ...prev, version: { ...version, contenu } }));
       setSaveStatus(`Version ${version.numéro_version} chargée`);
-      setValidationDone(null);
-      setShowCorrections(false);
+      setValidationDone(null); setShowCorrections(false);
       await fetchCorrectionsForVersion(version._id);
+      showToast(`Version ${version.numéro_version} chargée`, "success");
     } catch (err) {
       console.error("Erreur chargement version", err);
-      setSaveStatus("Erreur chargement version ❌");
+      setSaveStatus("Erreur chargement version ❌"); showToast("Erreur lors du chargement", "error");
     } finally {
       setLoadingVersion(false);
       setTimeout(() => { isSwitchingVersion.current = false; }, 300);
@@ -573,52 +2237,35 @@ const DesignEditor = () => {
     try {
       const contenu = designData.version.contenu;
       if (contenu?.objects?.length > 0) {
-        const loadRes = fabricCanvas.loadFromJSON(contenu);
-        if (loadRes && typeof loadRes.then === "function") await loadRes;
+        await new Promise(resolve => fabricCanvas.loadFromJSON(contenu, resolve, customFabricReviver));
+        fabricCanvas.getObjects().forEach(restoreInteractivity);
       } else { fabricCanvas.remove(...fabricCanvas.getObjects()); fabricCanvas.backgroundColor = "#ffffff"; }
       fabricCanvas.renderAll();
-      try {
-        const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry"]);
-        json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
-        await API.put(`/versions/${designData?.version?._id}`, { contenu: json });
-        setSaveStatus("À jour ☁️");
-      } catch { setSaveStatus("Erreur ❌"); }
-    } catch { setSaveStatus("Erreur réinitialisation ❌"); }
+      const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", "imageHistoryId"]);
+      json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
+      await API.put(`/versions/${designData?.version?._id}`, { contenu: json });
+      setSaveStatus("À jour ☁️"); showToast("Réinitialisation effectuée", "success");
+    } catch { setSaveStatus("Erreur ❌"); showToast("Erreur lors de la réinitialisation", "error"); }
     finally { setTimeout(() => { isSwitchingVersion.current = false; }, 300); }
   };
 
-  // ✅ CORRECTION SUPPRESSION VERSION
   const handleDeleteVersion = async (e, versionId) => {
     e.stopPropagation();
     if (!window.confirm("Supprimer définitivement cette version ?")) return;
     setDeletingVersionId(versionId);
     try {
-      const response = await API.delete(`/versions/${versionId}`);
-
-      // Recharger la liste des versions
+      await API.delete(`/versions/${versionId}`);
       await fetchVersions();
-
-      // Si la version supprimée était la version courante, charger la dernière version disponible
       if (versionId === currentVersionIdRef.current) {
         try {
           const { data: latestVersion } = await API.get(`/maquettes/${maquetteIdRef.current}/latest-version`);
           await handleLoadVersion(latestVersion);
-        } catch (err) {
-          console.error("Erreur chargement dernière version :", err);
-          setSaveStatus("Erreur lors du chargement de la dernière version ❌");
-        }
+        } catch (err) { console.error("Erreur chargement dernière version :", err); }
       }
-
-      setValidationToast({ type: "success", msg: "✅ Version supprimée avec succès" });
-      setTimeout(() => setValidationToast(null), 3000);
+      showToast("Version supprimée", "success");
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || "Erreur lors de la suppression.";
-      console.error("Erreur suppression version :", err);
-      setValidationToast({ type: "error", msg: `❌ ${errorMsg}` });
-      setTimeout(() => setValidationToast(null), 4000);
-    } finally {
-      setDeletingVersionId(null);
-    }
+      showToast("Erreur lors de la suppression", "error");
+    } finally { setDeletingVersionId(null); }
   };
 
   const handleValider = async () => {
@@ -626,30 +2273,1246 @@ const DesignEditor = () => {
     const maquetteId = designData.maquette?._id;
     const versionId = currentVersionIdRef.current;
     const userId = user?.id || user?._id;
-    if (!maquetteId || !versionId) {
-      setValidationToast({ type: "error", msg: "❌ Données manquantes, impossible de valider." });
-      setTimeout(() => setValidationToast(null), 4000); return;
-    }
+    if (!maquetteId || !versionId) return;
     if (!window.confirm(`Confirmer la validation de la version ${currentVersionNum} ?\n\nCette action est définitive.`)) return;
     setValidating(true);
     try {
       await API.post("/validations", { maquette_id: maquetteId, version_id: versionId, client_id: userId, statut: "validé" });
-      setValidationDone("validé");
-      setValidationToast({ type: "success", msg: `✅ Version ${currentVersionNum} validée !` });
-      setTimeout(() => setValidationToast(null), 5000);
+      setValidationDone("validé"); showToast(`Version ${currentVersionNum} validée !`, "success");
     } catch (err) {
-      setValidationToast({ type: "error", msg: `❌ ${err.response?.data?.message || "Erreur lors de la validation."}` });
-      setTimeout(() => setValidationToast(null), 5000);
+      showToast("Erreur lors de la validation", "error");
     } finally { setValidating(false); }
   };
 
-  const [rejetModal, setRejetModal] = useState(false);
-  const [rejetElements, setRejetElements] = useState([]);
-  const [rejetSubmitting, setRejetSubmitting] = useState(false);
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  };
 
-  const openRejetModal = () => {
+  // ── Image History Helpers ─────────────────────────────────────────────────
+
+  const addImageToHistory = (src, name, width, height) => {
+    const id = `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const entry = { id, src, name, width, height };
+    setImageHistory(prev => [entry, ...prev]);
+    return id;
+  };
+
+  // FIX: Replace an image on canvas by its history ID
+  const handleReplaceImage = useCallback((historyId, newSrc, newName) => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+
+    const imgEl = new Image();
+    imgEl.onload = () => {
+      // Update history entry
+      setImageHistory(prev => prev.map(entry =>
+        entry.id === historyId
+          ? { ...entry, src: newSrc, name: newName, width: imgEl.naturalWidth, height: imgEl.naturalHeight }
+          : entry
+      ));
+
+      // Find the canvas object with this historyId
+      const canvasObj = canvas.getObjects().find(o => o.imageHistoryId === historyId);
+      if (canvasObj) {
+        const oldScaleX = canvasObj.scaleX;
+        const oldScaleY = canvasObj.scaleY;
+        const oldLeft = canvasObj.left;
+        const oldTop = canvasObj.top;
+        const oldAngle = canvasObj.angle;
+
+        // Replace element with new image
+        fabric.Image.fromURL(newSrc).then((newImg) => {
+          newImg.set({
+            left: oldLeft,
+            top: oldTop,
+            scaleX: oldScaleX,
+            scaleY: oldScaleY,
+            angle: oldAngle,
+          });
+          newImg.imageHistoryId = historyId;
+          newImg.customName = newName;
+          restoreInteractivity(newImg);
+          canvas.remove(canvasObj);
+          canvas.add(newImg);
+          canvas.setActiveObject(newImg);
+          canvas.renderAll();
+          showToast("Image remplacée avec succès", "success");
+        });
+      } else {
+        showToast("Image mise à jour dans l'historique", "info");
+      }
+    };
+    imgEl.src = newSrc;
+  }, []);
+
+  // FIX: Select/highlight an image on canvas from history
+  const handleSelectImageFromHistory = useCallback((historyId) => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    const historyEntry = imageHistory.find(h => h.id === historyId);
+    if (!historyEntry) return;
+
+    const activeObj = canvas.getActiveObject();
+    if (activeObj && activeObj.type === "image") {
+      // Replace the selected image with the chosen history image
+      const oldScaleX = activeObj.scaleX;
+      const oldScaleY = activeObj.scaleY;
+      const oldLeft = activeObj.left;
+      const oldTop = activeObj.top;
+      const oldAngle = activeObj.angle;
+
+      fabric.Image.fromURL(historyEntry.src).then((newImg) => {
+        newImg.set({ left: oldLeft, top: oldTop, angle: oldAngle, scaleX: oldScaleX, scaleY: oldScaleY });
+        newImg.imageHistoryId = historyId;
+        newImg.customName = historyEntry.name;
+        restoreInteractivity(newImg);
+        canvas.remove(activeObj);
+        canvas.add(newImg);
+        canvas.setActiveObject(newImg);
+        canvas.renderAll();
+        showToast("Image remplacée", "success");
+      });
+    } else {
+      // Add the image to the canvas
+      fabric.Image.fromURL(historyEntry.src).then((newImg) => {
+        newImg.scaleToWidth(300);
+        newImg.set({ left: 150, top: 150, rx: 8, ry: 8 });
+        newImg.imageHistoryId = historyId;
+        newImg.customName = historyEntry.name;
+        restoreInteractivity(newImg);
+        canvas.add(newImg);
+        canvas.setActiveObject(newImg);
+        canvas.renderAll();
+        showToast("Image ajoutée", "success");
+      });
+    }
+  }, [imageHistory]);
+
+  // ── Add element to canvas ──────────────────────────────────────────────────
+  const addElementToCanvas = (item, x = 120, y = 120) => {
+    if (!fabricCanvas || !isDesigner) return;
+    let obj;
+
+    if (item.type === "text") {
+      const tc = { left: x, top: y, fill: "#0f172a", fontFamily: "Inter", width: 300 };
+      if (item.variant === "h1") obj = new fabric.Textbox("Grand Titre", { ...tc, fontSize: 48, fontWeight: "bold", width: 420 });
+      else if (item.variant === "h2") obj = new fabric.Textbox("Sous-titre", { ...tc, fontSize: 32, fontWeight: "600", fill: "#334155" });
+      else if (item.variant === "p") obj = new fabric.Textbox("ceci est un paragraphe de texte standard.", { ...tc, fontSize: 16 });
+      else if (item.variant === "ul") obj = new fabric.Textbox("· Élément 1\n· Élément 2\n· Élément 3", { ...tc, fontSize: 17 });
+      else if (item.variant === "ol") obj = new fabric.Textbox("1. Premier point\n2. Deuxième point", { ...tc, fontSize: 17 });
+      else if (item.variant === "quote") obj = new fabric.Textbox('"Citation inspirante."', { ...tc, fontSize: 20, fontStyle: "italic", fill: "#64748b" });
+    } else if (item.type === "shape") {
+      if (item.variant === "rect") obj = new fabric.Rect({ left: x, top: y, fill: "#6366f1", width: 130, height: 130, rx: 10, ry: 10 });
+      else if (item.variant === "circle") obj = new fabric.Circle({ left: x, top: y, fill: "#ec4899", radius: 65 });
+      else if (item.variant === "triangle") obj = new fabric.Triangle({ left: x, top: y, fill: "#10b981", width: 130, height: 130 });
+      else if (item.variant === "ellipse") obj = new fabric.Ellipse({ left: x, top: y, fill: "#f59e0b", rx: 90, ry: 55 });
+      else if (item.variant === "line") obj = new fabric.Line([0, 0, 220, 0], { stroke: "#334155", strokeWidth: 4, left: x, top: y });
+      else if (item.variant === "frame") obj = new fabric.Rect({ left: x, top: y, fill: "transparent", stroke: "#cbd5e1", strokeDashArray: [8, 8], strokeWidth: 2, width: 320, height: 220, rx: 4, ry: 4 });
+    } else if (item.type === "advanced_shape") {
+      if (item.variant === "polygon") obj = new fabric.Polygon([{ x: 25, y: 0 }, { x: 75, y: 0 }, { x: 100, y: 43 }, { x: 75, y: 86 }, { x: 25, y: 86 }, { x: 0, y: 43 }], { left: x, top: y, fill: "#8b5cf6" });
+      else if (item.variant === "star") obj = new fabric.Polygon([{ x: 50, y: 0 }, { x: 61, y: 35 }, { x: 98, y: 35 }, { x: 68, y: 57 }, { x: 79, y: 91 }, { x: 50, y: 70 }, { x: 21, y: 91 }, { x: 32, y: 57 }, { x: 2, y: 35 }, { x: 39, y: 35 }], { left: x, top: y, fill: "#f59e0b" });
+      else if (item.variant === "zap") obj = new fabric.Polygon([{ x: 40, y: 0 }, { x: 0, y: 50 }, { x: 30, y: 50 }, { x: 20, y: 100 }, { x: 60, y: 40 }, { x: 30, y: 40 }], { left: x, top: y, fill: "#eab308" });
+      else if (item.variant === "arrow_r") obj = new fabric.Polygon([{ x: 0, y: 20 }, { x: 50, y: 20 }, { x: 50, y: 0 }, { x: 80, y: 30 }, { x: 50, y: 60 }, { x: 50, y: 40 }, { x: 0, y: 40 }], { left: x, top: y, fill: "#ef4444" });
+      else if (item.variant === "arrow_double") obj = new fabric.Polygon([{ x: 30, y: 20 }, { x: 70, y: 20 }, { x: 70, y: 0 }, { x: 100, y: 30 }, { x: 70, y: 60 }, { x: 70, y: 40 }, { x: 30, y: 40 }, { x: 30, y: 60 }, { x: 0, y: 30 }, { x: 30, y: 0 }], { left: x, top: y, fill: "#ef4444" });
+      else if (item.variant === "cloud") obj = new fabric.Path("M 25 60 a 20 20 0 0 1 0 -40 a 25 25 0 0 1 50 0 a 20 20 0 0 1 0 40 Z", { left: x, top: y, fill: "#38bdf8" });
+    } else if (item.type === "complex") {
+      obj = buildComplexComponent(item, x, y);
+    }
+
+    if (obj) {
+      restoreInteractivity(obj);
+      fabricCanvas.add(obj);
+      fabricCanvas.setActiveObject(obj);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  // ── Complex component factory ──────────────────────────────────────────────
+  // ── Template Component Builder ───────────────────────────────────────────────────
+  const buildTemplateElements = (item, x, y) => {
+    let elements = [];
+    let componentData = {};
+    
+    switch (item.variant) {
+      case "tpl_home": {
+        // Page d'accueil : Header + Hero + Features + Footer
+        const bg = new fabric.Rect({ width: 1000, height: 900, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background", customName: "Fond de page" });
+        // Menu
+        const navBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -410, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "navbar", customName: "Barre de navigation" });
+        const logo = new fabric.Text("⚡ STUDIO", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -410, originX: "left", originY: "center", editable: true, customType: "logo", customName: "Logo" });
+        const navLinks = new fabric.Text("Produit        Solutions        Prix        Ressources", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -410, originX: "center", originY: "center", editable: true, customType: "navLinks", customName: "Liens de navigation" });
+        const ctaBtn = new fabric.Rect({ width: 140, height: 44, fill: "#0f172a", rx: 8, ry: 8, left: 420, top: -410, originX: "right", originY: "center", editable: true, customType: "button", customName: "Bouton CTA navigation" });
+        const ctaTxt = new fabric.Text("Essayer gratis", { fontSize: 14, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 350, top: -410, originX: "center", originY: "center", editable: true, customType: "buttonText", customName: "Texte bouton CTA" });
+        // Hero
+        const heroH1 = new fabric.Text("Créez le web\nde demain, aujourd'hui.", { fontSize: 56, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -220, originX: "center", originY: "center", lineHeight: 1.1, editable: true, customType: "heading", customName: "Titre principal" });
+        const heroSub = new fabric.Text("Notre outil vous aide à construire, designer et collaborer en temps réel.\nDes millions d'équipes nous font déjà confiance.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -110, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "subtext", customName: "Sous-titre hero" });
+        const heroBtnBg = new fabric.Rect({ width: 220, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: -30, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "heroButton", customName: "Bouton principal" });
+        const heroBtnTxt = new fabric.Text("Démarrer mon essai", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: -30, originX: "center", originY: "center", editable: true, customType: "heroButtonText", customName: "Texte bouton principal" });
+        // Image Placeholder (Abstract)
+        const imgPlaceholder = new fabric.Rect({ width: 800, height: 350, fill: "#e2e8f0", rx: 24, ry: 24, left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imagePlaceholder", customName: "Image placeholder" });
+        const imgIcon = new fabric.Text("🖼 Illustration", { fontSize: 24, fontWeight: "700", fill: "#94a3b8", fontFamily: "Inter", left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imageText", customName: "Texte image" });
+        
+        elements = [bg, navBg, logo, navLinks, ctaBtn, ctaTxt, heroH1, heroSub, heroBtnBg, heroBtnTxt, imgPlaceholder, imgIcon];
+        componentData = { variant: "tpl_home", editable: true, templateType: "homepage" };
+        break;
+      }
+      
+      case "tpl_login": {
+        // Splitted screen login page
+        const bg = new fabric.Rect({ width: 1000, height: 600, fill: "white", originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 30, offsetY: 15 }), editable: true, customType: "background", customName: "Fond de page" });
+        const leftPanel = new fabric.Rect({ width: 500, height: 600, fill: "#6366f1", left: -250, top: 0, originX: "center", originY: "center", editable: true, customType: "leftPanel", customName: "Panneau gauche" });
+        const leftH1 = new fabric.Text("Heureux de\nvous revoir.", { fontSize: 48, fontWeight: "900", fill: "white", fontFamily: "Inter", left: -420, top: -40, originX: "left", originY: "center", lineHeight: 1.2, editable: true, customType: "welcomeHeading", customName: "Titre bienvenue" });
+        const leftP = new fabric.Text("Connectez-vous pour continuer\nvotre expérience exclusive.", { fontSize: 16, fill: "rgba(255,255,255,0.8)", fontFamily: "Inter", left: -420, top: 60, originX: "left", originY: "center", lineHeight: 1.5, editable: true, customType: "welcomeSubtext", customName: "Sous-titre bienvenue" });
+        
+        // Right Form
+        const logo = new fabric.Text("🔒 Espace Client", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -200, originX: "center", originY: "center", editable: true, customType: "formLogo", customName: "Logo formulaire" });
+        const title = new fabric.Text("Se connecter", { fontSize: 32, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -140, originX: "center", originY: "center", editable: true, customType: "formTitle", customName: "Titre formulaire" });
+        
+        // Email Input
+        const l1 = new fabric.Text("Email", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: -80, originX: "left", originY: "center", editable: true, customType: "emailLabel", customName: "Label email" });
+        const i1Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: -40, originX: "center", originY: "center", editable: true, customType: "emailInput", customName: "Champ email" });
+        const i1Txt = new fabric.Text("votre@email.com", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: -40, originX: "left", originY: "center", editable: true, customType: "emailPlaceholder", customName: "Placeholder email" });
+        
+        // Password Input
+        const l2 = new fabric.Text("Mot de passe", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: 30, originX: "left", originY: "center", editable: true, customType: "passwordLabel", customName: "Label mot de passe" });
+        const i2Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: 70, originX: "center", originY: "center", editable: true, customType: "passwordInput", customName: "Champ mot de passe" });
+        const i2Txt = new fabric.Text("•••••••", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: 70, originX: "left", originY: "center", editable: true, customType: "passwordPlaceholder", customName: "Placeholder mot de passe" });
+        
+        // Submit
+        const btnBg = new fabric.Rect({ width: 340, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitButton", customName: "Bouton connexion" });
+        const btnTxt = new fabric.Text("Connexion", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitText", customName: "Texte bouton connexion" });
+        
+        const forgot = new fabric.Text("Mot de passe oublié ?", { fontSize: 13, fontWeight: "600", fill: "#6366f1", fontFamily: "Inter", left: 250, top: 220, originX: "center", originY: "center", editable: true, customType: "forgotLink", customName: "Lien mot de passe oublié" });
+
+        elements = [bg, leftPanel, leftH1, leftP, logo, title, l1, i1Bg, i1Txt, l2, i2Bg, i2Txt, btnBg, btnTxt, forgot];
+        componentData = { variant: "tpl_login", editable: true, templateType: "login" };
+        break;
+      }
+      
+      case "tpl_about": {
+        // Page À Propos avec équipe et valeurs
+        const bg = new fabric.Rect({ width: 1000, height: 800, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background", customName: "Fond de page" });
+        
+        // Header
+        const headerBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -360, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "header", customName: "Header" });
+        const logo = new fabric.Text("🏢 ENTREPRISE", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -360, originX: "left", originY: "center", editable: true, customType: "logo", customName: "Logo entreprise" });
+        const navLinks = new fabric.Text("Accueil        À Propos        Contact", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -360, originX: "center", originY: "center", editable: true, customType: "navLinks", customName: "Navigation" });
+        
+        // Hero Section
+        const heroH1 = new fabric.Text("Notre Histoire", { fontSize: 48, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -200, originX: "center", originY: "center", editable: true, customType: "heroHeading", customName: "Titre histoire" });
+        const heroSub = new fabric.Text("Depuis 2010, nous transformons les idées en expériences numériques exceptionnelles.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -120, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "heroSubtext", customName: "Sous-titre histoire" });
+        
+        // Mission Section
+        const missionBg = new fabric.Rect({ width: 900, height: 200, fill: "white", rx: 16, ry: 16, left: 0, top: 20, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetY: 4 }), editable: true, customType: "missionBox", customName: "Boîte mission" });
+        const missionTitle = new fabric.Text("Notre Mission", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 20, originX: "left", originY: "center", editable: true, customType: "missionTitle", customName: "Titre mission" });
+        const missionText = new fabric.Text("Innover continuellement pour offrir des solutions web qui dépassent les attentes de nos clients.", { fontSize: 16, fill: "#475569", fontFamily: "Inter", left: -380, top: 60, originX: "left", originY: "center", lineHeight: 1.6, editable: true, customType: "missionText", customName: "Texte mission" });
+        
+        // Values Section
+        const valuesTitle = new fabric.Text("Nos Valeurs", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 160, originX: "left", originY: "center", editable: true, customType: "valuesTitle", customName: "Titre valeurs" });
+        
+        // Value cards
+        const value1Bg = new fabric.Rect({ width: 250, height: 120, fill: "#f1f5f9", rx: 12, ry: 12, left: -280, top: 280, originX: "center", originY: "center", editable: true, customType: "value1Bg", customName: "Fond valeur 1" });
+        const value1Icon = new fabric.Text("💡", { fontSize: 32, left: -280, top: 250, originX: "center", originY: "center", editable: true, customType: "value1Icon", customName: "Icône valeur 1" });
+        const value1Title = new fabric.Text("Innovation", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: 310, originX: "center", originY: "center", editable: true, customType: "value1Title", customName: "Titre valeur 1" });
+        
+        const value2Bg = new fabric.Rect({ width: 250, height: 120, fill: "#e0f2fe", rx: 12, ry: 12, left: 0, top: 280, originX: "center", originY: "center", editable: true, customType: "value2Bg", customName: "Fond valeur 2" });
+        const value2Icon = new fabric.Text("🤝", { fontSize: 32, left: 0, top: 250, originX: "center", originY: "center", editable: true, customType: "value2Icon", customName: "Icône valeur 2" });
+        const value2Title = new fabric.Text("Confiance", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 0, top: 310, originX: "center", originY: "center", editable: true, customType: "value2Title", customName: "Titre valeur 2" });
+        
+        const value3Bg = new fabric.Rect({ width: 250, height: 120, fill: "#fef3c7", rx: 12, ry: 12, left: 280, top: 280, originX: "center", originY: "center", editable: true, customType: "value3Bg", customName: "Fond valeur 3" });
+        const value3Icon = new fabric.Text("⭐", { fontSize: 32, left: 280, top: 250, originX: "center", originY: "center", editable: true, customType: "value3Icon", customName: "Icône valeur 3" });
+        const value3Title = new fabric.Text("Excellence", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 280, top: 310, originX: "center", originY: "center", editable: true, customType: "value3Title", customName: "Titre valeur 3" });
+        
+        // CTA Button
+        const ctaBg = new fabric.Rect({ width: 200, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: 380, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "ctaButton", customName: "Bouton CTA" });
+        const ctaText = new fabric.Text("Nous Contacter", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: 380, originX: "center", originY: "center", editable: true, customType: "ctaText", customName: "Texte bouton CTA" });
+
+        elements = [bg, headerBg, logo, navLinks, heroH1, heroSub, missionBg, missionTitle, missionText, valuesTitle, value1Bg, value1Icon, value1Title, value2Bg, value2Icon, value2Title, value3Bg, value3Icon, value3Title, ctaBg, ctaText];
+        componentData = { variant: "tpl_about", editable: true, templateType: "about" };
+        break;
+      }
+      
+      case "tpl_cart": {
+        const bg = new fabric.Rect({ width: 900, height: 700, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background", customName: "Fond panier" });
+        const h1 = new fabric.Text("Votre Panier", { fontSize: 36, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -400, top: -300, originX: "left", originY: "center", editable: true, customType: "cartTitle", customName: "Titre panier" });
+        
+        // Items list background
+        const listBg = new fabric.Rect({ width: 560, height: 440, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: -120, top: -20, originX: "center", originY: "center", editable: true, customType: "itemsList", customName: "Liste articles" });
+        
+        // Summary background
+        const sumBg = new fabric.Rect({ width: 280, height: 350, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: 320, top: -65, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetX: 0, offsetY: 4 }), editable: true, customType: "summaryBox", customName: "Boîte résumé" });
+        
+        elements = [bg, h1, listBg, sumBg];
+
+        // 3 products
+        for(let i=0; i<3; i++) {
+          let y = -160 + (i * 140);
+          elements.push(new fabric.Rect({ width: 100, height: 100, fill: "#f1f5f9", rx: 12, ry: 12, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productImage${i+1}`, customName: `Image produit ${i+1}` }));
+          elements.push(new fabric.Text("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i+1}`, customName: `Icône produit ${i+1}` }));
+          elements.push(new fabric.Text(`Produit Premium ${i+1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i+1}`, customName: `Nom produit ${i+1}` }));
+          elements.push(new fabric.Text("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i+1}`, customName: `Détails produit ${i+1}` }));
+          elements.push(new fabric.Text("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i+1}`, customName: `Quantité produit ${i+1}` }));
+          elements.push(new fabric.Text("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i+1}`, customName: `Prix produit ${i+1}` }));
+          if(i < 2) elements.push(new fabric.Line([-380, y + 70, 140, y + 70], { stroke: "#e2e8f0", strokeWidth: 1 }));
+        }
+
+        // Summary details
+        elements.push(new fabric.Text("Résumé", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -200, originX: "left", originY: "center", editable: true, customType: "summaryTitle", customName: "Titre résumé" }));
+        elements.push(new fabric.Text("Sous-total", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -140, originX: "left", originY: "center", editable: true, customType: "subtotalLabel", customName: "Label sous-total" }));
+        elements.push(new fabric.Text("297,00 €", { fontSize: 14, fontWeight: "600", fill: "#0f172a", fontFamily: "Inter", left: 440, top: -140, originX: "right", originY: "center", editable: true, customType: "subtotalAmount", customName: "Montant sous-total" }));
+        
+        elements.push(new fabric.Text("Livraison", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -100, originX: "left", originY: "center", editable: true, customType: "shippingLabel", customName: "Label livraison" }));
+        elements.push(new fabric.Text("Gratuite", { fontSize: 14, fontWeight: "600", fill: "#10b981", fontFamily: "Inter", left: 440, top: -100, originX: "right", originY: "center", editable: true, customType: "shippingAmount", customName: "Montant livraison" }));
+
+        elements.push(new fabric.Line([200, -70, 440, -70], { stroke: "#e2e8f0", strokeWidth: 1 }));
+
+        elements.push(new fabric.Text("Total TTC", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -30, originX: "left", originY: "center", editable: true, customType: "totalLabel", customName: "Label total" }));
+        elements.push(new fabric.Text("297,00 €", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", left: 440, top: -30, originX: "right", originY: "center", editable: true, customType: "totalAmount", customName: "Montant total" }));
+
+        elements.push(new fabric.Rect({ width: 240, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButton", customName: "Bouton payer" }));
+        elements.push(new fabric.Text("Payer maintenant", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButtonText", customName: "Texte bouton payer" }));
+
+        componentData = { variant: "tpl_cart", editable: true, templateType: "cart" };
+        break;
+      }
+      
+      default: return null;
+    }
+
+    return { elements, componentData };
+  };
+
+  const buildComplexComponent = (item, x, y) => {
+    let elements = [];
+    let componentData = {};
+    let interactivity = null;
+
+    switch (item.variant) {
+      case "video": {
+        const bg = new fabric.Rect({ width: 320, height: 200, fill: "#0f172a", rx: 12, ry: 12, originX: "center", originY: "center" });
+        const playCircle = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" });
+        const playBtn = new fabric.Text("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
+        const label = new fabric.Text("Vidéo", { fontSize: 12, fill: "#94a3b8", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
+        elements = [bg, playCircle, playBtn, label];
+        componentData = { variant: "video" };
+        break;
+      }
+      case "map": {
+        const bg = new fabric.Rect({ width: 400, height: 300, fill: "#f8fafc", stroke: "#e2e8f0", strokeWidth: 2, rx: 8, ry: 8, originX: "center", originY: "center" });
+        const mapPin = new fabric.Path("M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z", {
+          fill: "#ef4444",
+          scaleX: 2,
+          scaleY: 2,
+          originX: "center",
+          originY: "center"
+        });
+        const mapLabel = new fabric.Text("Localisation", { fontSize: 14, fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: 40 });
+        elements = [bg, mapPin, mapLabel];
+        componentData = { variant: "map" };
+        break;
+      }
+      case "frame": {
+        const frame = new fabric.Rect({ 
+          width: 600, 
+          height: 400, 
+          fill: "transparent", 
+          stroke: "#cbd5e1", 
+          strokeWidth: 2, 
+          strokeDashArray: [8, 4],
+          rx: 8, 
+          ry: 8, 
+          originX: "center", 
+          originY: "center" 
+        });
+        const frameLabel = new fabric.Text("Frame / Section", { 
+          fontSize: 12, 
+          fill: "#94a3b8", 
+          fontFamily: "Inter", 
+          originX: "center", 
+          originY: "top",
+          top: -200 - 20
+        });
+        elements = [frame, frameLabel];
+        componentData = { variant: "frame" };
+        break;
+      }
+      case "button": {
+        const bg = new fabric.Rect({ width: 160, height: 48, rx: 24, ry: 24, fill: "#6366f1", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 14, offsetX: 0, offsetY: 4 }), originX: "center", originY: "center" });
+        const txt = new fabric.Text("Bouton principal", { fontSize: 14, fill: "#ffffff", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center", top: 1, charSpacing: 10 });
+        elements = [bg, txt];
+        componentData = { buttonText: "Bouton principal", buttonColor: "#6366f1", buttonTextColor: "#ffffff", buttonSize: "medium", borderRadius: 24, actionType: "modal" };
+        interactivity = (grp) => grp.on("mousedown", () => handleButtonClick(grp, grp.componentData));
+        break;
+      }
+      case "input": {
+        const bg = new fabric.Rect({ width: 280, height: 48, rx: 12, ry: 12, fill: "#ffffff", stroke: "#e2e8f0", strokeWidth: 1.5, shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.02)", blur: 8, offsetX: 0, offsetY: 2 }), originX: "center", originY: "center" });
+        const icon = new fabric.Text("✉", { fontSize: 16, fill: "#94a3b8", fontFamily: "Inter", originX: "left", originY: "center", left: -124, top: 2 });
+        const placeholder = new fabric.Text("votre@email.com", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: -100, top: 1 });
+        const cursor = new fabric.Rect({ width: 1.5, height: 18, fill: "#6366f1", originX: "left", originY: "center", left: -10, top: 0, opacity: 0 });
+        elements = [bg, icon, placeholder, cursor];
+        componentData = { placeholder: "votre@email.com", inputWidth: 280, inputHeight: 48, borderColor: "#e2e8f0", bgColor: "#ffffff", textColor: "#0f172a" };
+        break;
+      }
+      case "checkbox": {
+        const track = new fabric.Rect({ width: 24, height: 24, rx: 6, ry: 6, fill: "#f1f5f9", stroke: "#cbd5e1", strokeWidth: 1.5, originX: "center", originY: "center" });
+        const checkIcon = new fabric.Text("✓", { fontSize: 14, fill: "#ffffff", fontFamily: "Inter", fontWeight: "900", originX: "center", originY: "center", top: 1, visible: false });
+        const labelText = new fabric.Text("Accepter les conditions", { fontSize: 14, fill: "#334155", fontFamily: "Inter", fontWeight: "500", originX: "left", originY: "center", left: 20, top: 0 });
+        elements = [track, checkIcon, labelText];
+        componentData = { checked: false, label: "Accepter les conditions", checkboxColor: "#6366f1" };
+        interactivity = (grp) => grp.on("mousedown", () => {
+          const newChecked = !grp.componentData.checked;
+          grp.componentData.checked = newChecked;
+          const t = grp._objects[0], ck = grp._objects[1];
+          if (t) { t.set({ fill: newChecked ? "#6366f1" : "#f1f5f9", stroke: newChecked ? "" : "#cbd5e1", strokeWidth: newChecked ? 0 : 1.5 }); t.set("shadow", newChecked ? new fabric.Shadow({ color: "rgba(99,102,241,0.25)", blur: 6, offsetX: 0, offsetY: 2 }) : null); }
+          if (ck) ck.set({ visible: newChecked });
+          grp.canvas?.renderAll();
+          showToast(`Checkbox ${newChecked ? "cochée" : "décochée"}`, "info");
+        });
+        break;
+      }
+      case "toggle": {
+        const track = new fabric.Rect({ width: 56, height: 32, rx: 16, ry: 16, fill: "#e2e8f0", originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 2, offsetX: 0, offsetY: 1 }) });
+        const knob = new fabric.Circle({ radius: 12, fill: "#ffffff", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.15)", blur: 4, offsetX: 0, offsetY: 2 }), originX: "center", originY: "center", left: -12 });
+        const offLabel = new fabric.Text("OFF", { fontSize: 12, fill: "#64748b", fontFamily: "Inter", fontWeight: "600", originX: "left", originY: "center", left: 38 });
+        elements = [track, knob, offLabel];
+        componentData = { toggled: false };
+        interactivity = (grp) => grp.on("mousedown", () => {
+          const on = !grp.componentData.toggled;
+          grp.componentData.toggled = on;
+          const tk = grp._objects[0], kn = grp._objects[1], lb = grp._objects[2];
+          if (tk) tk.set({ fill: on ? "#10b981" : "#e2e8f0" });
+          if (kn) kn.set({ left: on ? 12 : -12 });
+          if (lb) lb.set({ text: on ? "ON " : "OFF", fill: on ? "#10b981" : "#64748b" });
+          grp.canvas?.renderAll();
+          showToast(`Switch ${on ? "activé" : "désactivé"}`, "info");
+        });
+        break;
+      }
+      case "slider": {
+        const trackBg = new fabric.Rect({ width: 220, height: 8, rx: 4, ry: 4, fill: "#e2e8f0", originX: "center", originY: "center" });
+        const trackFill = new fabric.Rect({ width: 110, height: 8, rx: 4, ry: 4, fill: "#6366f1", originX: "left", originY: "center", left: -110 });
+        const knob = new fabric.Circle({ radius: 12, fill: "#ffffff", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.35)", blur: 8, offsetX: 0, offsetY: 3 }), originX: "center", originY: "center", left: 0 });
+        const valLabel = new fabric.Text("50%", { fontSize: 13, fill: "#6366f1", fontFamily: "Inter", fontWeight: "700", originX: "center", originY: "top", top: 22 });
+        const minLabel = new fabric.Text("0", { fontSize: 11, fill: "#94a3b8", fontFamily: "Inter", fontStyle: "italic", originX: "left", originY: "top", left: -110, top: 22 });
+        const maxLabel = new fabric.Text("100", { fontSize: 11, fill: "#94a3b8", fontFamily: "Inter", fontStyle: "italic", originX: "right", originY: "top", left: 110, top: 22 });
+        elements = [trackBg, trackFill, knob, valLabel, minLabel, maxLabel];
+        componentData = { sliderValue: 50, min: 0, max: 100, unit: "%", sliderColor: "#6366f1" };
+        interactivity = (grp) => {
+          let isDragging = false;
+          grp.on("mousedown", (e) => { isDragging = true; updateSliderFromEvent(e, grp); });
+          grp.on("mouseup", () => { isDragging = false; });
+          grp.on("mousemove", (e) => { if (isDragging) updateSliderFromEvent(e, grp); });
+        };
+        break;
+      }
+      case "modal": {
+        const bg = new fabric.Rect({ width: 200, height: 50, fill: "#ffffff", rx: 12, ry: 12, stroke: "#6366f1", strokeWidth: 1.5, shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.15)", blur: 12, offsetX: 0, offsetY: 4 }), originX: "center", originY: "center" });
+        const txt = new fabric.Text("Ouvrir la pop-up", { fontSize: 14, fill: "#6366f1", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center" });
+        elements = [bg, txt];
+        componentData = { modalTitle: "Fenêtre modale", modalContent: "Contenu de la modal." };
+        interactivity = (grp) => grp.on("mousedown", () => handleModalOpen(grp, grp.componentData));
+        break;
+      }
+      case "card": {
+        const cardBg = new fabric.Rect({ width: 280, height: 380, fill: "#ffffff", rx: 16, ry: 16, stroke: "#f8fafc", strokeWidth: 1, shadow: new fabric.Shadow({ color: "rgba(15,23,42,0.08)", blur: 24, offsetX: 0, offsetY: 12 }), originX: "center", originY: "center" });
+        const imgZone = new fabric.Rect({ width: 256, height: 160, fill: "#f1f5f9", rx: 10, ry: 10, originX: "center", originY: "top", left: 0, top: -178 });
+        const imgIcon = new fabric.Text("🖼", { fontSize: 40, fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: -98, fill: "#94a3b8" });
+        const titleTxt = new fabric.Text("Produit Premium", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 10 });
+        const descTxt = new fabric.Text("Une description moderne et accrocheuse\npour ce produit exceptionnel.", { fontSize: 12, fill: "#64748b", fontFamily: "Inter", textAlign: "center", originX: "center", originY: "center", left: 0, top: 40 });
+        const starRow = new fabric.Text("★★★★★  (128)", { fontSize: 13, fill: "#f59e0b", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 76 });
+        const priceTxt = new fabric.Text("29€", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 110 });
+        const btnBg = new fabric.Rect({ width: 240, height: 44, rx: 8, ry: 8, fill: "#6366f1", originX: "center", originY: "center", left: 0, top: 156 });
+        const btnTxt = new fabric.Text("Ajouter au panier", { fontSize: 13, fill: "#ffffff", fontFamily: "Inter", fontWeight: "700", originX: "center", originY: "center", left: 0, top: 156 });
+        elements = [cardBg, imgZone, imgIcon, titleTxt, descTxt, starRow, priceTxt, btnBg, btnTxt];
+        componentData = { productTitle: "Produit Premium", productDesc: "Une description moderne et accrocheuse\npour ce produit exceptionnel.", productPrice: "29€", productColor: "#6366f1", productRating: 5, productReviews: "128" };
+        break;
+      }
+      case "profile": {
+        const bgRect = new fabric.Rect({ width: 340, height: 130, fill: "#ffffff", rx: 18, ry: 18, stroke: "#f1f5f9", strokeWidth: 1, shadow: new fabric.Shadow({ color: "rgba(15,23,42,0.06)", blur: 20, offsetX: 0, offsetY: 8 }), originX: "center", originY: "center" });
+        const avatarCircle = new fabric.Circle({ radius: 36, fill: "#eef2ff", originX: "center", originY: "center", left: -110 });
+        const initials = new fabric.Text("MD", { fontSize: 18, fontWeight: "800", fill: "#6366f1", fontFamily: "Inter", originX: "center", originY: "center", left: -110, top: 0 });
+        const nameTxt = new fabric.Text("Marie Dupont", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: -20 });
+        const roleTxt = new fabric.Text("Directrice Design", { fontSize: 13, fill: "#6366f1", fontWeight: "600", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: 4 });
+        const emailTxt = new fabric.Text("marie.dupont@exemple.com", { fontSize: 11, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: 26 });
+        elements = [bgRect, avatarCircle, initials, nameTxt, roleTxt, emailTxt];
+        componentData = { profileName: "Marie Dupont", profileRole: "Directrice Design", profileEmail: "marie.dupont@exemple.com", avatarColor: "#eef2ff", profileLayout: "horizontal" };
+        break;
+      }
+      case "pricing": {
+        const bgRect = new fabric.Rect({ width: 720, height: 380, fill: "#ffffff", rx: 24, ry: 24, stroke: "#e2e8f0", strokeWidth: 1, shadow: new fabric.Shadow({ color: "rgba(15,23,42,0.1)", blur: 30, offsetX: 0, offsetY: 12 }), originX: "center", originY: "center" });
+        elements = [bgRect];
+        componentData = {
+          pricingRows: [
+            { name: "Basique", price: "0€", features: ["5 projets", "1 utilisateur", "Support email"], color: "#64748b", popular: false },
+            { name: "Pro", price: "29€", features: ["Projets illimités", "5 utilisateurs", "Support prioritaire", "Analytics avancés"], color: "#6366f1", popular: true },
+            { name: "Premium", price: "99€", features: ["Tout en Pro", "Utilisateurs illimités", "API dédiée", "SLA garanti"], color: "#10b981", popular: false },
+          ],
+        };
+        const startX = -220, colWidth = 220;
+        componentData.pricingRows.forEach((row, idx) => {
+          const cx = startX + idx * colWidth;
+          const colBg = new fabric.Rect({ width: 200, height: 340, fill: row.popular ? row.color + "08" : "#ffffff", stroke: row.color, strokeWidth: row.popular ? 2 : 0, rx: 16, ry: 16, left: cx, top: 0, originX: "center", originY: "center", shadow: row.popular ? new fabric.Shadow({ color: "rgba(99,102,241,0.1)", blur: 16, offsetY: 6 }) : null });
+          const titleT = new fabric.Text(row.name, { fontSize: 18, fontWeight: "800", fill: row.popular ? row.color : "#334155", fontFamily: "Inter", left: cx, top: -130, originX: "center" });
+          const priceT = new fabric.Text(row.price, { fontSize: 32, fontWeight: "900", fill: row.popular ? row.color : "#0f172a", fontFamily: "Inter", left: cx, top: -90, originX: "center" });
+          const priceMo = new fabric.Text("/mois", { fontSize: 11, fill: "#64748b", fontFamily: "Inter", left: cx, top: -66, originX: "center" });
+          elements.push(colBg, titleT, priceT, priceMo);
+          if (row.popular) {
+            elements.push(new fabric.Text(" LE PLUS POPULAIRE ", { fontSize: 9, fontWeight: "800", fill: "white", fontFamily: "Inter", left: cx, top: -150, originX: "center", backgroundColor: row.color, padding: 6 }));
+          }
+          row.features.forEach((f, fi) => {
+            elements.push(new fabric.Text("✔", { fontSize: 11, fill: row.color, fontFamily: "Inter", left: cx - 74, top: -30 + fi * 28, originX: "center" }));
+            elements.push(new fabric.Text(f, { fontSize: 13, fill: "#475569", fontFamily: "Inter", left: cx - 60, top: -30 + fi * 28, originX: "left" }));
+          });
+          const btnBgColor = row.popular ? row.color : "#f1f5f9";
+          const btnTxtColor = row.popular ? "white" : row.color;
+          elements.push(
+            new fabric.Rect({ width: 160, height: 40, rx: 8, ry: 8, fill: btnBgColor, left: cx, top: 136, originX: "center", originY: "center" }),
+            new fabric.Text(row.popular ? "S'inscrire" : "Choisir", { fontSize: 13, fontWeight: "700", fill: btnTxtColor, fontFamily: "Inter", left: cx, top: 136, originX: "center", originY: "center" })
+          );
+        });
+        break;
+      }
+      case "nav_menu": {
+        const bg = new fabric.Rect({ width: 720, height: 76, fill: "rgba(255, 255, 255, 0.95)", stroke: "#f1f5f9", strokeWidth: 1.5, rx: 24, ry: 24, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.08)", blur: 32, offsetX: 0, offsetY: 16 }) });
+        const logo = new fabric.Text("◈ Logo", { fontSize: 22, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", originX: "left", originY: "center", left: -320 });
+        const nav1 = new fabric.Text("Accueil", { fontSize: 14, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -60 });
+        const navUnderline = new fabric.Rect({ width: 20, height: 3, rx: 1.5, ry: 1.5, fill: "#6366f1", originX: "center", originY: "center", left: -35, top: 12 });
+        const nav2 = new fabric.Text("À propos", { fontSize: 14, fontWeight: "500", fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: 20 });
+        const nav3 = new fabric.Text("Contact", { fontSize: 14, fontWeight: "500", fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: 110 });
+        const ctaBg = new fabric.Rect({ width: 130, height: 44, rx: 12, ry: 12, fill: "#6366f1", originX: "right", originY: "center", left: 320, shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.3)", blur: 12, offsetX: 0, offsetY: 4 }) });
+        const ctaTxt = new fabric.Text("Connexion", { fontSize: 13, fontWeight: "700", fill: "white", fontFamily: "Inter", originX: "right", originY: "center", left: 308 });
+        elements = [bg, logo, nav1, navUnderline, nav2, nav3, ctaBg, ctaTxt];
+        componentData = { navLogo: "◈ Logo", nav1: "Accueil", nav2: "À propos", nav3: "Contact", navBtn: "Connexion", navColor: "#6366f1", variant: "nav_menu" };
+        interactivity = (grp) => {
+          grp.on("mousedown", () => {
+            // Basic interaction demonstration on click
+            const ctaBackground = grp._objects[6];
+            const ctaText = grp._objects[7];
+            ctaBackground.set({ opacity: 0.8, scaleX: 0.95, scaleY: 0.95 });
+            ctaText.set({ scaleX: 0.95, scaleY: 0.95 });
+            grp.canvas?.renderAll();
+            setTimeout(() => {
+              ctaBackground.set({ opacity: 1, scaleX: 1, scaleY: 1 });
+              ctaText.set({ scaleX: 1, scaleY: 1 });
+              grp.canvas?.renderAll();
+            }, 150);
+            showToast("Menu de navigation cliqué", "info");
+          });
+        };
+        break;
+      }
+      case "hero": {
+        const bg = new fabric.Rect({ width: 800, height: 480, fill: "#4f46e5", rx: 32, ry: 32, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(79,70,229,0.3)", blur: 40, offsetX: 0, offsetY: 20 }) });
+        const dec1 = new fabric.Circle({ radius: 150, fill: "rgba(255,255,255,0.05)", left: -250, top: -150, originX: "center", originY: "center" });
+        const dec2 = new fabric.Circle({ radius: 100, fill: "rgba(255,255,255,0.08)", left: 300, top: 150, originX: "center", originY: "center" });
+        const badgeBg = new fabric.Rect({ width: 160, height: 32, rx: 16, ry: 16, fill: "rgba(255,255,255,0.15)", originX: "center", originY: "center", top: -110 });
+        const badgeTxt = new fabric.Text("✨ NOUVEAU DESIGN", { fontSize: 10, fontWeight: "800", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", top: -110 });
+        const h1 = new fabric.Text("Titre Principal", { fontSize: 56, fontWeight: "900", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", top: -30, shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 10, offsetY: 4 }) });
+        const sub = new fabric.Text("Sous-titre génial descriptif accrocheur pour présenter\nvotre produit révolutionnaire avec style.", { fontSize: 18, fill: "rgba(255,255,255,0.85)", fontFamily: "Inter", textAlign: "center", originX: "center", originY: "center", top: 40, lineHeight: 1.5 });
+        const btn = new fabric.Rect({ width: 180, height: 56, rx: 28, ry: 28, fill: "#ffffff", originX: "center", originY: "center", left: -100, top: 130, shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.2)", blur: 14, offsetY: 6 }) });
+        const btnTxt = new fabric.Text("Commencer", { fontSize: 15, fontWeight: "800", fill: "#4f46e5", fontFamily: "Inter", originX: "center", originY: "center", left: -100, top: 130 });
+        const btnOutline = new fabric.Rect({ width: 180, height: 56, rx: 28, ry: 28, fill: "transparent", stroke: "rgba(255,255,255,0.5)", strokeWidth: 2, originX: "center", originY: "center", left: 100, top: 130 });
+        const btnOutlineTxt = new fabric.Text("En savoir plus", { fontSize: 15, fontWeight: "700", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", left: 100, top: 130 });
+        elements = [bg, dec1, dec2, badgeBg, badgeTxt, h1, sub, btn, btnTxt, btnOutline, btnOutlineTxt];
+        componentData = { heroTitle: "Titre Principal", heroSub: "Sous-titre génial descriptif accrocheur pour présenter\nvotre produit révolutionnaire avec style.", heroBtn: "Commencer", heroBg: "#4f46e5", variant: "hero" };
+        interactivity = (grp) => {
+          grp.on("mousedown", () => {
+            showToast("Hero section cliquée", "success");
+          });
+        };
+        break;
+      }
+      case "tabs": {
+        const bg = new fabric.Rect({ width: 440, height: 56, fill: "#f1f5f9", rx: 16, ry: 16, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }) });
+        const tab1Bg = new fabric.Rect({ width: 132, height: 44, fill: "#ffffff", rx: 12, ry: 12, left: -140, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(15,23,42,0.12)", blur: 12, offsetY: 4 }) });
+        const tab1 = new fabric.Text("Général", { fontSize: 14, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", originX: "center", originY: "center", left: -140 });
+        const tab2 = new fabric.Text("Sécurité", { fontSize: 14, fontWeight: "600", fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 0 });
+        const tab3 = new fabric.Text("Avancé", { fontSize: 14, fontWeight: "600", fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 140 });
+        elements = [bg, tab1Bg, tab1, tab2, tab3];
+        componentData = { tab1: "Général", tab2: "Sécurité", tab3: "Avancé", activeTab: 1, variant: "tabs" };
+        interactivity = (grp) => {
+          grp.on("mousedown", (e) => {
+            const pointer = grp.canvas?.getPointer(e.e);
+            if (!pointer) return;
+            const clickX = pointer.x - grp.left;
+            let newActive = 1;
+            if (clickX > -70 && clickX < 70) newActive = 2;
+            else if (clickX >= 70) newActive = 3;
+            else newActive = 1;
+
+            grp.componentData.activeTab = newActive;
+
+            const t1Bg = grp._objects[1], t1 = grp._objects[2], t2 = grp._objects[3], t3 = grp._objects[4];
+
+            if (t1Bg) {
+              const targetLeft = newActive === 1 ? -140 : newActive === 2 ? 0 : 140;
+              t1Bg.set({ left: targetLeft });
+            }
+
+            if (t1) t1.set({ fill: newActive === 1 ? "#0f172a" : "#64748b", fontWeight: newActive === 1 ? "700" : "600" });
+            if (t2) t2.set({ fill: newActive === 2 ? "#0f172a" : "#64748b", fontWeight: newActive === 2 ? "700" : "600" });
+            if (t3) t3.set({ fill: newActive === 3 ? "#0f172a" : "#64748b", fontWeight: newActive === 3 ? "700" : "600" });
+
+            grp.canvas?.renderAll();
+          });
+        };
+        break;
+      }
+      case "chart_bar": {
+        const bg = new fabric.Rect({ width: 300, height: 200, fill: "#ffffff", rx: 12, ry: 12, stroke: "#f1f5f9", strokeWidth: 1, originX: "center", originY: "center" });
+        const bars = [
+          new fabric.Rect({ width: 30, height: 80, fill: "#6366f1", rx: 4, ry: 4, left: -110, top: 30, originX: "center", originY: "bottom" }),
+          new fabric.Rect({ width: 30, height: 120, fill: "#8b5cf6", rx: 4, ry: 4, left: -60, top: 30, originX: "center", originY: "bottom" }),
+          new fabric.Rect({ width: 30, height: 60, fill: "#a78bfa", rx: 4, ry: 4, left: -10, top: 30, originX: "center", originY: "bottom" }),
+          new fabric.Rect({ width: 30, height: 100, fill: "#6366f1", rx: 4, ry: 4, left: 40, top: 30, originX: "center", originY: "bottom" }),
+          new fabric.Rect({ width: 30, height: 140, fill: "#8b5cf6", rx: 4, ry: 4, left: 90, top: 30, originX: "center", originY: "bottom" }),
+        ];
+        const label = new fabric.Text("Analyse", { fontSize: 11, fontWeight: "600", fill: "#64748b", fontFamily: "Inter", originX: "center", top: -80 });
+        elements = [bg, ...bars, label];
+        componentData = { variant: "chart_bar" };
+        break;
+      }
+      
+      // ─── TEMPLATES COMPLETS ───
+      case "tpl_home": {
+        // Page d'accueil : Header + Hero + Features + Footer
+        const bg = new fabric.Rect({ width: 1000, height: 900, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background" });
+        // Menu
+        const navBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -410, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "navbar" });
+        const logo = new fabric.Text("⚡ STUDIO", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -410, originX: "left", originY: "center", editable: true, customType: "logo" });
+        const navLinks = new fabric.Text("Produit        Solutions        Prix        Ressources", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -410, originX: "center", originY: "center", editable: true, customType: "navLinks" });
+        const ctaBtn = new fabric.Rect({ width: 140, height: 44, fill: "#0f172a", rx: 8, ry: 8, left: 420, top: -410, originX: "right", originY: "center", editable: true, customType: "button" });
+        const ctaTxt = new fabric.Text("Essayer gratis", { fontSize: 14, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 350, top: -410, originX: "center", originY: "center", editable: true, customType: "buttonText" });
+        // Hero
+        const heroH1 = new fabric.Text("Créez le web\nde demain, aujourd'hui.", { fontSize: 56, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -220, originX: "center", originY: "center", lineHeight: 1.1, editable: true, customType: "heading" });
+        const heroSub = new fabric.Text("Notre outil vous aide à construire, designer et collaborer en temps réel.\nDes millions d'équipes nous font déjà confiance.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -110, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "subtext" });
+        const heroBtnBg = new fabric.Rect({ width: 220, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: -30, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "heroButton" });
+        const heroBtnTxt = new fabric.Text("Démarrer mon essai", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: -30, originX: "center", originY: "center", editable: true, customType: "heroButtonText" });
+        // Image Placeholder (Abstract)
+        const imgPlaceholder = new fabric.Rect({ width: 800, height: 350, fill: "#e2e8f0", rx: 24, ry: 24, left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imagePlaceholder" });
+        const imgIcon = new fabric.Text("🖼 Illustration", { fontSize: 24, fontWeight: "700", fill: "#94a3b8", fontFamily: "Inter", left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imageText" });
+        
+        elements = [bg, navBg, logo, navLinks, ctaBtn, ctaTxt, heroH1, heroSub, heroBtnBg, heroBtnTxt, imgPlaceholder, imgIcon];
+        componentData = { variant: "tpl_home", editable: true, templateType: "homepage" };
+        break;
+      }
+
+      case "tpl_login": {
+        // Splitted screen login page
+        const bg = new fabric.Rect({ width: 1000, height: 600, fill: "white", originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 30, offsetY: 15 }), editable: true, customType: "background" });
+        const leftPanel = new fabric.Rect({ width: 500, height: 600, fill: "#6366f1", left: -250, top: 0, originX: "center", originY: "center", editable: true, customType: "leftPanel" });
+        const leftH1 = new fabric.Text("Heureux de\nvous revoir.", { fontSize: 48, fontWeight: "900", fill: "white", fontFamily: "Inter", left: -420, top: -40, originX: "left", originY: "center", lineHeight: 1.2, editable: true, customType: "welcomeHeading" });
+        const leftP = new fabric.Text("Connectez-vous pour continuer\nvotre expérience exclusive.", { fontSize: 16, fill: "rgba(255,255,255,0.8)", fontFamily: "Inter", left: -420, top: 60, originX: "left", originY: "center", lineHeight: 1.5, editable: true, customType: "welcomeSubtext" });
+        
+        // Right Form
+        const logo = new fabric.Text("🔒 Espace Client", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -200, originX: "center", originY: "center", editable: true, customType: "formLogo" });
+        const title = new fabric.Text("Se connecter", { fontSize: 32, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -140, originX: "center", originY: "center", editable: true, customType: "formTitle" });
+        
+        // Email Input
+        const l1 = new fabric.Text("Email", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: -80, originX: "left", originY: "center", editable: true, customType: "emailLabel" });
+        const i1Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: -40, originX: "center", originY: "center", editable: true, customType: "emailInput" });
+        const i1Txt = new fabric.Text("votre@email.com", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: -40, originX: "left", originY: "center", editable: true, customType: "emailPlaceholder" });
+        
+        // Password Input
+        const l2 = new fabric.Text("Mot de passe", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: 30, originX: "left", originY: "center", editable: true, customType: "passwordLabel" });
+        const i2Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: 70, originX: "center", originY: "center", editable: true, customType: "passwordInput" });
+        const i2Txt = new fabric.Text("•••••••", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: 70, originX: "left", originY: "center", editable: true, customType: "passwordPlaceholder" });
+        
+        // Submit
+        const btnBg = new fabric.Rect({ width: 340, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitButton" });
+        const btnTxt = new fabric.Text("Connexion", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitText" });
+        
+        const forgot = new fabric.Text("Mot de passe oublié ?", { fontSize: 13, fontWeight: "600", fill: "#6366f1", fontFamily: "Inter", left: 250, top: 220, originX: "center", originY: "center", editable: true, customType: "forgotLink" });
+
+        elements = [bg, leftPanel, leftH1, leftP, logo, title, l1, i1Bg, i1Txt, l2, i2Bg, i2Txt, btnBg, btnTxt, forgot];
+        componentData = { variant: "tpl_login", editable: true, templateType: "login" };
+        break;
+      }
+
+      case "tpl_cart": {
+        const bg = new fabric.Rect({ width: 900, height: 700, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background" });
+        const h1 = new fabric.Text("Votre Panier", { fontSize: 36, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -400, top: -300, originX: "left", originY: "center", editable: true, customType: "cartTitle" });
+        
+        // Items list background
+        const listBg = new fabric.Rect({ width: 560, height: 440, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: -120, top: -20, originX: "center", originY: "center", editable: true, customType: "itemsList" });
+        
+        // Summary background
+        const sumBg = new fabric.Rect({ width: 280, height: 350, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: 320, top: -65, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetX: 0, offsetY: 4 }), editable: true, customType: "summaryBox" });
+        
+        elements = [bg, h1, listBg, sumBg];
+
+        // 3 products
+        for(let i=0; i<3; i++) {
+          let y = -160 + (i * 140);
+          elements.push(new fabric.Rect({ width: 100, height: 100, fill: "#f1f5f9", rx: 12, ry: 12, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productImage${i+1}` }));
+          elements.push(new fabric.Text("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i+1}` }));
+          elements.push(new fabric.Text(`Produit Premium ${i+1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i+1}` }));
+          elements.push(new fabric.Text("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i+1}` }));
+          elements.push(new fabric.Text("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i+1}` }));
+          elements.push(new fabric.Text("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i+1}` }));
+          if(i < 2) elements.push(new fabric.Line([-380, y + 70, 140, y + 70], { stroke: "#e2e8f0", strokeWidth: 1 }));
+        }
+
+        // Summary details
+        elements.push(new fabric.Text("Résumé", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -200, originX: "left", originY: "center", editable: true, customType: "summaryTitle" }));
+        elements.push(new fabric.Text("Sous-total", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -140, originX: "left", originY: "center", editable: true, customType: "subtotalLabel" }));
+        elements.push(new fabric.Text("297,00 €", { fontSize: 14, fontWeight: "600", fill: "#0f172a", fontFamily: "Inter", left: 440, top: -140, originX: "right", originY: "center", editable: true, customType: "subtotalAmount" }));
+        
+        elements.push(new fabric.Text("Livraison", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -100, originX: "left", originY: "center", editable: true, customType: "shippingLabel" }));
+        elements.push(new fabric.Text("Gratuite", { fontSize: 14, fontWeight: "600", fill: "#10b981", fontFamily: "Inter", left: 440, top: -100, originX: "right", originY: "center", editable: true, customType: "shippingAmount" }));
+
+        elements.push(new fabric.Line([200, -70, 440, -70], { stroke: "#e2e8f0", strokeWidth: 1 }));
+
+        elements.push(new fabric.Text("Total TTC", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -30, originX: "left", originY: "center", editable: true, customType: "totalLabel" }));
+        elements.push(new fabric.Text("297,00 €", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", left: 440, top: -30, originX: "right", originY: "center", editable: true, customType: "totalAmount" }));
+
+        elements.push(new fabric.Rect({ width: 240, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButton" }));
+        elements.push(new fabric.Text("Payer maintenant", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButtonText" }));
+
+        componentData = { variant: "tpl_cart", editable: true, templateType: "cart" };
+        break;
+      }
+
+      case "tpl_about": {
+        // Page À Propos avec équipe et valeurs
+        const bg = new fabric.Rect({ width: 1000, height: 800, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background" });
+        
+        // Header
+        const headerBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -360, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "header" });
+        const logo = new fabric.Text("🏢 ENTREPRISE", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -360, originX: "left", originY: "center", editable: true, customType: "logo" });
+        const navLinks = new fabric.Text("Accueil        À Propos        Contact", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -360, originX: "center", originY: "center", editable: true, customType: "navLinks" });
+        
+        // Hero Section
+        const heroH1 = new fabric.Text("Notre Histoire", { fontSize: 48, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -200, originX: "center", originY: "center", editable: true, customType: "heroHeading" });
+        const heroSub = new fabric.Text("Depuis 2010, nous transformons les idées en expériences numériques exceptionnelles.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -120, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "heroSubtext" });
+        
+        // Mission Section
+        const missionBg = new fabric.Rect({ width: 900, height: 200, fill: "white", rx: 16, ry: 16, left: 0, top: 20, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetY: 4 }), editable: true, customType: "missionBox" });
+        const missionTitle = new fabric.Text("Notre Mission", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 20, originX: "left", originY: "center", editable: true, customType: "missionTitle" });
+        const missionText = new fabric.Text("Innover continuellement pour offrir des solutions web qui dépassent les attentes de nos clients.", { fontSize: 16, fill: "#475569", fontFamily: "Inter", left: -380, top: 60, originX: "left", originY: "center", lineHeight: 1.6, editable: true, customType: "missionText" });
+        
+        // Values Section
+        const valuesTitle = new fabric.Text("Nos Valeurs", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 160, originX: "left", originY: "center", editable: true, customType: "valuesTitle" });
+        
+        // Value cards
+        const value1Bg = new fabric.Rect({ width: 250, height: 120, fill: "#f1f5f9", rx: 12, ry: 12, left: -280, top: 280, originX: "center", originY: "center", editable: true, customType: "value1Bg" });
+        const value1Icon = new fabric.Text("💡", { fontSize: 32, left: -280, top: 250, originX: "center", originY: "center", editable: true, customType: "value1Icon" });
+        const value1Title = new fabric.Text("Innovation", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: 310, originX: "center", originY: "center", editable: true, customType: "value1Title" });
+        
+        const value2Bg = new fabric.Rect({ width: 250, height: 120, fill: "#e0f2fe", rx: 12, ry: 12, left: 0, top: 280, originX: "center", originY: "center", editable: true, customType: "value2Bg" });
+        const value2Icon = new fabric.Text("🤝", { fontSize: 32, left: 0, top: 250, originX: "center", originY: "center", editable: true, customType: "value2Icon" });
+        const value2Title = new fabric.Text("Confiance", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 0, top: 310, originX: "center", originY: "center", editable: true, customType: "value2Title" });
+        
+        const value3Bg = new fabric.Rect({ width: 250, height: 120, fill: "#fef3c7", rx: 12, ry: 12, left: 280, top: 280, originX: "center", originY: "center", editable: true, customType: "value3Bg" });
+        const value3Icon = new fabric.Text("⭐", { fontSize: 32, left: 280, top: 250, originX: "center", originY: "center", editable: true, customType: "value3Icon" });
+        const value3Title = new fabric.Text("Excellence", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 280, top: 310, originX: "center", originY: "center", editable: true, customType: "value3Title" });
+        
+        // CTA Button
+        const ctaBg = new fabric.Rect({ width: 200, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: 380, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "ctaButton" });
+        const ctaText = new fabric.Text("Nous Contacter", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: 380, originX: "center", originY: "center", editable: true, customType: "ctaText" });
+
+        elements = [bg, headerBg, logo, navLinks, heroH1, heroSub, missionBg, missionTitle, missionText, valuesTitle, value1Bg, value1Icon, value1Title, value2Bg, value2Icon, value2Title, value3Bg, value3Icon, value3Title, ctaBg, ctaText];
+        componentData = { variant: "tpl_about", editable: true, templateType: "about" };
+        break;
+      }
+
+      default: return null;
+    }
+
+    if (elements.length === 0) return null;
+    const group = new fabric.Group(elements, { left: x, top: y });
+    group.customName = item.label;
+    group.customVariant = item.variant;
+    group.componentData = componentData;
+    
+    // Add interactivity for template groups
+    if (componentData.templateType) {
+      interactivity = (grp) => {
+        // Make individual elements within the group editable
+        grp._objects.forEach((obj, index) => {
+          if (obj.type === "text" || obj.type === "i-text" || obj.type === "textbox") {
+            obj.on("mousedblclick", () => {
+              if (fabricCanvas) {
+                // Select the individual text object for editing
+                fabricCanvas.discardActiveObject();
+                fabricCanvas.setActiveObject(obj);
+                obj.enterEditing();
+                obj.selectAll();
+                fabricCanvas.renderAll();
+              }
+            });
+          }
+          
+          obj.on("selected", () => {
+            if (fabricCanvas && obj.fill) {
+              // Update color picker when element is selected
+              const colorInput = document.querySelector('input[type="color"]');
+              if (colorInput && obj.fill) {
+                colorInput.value = obj.fill;
+              }
+            }
+          });
+        });
+        
+        // Make the whole group selectable
+        grp.on("mousedown", () => {
+          if (fabricCanvas) {
+            fabricCanvas.setActiveObject(grp);
+            fabricCanvas.renderAll();
+          }
+        });
+      };
+    }
+    
+    if (interactivity) interactivity(group);
+    return group;
+  };
+
+  // ── Drag & drop ────────────────────────────────────────────────────────────
+  const handleSidebarClick = (item) => { addElementToCanvas(item); };
+  const handleSidebarDoubleClick = (e, item) => { setDraggableId(item.id); e.currentTarget.setAttribute("draggable", "true"); };
+  const handleDragStart = (e, item) => { e.dataTransfer.setData("element-data", JSON.stringify(item)); };
+  const handleDragEnd = () => { setDraggableId(null); };
+
+  const handleCanvasDrop = (e) => {
+    if (!isDesigner || !fabricCanvas) return;
+    e.preventDefault();
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const vpt = fabricCanvas.viewportTransform;
+    const tx = (e.clientX - rect.left - vpt[4]) / vpt[0];
+    const ty = (e.clientY - rect.top - vpt[5]) / vpt[3];
+
+    // Check for file drop (image replacement)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith("image/")) {
+        // Attempt to find the target under the mouse
+        const isTargetMatch = (obj) => {
+          if (!obj.containsPoint) return false;
+          // fabric provides point transform logic, or we can use simpler check:
+          const pointer = fabricCanvas.getPointer(e);
+          return obj.containsPoint(pointer);
+        };
+        const targets = fabricCanvas.getObjects().filter(o => o.type === "image" && isTargetMatch(o));
+        const target = targets.length > 0 ? targets[targets.length - 1] : null;
+
+        const reader = new FileReader();
+        reader.onload = f => {
+          const newSrc = f.target.result;
+          const imgEl = new Image();
+          imgEl.onload = () => {
+            const historyId = addImageToHistory(newSrc, file.name, imgEl.naturalWidth, imgEl.naturalHeight);
+            if (target && target.type === "image") {
+              const oldScaleX = target.scaleX, oldScaleY = target.scaleY, oldLeft = target.left, oldTop = target.top, oldAngle = target.angle;
+              fabric.Image.fromURL(newSrc).then((newImg) => {
+                newImg.set({ left: oldLeft, top: oldTop, angle: oldAngle, scaleX: oldScaleX, scaleY: oldScaleY });
+                newImg.imageHistoryId = historyId;
+                newImg.customName = file.name;
+                restoreInteractivity(newImg);
+                fabricCanvas.remove(target);
+                fabricCanvas.add(newImg);
+                fabricCanvas.setActiveObject(newImg);
+                fabricCanvas.renderAll();
+                showToast("Image remplacée par glisser-déposer", "success");
+              });
+            } else {
+              const imgInstance = new fabric.Image(imgEl);
+              imgInstance.scaleToWidth(300);
+              imgInstance.set({ left: snapEnabled ? snapToGrid(tx, GRID_SIZE) : tx, top: snapEnabled ? snapToGrid(ty, GRID_SIZE) : ty, rx: 8, ry: 8 });
+              imgInstance.imageHistoryId = historyId;
+              imgInstance.customName = file.name;
+              restoreInteractivity(imgInstance);
+              fabricCanvas.add(imgInstance);
+              fabricCanvas.setActiveObject(imgInstance);
+              fabricCanvas.renderAll();
+              showToast("Image ajoutée au canevas", "success");
+            }
+          };
+          imgEl.src = newSrc;
+        };
+        reader.readAsDataURL(file);
+        setDraggableId(null);
+        return;
+      }
+    }
+
+    const dataStr = e.dataTransfer.getData("element-data");
+    if (!dataStr) return;
+    const item = JSON.parse(dataStr);
+    addElementToCanvas(item, snapEnabled ? snapToGrid(tx, GRID_SIZE) : tx, snapEnabled ? snapToGrid(ty, GRID_SIZE) : ty);
+    setDraggableId(null);
+  };
+
+  // FIX: Image import with history tracking
+  const handleImportImage = (e) => {
+    const file = e.target.files[0];
+    if (!file || !fabricCanvas || !isDesigner) return;
+    const reader = new FileReader();
+    reader.onload = (f) => {
+      const imgEl = document.createElement("img");
+      imgEl.src = f.target.result;
+      imgEl.onload = () => {
+        const imgInstance = new fabric.Image(imgEl, {
+          left: 120,
+          top: 120,
+          scaleX: 200 / imgEl.width,
+          scaleY: 200 / imgEl.height,
+        });
+        restoreInteractivity(imgInstance);
+        fabricCanvas.add(imgInstance);
+        fabricCanvas.setActiveObject(imgInstance);
+        fabricCanvas.renderAll();
+        
+        // Add to image history
+        const historyId = addImageToHistory(f.target.result, file.name, imgEl.width, imgEl.height);
+        imgInstance.imageHistoryId = historyId;
+        
+        debouncedSave(fabricCanvas, currentVersionIdRef.current);
+        showToast("Image importée avec succès", "success");
+      };
+      imgEl.src = f.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = null;
+  };
+
+  // Professional design functions
+  const handleMultiSelection = (e) => {
+    if (!fabricCanvas || !isDesigner) return;
+    
+    if (e.shiftKey && e.target) {
+      // Shift+click for multi-selection
+      const currentSelection = fabricCanvas.getActiveObjects() || [];
+      const isSelected = currentSelection.includes(e.target);
+      
+      if (isSelected) {
+        // Remove from selection
+        const newSelection = currentSelection.filter(obj => obj !== e.target);
+        fabricCanvas.discardActiveObject();
+        if (newSelection.length > 0) {
+          fabricCanvas.setActiveObject(new fabric.ActiveSelection(newSelection, {
+            canvas: fabricCanvas
+          }));
+        }
+      } else {
+        // Add to selection
+        const newSelection = [...currentSelection, e.target];
+        fabricCanvas.discardActiveObject();
+        fabricCanvas.setActiveObject(new fabric.ActiveSelection(newSelection, {
+          canvas: fabricCanvas
+        }));
+      }
+      
+      fabricCanvas.renderAll();
+      updateSelectedObjects();
+    }
+  };
+
+  const updateSelectedObjects = () => {
     if (!fabricCanvas) return;
-    const objets = fabricCanvas.getObjects().filter(o => !o.excludeFromExport && o.visible !== false);
+    const activeObjects = fabricCanvas.getActiveObjects() || [];
+    setSelectedObjects(activeObjects);
+    setSelectedObj(activeObjects.length === 1 ? activeObjects[0] : null);
+  };
+
+  const createSelectionBox = (pointer) => {
+    if (!fabricCanvas) return;
+    
+    const selectionBox = new fabric.Rect({
+      left: pointer.x,
+      top: pointer.y,
+      width: 0,
+      height: 0,
+      fill: 'rgba(99, 102, 241, 0.1)',
+      stroke: '#6366f1',
+      strokeWidth: 1,
+      strokeDashArray: [5, 5],
+      selectable: false,
+      evented: false,
+      excludeFromExport: true
+    });
+    
+    setSelectionBox(selectionBox);
+    fabricCanvas.add(selectionBox);
+    setIsMultiSelecting(true);
+  };
+
+  const updateSelectionBox = (pointer) => {
+    if (!selectionBox || !fabricCanvas) return;
+    
+    const startX = selectionBox.left;
+    const startY = selectionBox.top;
+    const width = pointer.x - startX;
+    const height = pointer.y - startY;
+    
+    selectionBox.set({
+      width: Math.abs(width),
+      height: Math.abs(height),
+      left: width < 0 ? pointer.x : startX,
+      top: height < 0 ? pointer.y : startY
+    });
+    
+    fabricCanvas.renderAll();
+  };
+
+  const finalizeSelectionBox = () => {
+    if (!selectionBox || !fabricCanvas) return;
+    
+    // Get objects within selection box
+    const boxBounds = selectionBox.getBoundingRect();
+    const objectsInSelection = fabricCanvas.getObjects().filter(obj => {
+      if (obj === selectionBox || obj.excludeFromExport) return false;
+      const objBounds = obj.getBoundingRect();
+      return (
+        objBounds.left < boxBounds.left + boxBounds.width &&
+        objBounds.left + objBounds.width > boxBounds.left &&
+        objBounds.top < boxBounds.top + boxBounds.height &&
+        objBounds.top + objBounds.height > boxBounds.top
+      );
+    });
+    
+    // Remove selection box
+    fabricCanvas.remove(selectionBox);
+    setSelectionBox(null);
+    setIsMultiSelecting(false);
+    
+    // Set active selection
+    if (objectsInSelection.length > 0) {
+      fabricCanvas.discardActiveObject();
+      fabricCanvas.setActiveObject(new fabric.ActiveSelection(objectsInSelection, {
+        canvas: fabricCanvas
+      }));
+      fabricCanvas.renderAll();
+      updateSelectedObjects();
+    }
+  };
+
+  const alignObjects = (alignment) => {
+    if (!fabricCanvas || selectedObjects.length < 2) return;
+    
+    const activeSelection = fabricCanvas.getActiveObject();
+    if (!activeSelection || activeSelection.type !== 'activeSelection') return;
+    
+    const bounds = activeSelection.getBoundingRect();
+    
+    selectedObjects.forEach(obj => {
+      switch (alignment) {
+        case 'left':
+          obj.set({ left: bounds.left });
+          break;
+        case 'center':
+          obj.set({ left: bounds.left + bounds.width / 2 - obj.width * obj.scaleX / 2 });
+          break;
+        case 'right':
+          obj.set({ left: bounds.left + bounds.width - obj.width * obj.scaleX });
+          break;
+        case 'top':
+          obj.set({ top: bounds.top });
+          break;
+        case 'middle':
+          obj.set({ top: bounds.top + bounds.height / 2 - obj.height * obj.scaleY / 2 });
+          break;
+        case 'bottom':
+          obj.set({ top: bounds.top + bounds.height - obj.height * obj.scaleY });
+          break;
+      }
+      obj.setCoords();
+    });
+    
+    fabricCanvas.renderAll();
+    debouncedSave(fabricCanvas, currentVersionIdRef.current);
+  };
+
+  const distributeObjects = (distribution) => {
+    if (!fabricCanvas || selectedObjects.length < 3) return;
+    
+    const sortedObjects = [...selectedObjects].sort((a, b) => {
+      return distribution === 'horizontal' ? a.left - b.left : a.top - b.top;
+    });
+    
+    if (distribution === 'horizontal') {
+      const totalWidth = sortedObjects[sortedObjects.length - 1].left - sortedObjects[0].left;
+      const spacing = totalWidth / (sortedObjects.length - 1);
+      
+      sortedObjects.forEach((obj, index) => {
+        obj.set({ left: sortedObjects[0].left + spacing * index });
+        obj.setCoords();
+      });
+    } else {
+      const totalHeight = sortedObjects[sortedObjects.length - 1].top - sortedObjects[0].top;
+      const spacing = totalHeight / (sortedObjects.length - 1);
+      
+      sortedObjects.forEach((obj, index) => {
+        obj.set({ top: sortedObjects[0].top + spacing * index });
+        obj.setCoords();
+      });
+    }
+    
+    fabricCanvas.renderAll();
+    debouncedSave(fabricCanvas, currentVersionIdRef.current);
+  };
+
+  const groupObjects = () => {
+    if (!fabricCanvas || selectedObjects.length < 2) return;
+    
+    const activeSelection = fabricCanvas.getActiveObject();
+    if (!activeSelection || activeSelection.type !== 'activeSelection') return;
+    
+    const group = new fabric.Group(selectedObjects, {
+      canvas: fabricCanvas
+    });
+    
+    fabricCanvas.remove(...selectedObjects);
+    fabricCanvas.add(group);
+    fabricCanvas.setActiveObject(group);
+    fabricCanvas.renderAll();
+    
+    updateSelectedObjects();
+    debouncedSave(fabricCanvas, currentVersionIdRef.current);
+  };
+
+  const ungroupObjects = () => {
+    if (!fabricCanvas || !selectedObj || selectedObj.type !== 'group') return;
+    
+    const group = selectedObj;
+    const objects = group.getObjects();
+    
+    fabricCanvas.remove(group);
+    objects.forEach(obj => {
+      fabricCanvas.add(obj);
+    });
+    
+    fabricCanvas.setActiveObject(objects);
+    fabricCanvas.renderAll();
+    
+    updateSelectedObjects();
+    debouncedSave(fabricCanvas, currentVersionIdRef.current);
+  };
+
+  const duplicateObjects = () => {
+    if (!fabricCanvas) return;
+    
+    const objectsToDuplicate = selectedObjects.length > 0 ? selectedObjects : (selectedObj ? [selectedObj] : []);
+    if (objectsToDuplicate.length === 0) return;
+    
+    const duplicatedObjects = objectsToDuplicate.map(obj => {
+      return fabric.util.object.clone(obj, (cloned) => {
+        cloned.set({
+          left: cloned.left + 20,
+          top: cloned.top + 20
+        });
+        cloned.setCoords();
+      });
+    });
+    
+    duplicatedObjects.forEach(obj => fabricCanvas.add(obj));
+    
+    if (duplicatedObjects.length > 1) {
+      fabricCanvas.setActiveObject(new fabric.ActiveSelection(duplicatedObjects, {
+        canvas: fabricCanvas
+      }));
+    } else {
+      fabricCanvas.setActiveObject(duplicatedObjects[0]);
+    }
+    
+    fabricCanvas.renderAll();
+    updateSelectedObjects();
+    debouncedSave(fabricCanvas, currentVersionIdRef.current);
+  };
+  const showTextToolbar = (obj) => {
+    if (!obj || !fabricCanvas) return;
+    
+    // Check if it's a text object
+    if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
+      const canvasRect = fabricCanvas.getElement().getBoundingClientRect();
+      const objCenter = obj.getCenterPoint();
+      const toolbarX = canvasRect.left + (objCenter.x * fabricCanvas.getZoom()) - 120; // Center toolbar above text
+      const toolbarY = canvasRect.top + (objCenter.y * fabricCanvas.getZoom()) - 50;
+      
+      setTextToolbarPosition({ x: toolbarX, y: toolbarY });
+      setTextToolbarVisible(true);
+    } else {
+      setTextToolbarVisible(false);
+    }
+  };
+
+  const hideTextToolbar = () => {
+    setTextToolbarVisible(false);
+  };
+
+  const applyTextFormat = (format) => {
+    if (!selectedObj || !fabricCanvas) return;
+    
+    if (selectedObj.type === 'text' || selectedObj.type === 'i-text' || selectedObj.type === 'textbox') {
+      switch (format) {
+        case 'bold':
+          const currentWeight = selectedObj.fontWeight || 'normal';
+          selectedObj.set({ fontWeight: currentWeight === 'bold' ? 'normal' : 'bold' });
+          break;
+        case 'italic':
+          const currentStyle = selectedObj.fontStyle || 'normal';
+          selectedObj.set({ fontStyle: currentStyle === 'italic' ? 'normal' : 'italic' });
+          break;
+        case 'underline':
+          const currentDecoration = selectedObj.underline || false;
+          selectedObj.set({ underline: !currentDecoration });
+          break;
+        case 'strikethrough':
+          const currentStrike = selectedObj.linethrough || false;
+          selectedObj.set({ linethrough: !currentStrike });
+          break;
+        case 'align-left':
+          selectedObj.set({ textAlign: 'left' });
+          break;
+        case 'align-center':
+          selectedObj.set({ textAlign: 'center' });
+          break;
+        case 'align-right':
+          selectedObj.set({ textAlign: 'right' });
+          break;
+        case 'align-justify':
+          selectedObj.set({ textAlign: 'justify' });
+          break;
+      }
+      
+      fabricCanvas.renderAll();
+      debouncedSave(fabricCanvas, currentVersionIdRef.current);
+    }
+  };
+
+  const changeTextColor = (color) => {
+    if (!selectedObj || !fabricCanvas) return;
+    
+    if (selectedObj.type === 'text' || selectedObj.type === 'i-text' || selectedObj.type === 'textbox') {
+      selectedObj.set({ fill: color });
+      fabricCanvas.renderAll();
+      debouncedSave(fabricCanvas, currentVersionIdRef.current);
+    }
+  };
+
+  const changeTextBackgroundColor = (color) => {
+    if (!selectedObj || !fabricCanvas) return;
+    
+    if (selectedObj.type === 'text' || selectedObj.type === 'i-text' || selectedObj.type === 'textbox') {
+      selectedObj.set({ backgroundColor: color === 'transparent' ? 'transparent' : color });
+      fabricCanvas.renderAll();
+      debouncedSave(fabricCanvas, currentVersionIdRef.current);
+    }
+  };
+
+  const setZoomLevel = (z) => { if (!fabricCanvas) return; fabricCanvas.setZoom(z); setZoom(Math.round(z * 100)); fabricCanvas.renderAll(); };
+
+  // ── Validation ─────────────────────────────────────────────────────────────
+  const getCurrentRejetElements = () => {
+    if (!fabricCanvas) return [];
+    // Filter out deleted, hidden, and excluded elements more strictly
+    const objets = fabricCanvas.getObjects().filter(o => {
+      // Make sure object exists and is not deleted
+      if (!o || o.excludeFromExport || o.visible === false) return false;
+      // Additional check: make sure object is actually on the canvas
+      return fabricCanvas.contains(o);
+    });
     const elements = objets.map((obj, i) => {
       let thumbnail = "";
       try {
@@ -668,11 +3531,26 @@ const DesignEditor = () => {
         thumbnail = tmpCanvas.toDataURL("image/png");
       } catch (_) { }
       const couleur = (typeof obj.fill === "string" && obj.fill && obj.fill !== "transparent") ? obj.fill : (obj.stroke || "#94A3B8");
-      const texte = (obj.type === "i-text" || obj.type === "textbox") ? (obj.text || "").slice(0, 50) : "";
-      const typeIcon = { "i-text": "T", "textbox": "T", "rect": "▭", "circle": "◯", "ellipse": "◯", "triangle": "△", "line": "—", "image": "🖼", "group": "⊞" }[obj.type] || "◆";
-      return { id_element: obj.customName || obj.type + "_" + i, label_element: obj.customName || getObjectLabel(obj), commentaire_client: "", _thumbnail: thumbnail, _couleur: couleur, _texte: texte, _typeIcon: typeIcon, _type: obj.type };
+      const typeIcon = { "i-text": "T", textbox: "T", rect: "▭", circle: "◯", ellipse: "◯", triangle: "△", line: "—", image: "🖼", group: "⊞" }[obj.type] || "◆";
+      return { id_element: obj.customName || obj.type + "_" + i, label_element: obj.customName || getObjectLabel(obj), commentaire_client: "", _thumbnail: thumbnail, _couleur: couleur, _texte: "", _typeIcon: typeIcon, _type: obj.type };
     });
-    setRejetElements(elements); setRejetModal(true);
+    return elements;
+  };
+
+  // Add useEffect to refresh rejection elements when canvas changes
+  useEffect(() => {
+    if (rejetModal && fabricCanvas) {
+      // Refresh elements when modal is open and canvas changes
+      const freshElements = getCurrentRejetElements();
+      setRejetElements(freshElements);
+    }
+  }, [rejetModal, fabricCanvas]);
+
+  const openRejetModal = () => {
+    // Get fresh elements every time the modal opens
+    const freshElements = getCurrentRejetElements();
+    setRejetElements(freshElements);
+    setRejetModal(true);
   };
 
   const handleRejetSubmit = async () => {
@@ -688,107 +3566,22 @@ const DesignEditor = () => {
         commentaires: rejetElements.map(({ id_element, label_element, commentaire_client, _thumbnail }) => ({ id_element, label_element, commentaire_client, thumbnail: _thumbnail || "" })),
       });
       setRejetModal(false); setValidationDone("à corriger");
-      setValidationToast({ type: "info", msg: "📨 Rejet transmis à l'admin." });
-      setTimeout(() => setValidationToast(null), 5000);
+      showToast("Rejet transmis avec succès", "info");
     } catch (err) {
-      setValidationToast({ type: "error", msg: `❌ ${err.response?.data?.message || "Erreur."}` });
-      setTimeout(() => setValidationToast(null), 5000);
+      showToast("Erreur lors de l'envoi", "error");
     } finally { setRejetSubmitting(false); }
   };
 
-  const formatDate = (dateStr) => { if (!dateStr) return ""; return new Date(dateStr).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); };
-
-  const addElementToCanvas = (item, x = 100, y = 100) => {
-    if (!fabricCanvas || !isDesigner) return;
-    let obj;
-    if (item.type === "text") {
-      const tc = { left: x, top: y, fill: "#0f172a", fontFamily: "Inter", width: 300 };
-      if (item.variant === "h1") obj = new fabric.Textbox("Grand Titre", { ...tc, fontSize: 48, fontWeight: "bold", width: 400 });
-      else if (item.variant === "h2") obj = new fabric.Textbox("Sous-titre", { ...tc, fontSize: 32, fontWeight: "600", fill: "#334155" });
-      else if (item.variant === "p") obj = new fabric.Textbox("Ceci est un paragraphe de texte standard.", { ...tc, fontSize: 16 });
-      else if (item.variant === "ul") obj = new fabric.Textbox("• Élément 1\n• Élément 2\n• Élément 3", { ...tc, fontSize: 18 });
-      else if (item.variant === "ol") obj = new fabric.Textbox("1. Premier point\n2. Deuxième point", { ...tc, fontSize: 18 });
-      else if (item.variant === "quote") obj = new fabric.Textbox('"Citation inspirante."', { ...tc, fontSize: 20, fontStyle: "italic", fill: "#64748b" });
-    } else if (item.type === "shape") {
-      if (item.variant === "rect") obj = new fabric.Rect({ left: x, top: y, fill: "#6366f1", width: 120, height: 120, rx: 8, ry: 8 });
-      else if (item.variant === "circle") obj = new fabric.Circle({ left: x, top: y, fill: "#ec4899", radius: 60 });
-      else if (item.variant === "triangle") obj = new fabric.Triangle({ left: x, top: y, fill: "#10b981", width: 120, height: 120 });
-      else if (item.variant === "ellipse") obj = new fabric.Ellipse({ left: x, top: y, fill: "#f59e0b", rx: 80, ry: 50 });
-      else if (item.variant === "line") obj = new fabric.Line([0, 0, 200, 0], { stroke: "#334155", strokeWidth: 4, left: x, top: y });
-      else if (item.variant === "frame") obj = new fabric.Rect({ left: x, top: y, fill: "transparent", stroke: "#cbd5e1", strokeDashArray: [8, 8], strokeWidth: 2, width: 300, height: 200, rx: 4, ry: 4 });
-    } else if (item.type === "advanced_shape") {
-      if (item.variant === "polygon") obj = new fabric.Polygon([{ x: 25, y: 0 }, { x: 75, y: 0 }, { x: 100, y: 43 }, { x: 75, y: 86 }, { x: 25, y: 86 }, { x: 0, y: 43 }], { left: x, top: y, fill: "#8b5cf6" });
-      else if (item.variant === "star") obj = new fabric.Polygon([{ x: 50, y: 0 }, { x: 61, y: 35 }, { x: 98, y: 35 }, { x: 68, y: 57 }, { x: 79, y: 91 }, { x: 50, y: 70 }, { x: 21, y: 91 }, { x: 32, y: 57 }, { x: 2, y: 35 }, { x: 39, y: 35 }], { left: x, top: y, fill: "#f59e0b" });
-      else if (item.variant === "zap") obj = new fabric.Polygon([{ x: 40, y: 0 }, { x: 0, y: 50 }, { x: 30, y: 50 }, { x: 20, y: 100 }, { x: 60, y: 40 }, { x: 30, y: 40 }], { left: x, top: y, fill: "#eab308" });
-      else if (item.variant === "arrow_r") obj = new fabric.Polygon([{ x: 0, y: 20 }, { x: 50, y: 20 }, { x: 50, y: 0 }, { x: 80, y: 30 }, { x: 50, y: 60 }, { x: 50, y: 40 }, { x: 0, y: 40 }], { left: x, top: y, fill: "#ef4444" });
-      else if (item.variant === "arrow_double") obj = new fabric.Polygon([{ x: 30, y: 20 }, { x: 70, y: 20 }, { x: 70, y: 0 }, { x: 100, y: 30 }, { x: 70, y: 60 }, { x: 70, y: 40 }, { x: 30, y: 40 }, { x: 30, y: 60 }, { x: 0, y: 30 }, { x: 30, y: 0 }], { left: x, top: y, fill: "#ef4444" });
-      else if (item.variant === "cloud") obj = new fabric.Path("M 25 60 a 20 20 0 0 1 0 -40 a 25 25 0 0 1 50 0 a 20 20 0 0 1 0 40 Z", { left: x, top: y, fill: "#38bdf8" });
-    } else if (item.type === "complex") {
-      let elements = [];
-      if (item.variant === "button") { const bg = new fabric.Rect({ width: 140, height: 45, rx: 8, ry: 8, fill: "#4f46e5", originX: "center", originY: "center" }); const txt = new fabric.Text("Bouton", { fontSize: 16, fill: "#ffffff", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center" }); elements = [bg, txt]; }
-      else if (item.variant === "input") { const bg = new fabric.Rect({ width: 250, height: 45, rx: 6, ry: 6, fill: "#ffffff", stroke: "#cbd5e1", strokeWidth: 1, originX: "center", originY: "center" }); const txt = new fabric.Text("Tapez ici...", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", originX: "left", originY: "center", left: -110 }); elements = [bg, txt]; }
-      else if (item.variant === "toggle") { const bg = new fabric.Rect({ width: 50, height: 26, rx: 13, ry: 13, fill: "#10b981", originX: "center", originY: "center" }); const circle = new fabric.Circle({ radius: 10, fill: "#ffffff", originX: "center", originY: "center", left: 10 }); elements = [bg, circle]; }
-      else if (item.variant === "checkbox") { const bg = new fabric.Rect({ width: 24, height: 24, rx: 4, ry: 4, fill: "#4f46e5", originX: "center", originY: "center" }); const check = new fabric.Text("✓", { fontSize: 16, fill: "#ffffff", originX: "center", originY: "center", top: 1 }); const label = new fabric.Text("Option", { fontSize: 14, fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: 20 }); elements = [bg, check, label]; }
-      else if (item.variant === "slider") { const line = new fabric.Line([-75, 0, 75, 0], { stroke: "#cbd5e1", strokeWidth: 4 }); const lineActive = new fabric.Line([-75, 0, 0, 0], { stroke: "#4f46e5", strokeWidth: 4 }); const handle = new fabric.Circle({ radius: 10, fill: "#ffffff", stroke: "#4f46e5", strokeWidth: 2, originX: "center", originY: "center" }); elements = [line, lineActive, handle]; }
-      else if (item.variant === "video") { const bg = new fabric.Rect({ width: 320, height: 180, fill: "#1e293b", rx: 8, ry: 8, originX: "center", originY: "center" }); const playBtn = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" }); const playIcon = new fabric.Triangle({ width: 20, height: 20, fill: "#ffffff", originX: "center", originY: "center", left: 4, angle: 90 }); elements = [bg, playBtn, playIcon]; }
-      else if (item.variant === "map") { const bg = new fabric.Rect({ width: 300, height: 200, fill: "#e0f2fe", rx: 8, ry: 8, originX: "center", originY: "center" }); const pin = new fabric.Circle({ radius: 15, fill: "#ef4444", originX: "center", originY: "center", top: -10 }); const shadow = new fabric.Ellipse({ rx: 10, ry: 4, fill: "rgba(0,0,0,0.2)", originX: "center", originY: "center", top: 10 }); elements = [bg, shadow, pin]; }
-      else if (item.variant === "card") { const bg = new fabric.Rect({ width: 240, height: 320, fill: "#ffffff", rx: 12, ry: 12, stroke: "#e2e8f0", strokeWidth: 1, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 10, offsetY: 4 }) }); const img = new fabric.Rect({ width: 240, height: 140, fill: "#cbd5e1", originX: "center", originY: "top", top: -160, rx: 12, ry: 12 }); const title = new fabric.Text("Produit", { fontSize: 18, fontWeight: "bold", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "top", left: -100, top: -5 }); const price = new fabric.Text("29,99 €", { fontSize: 16, fill: "#4f46e5", fontWeight: "600", fontFamily: "Inter", originX: "left", originY: "top", left: -100, top: 25 }); const btnBg = new fabric.Rect({ width: 200, height: 40, fill: "#0f172a", rx: 6, ry: 6, originX: "center", originY: "bottom", top: 140 }); const btnTxt = new fabric.Text("Ajouter", { fontSize: 14, fill: "#ffffff", fontWeight: "500", fontFamily: "Inter", originX: "center", originY: "bottom", top: 130 }); elements = [bg, img, title, price, btnBg, btnTxt]; }
-      else if (item.variant === "profile") { const bg = new fabric.Rect({ width: 300, height: 120, fill: "#ffffff", rx: 12, ry: 12, stroke: "#e2e8f0", strokeWidth: 1, originX: "center", originY: "center" }); const avatar = new fabric.Circle({ radius: 35, fill: "#cbd5e1", originX: "center", originY: "center", left: -90 }); const name = new fabric.Text("Marie D.", { fontSize: 20, fontWeight: "bold", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -30, top: -15 }); const role = new fabric.Text("Marketing", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: -30, top: 15 }); elements = [bg, avatar, name, role]; }
-      else if (item.variant === "chart_bar") { const lineX = new fabric.Line([-100, 80, 100, 80], { stroke: "#94a3b8", strokeWidth: 2 }); const lineY = new fabric.Line([-100, 80, -100, -80], { stroke: "#94a3b8", strokeWidth: 2 }); const bar1 = new fabric.Rect({ width: 30, height: 80, fill: "#4f46e5", originY: "bottom", left: -70, top: 80 }); const bar2 = new fabric.Rect({ width: 30, height: 130, fill: "#3b82f6", originY: "bottom", left: -20, top: 80 }); const bar3 = new fabric.Rect({ width: 30, height: 50, fill: "#60a5fa", originY: "bottom", left: 30, top: 80 }); elements = [lineX, lineY, bar1, bar2, bar3]; }
-      else if (item.variant === "nav_menu") { const bg = new fabric.Rect({ width: 800, height: 60, fill: "#ffffff", stroke: "#e2e8f0", strokeWidth: 1, originX: "center", originY: "center" }); const logo = new fabric.Text("✨ Marque", { fontSize: 20, fontWeight: "bold", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -360 }); const links = new fabric.Text("Accueil    Produits    Contact", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "right", originY: "center", left: 360 }); elements = [bg, logo, links]; }
-      else if (item.variant === "tabs") { const line = new fabric.Line([-150, 20, 150, 20], { stroke: "#e2e8f0", strokeWidth: 2 }); const activeLine = new fabric.Line([-150, 20, -50, 20], { stroke: "#4f46e5", strokeWidth: 2 }); const t1 = new fabric.Text("Général", { fontSize: 14, fontWeight: "600", fill: "#4f46e5", fontFamily: "Inter", originX: "center", originY: "center", left: -100 }); const t2 = new fabric.Text("Sécurité", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 0 }); const t3 = new fabric.Text("Facturation", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 100 }); elements = [line, activeLine, t1, t2, t3]; }
-      else { const bg = new fabric.Rect({ width: 200, height: 80, fill: "#f8fafc", stroke: "#94a3b8", strokeDashArray: [5, 5], strokeWidth: 2, rx: 8, ry: 8, originX: "center", originY: "center" }); const txt = new fabric.Text(item.label, { fontSize: 14, fill: "#64748b", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center" }); elements = [bg, txt]; }
-      obj = new fabric.Group(elements, { left: x, top: y });
-      obj.customName = item.label;
-    }
-    if (obj) { fabricCanvas.add(obj); fabricCanvas.setActiveObject(obj); fabricCanvas.renderAll(); }
-  };
-
-  const handleDragStart = (e, item) => e.dataTransfer.setData("element-data", JSON.stringify(item));
-  const handleCanvasDrop = (e) => {
-    if (!isDesigner) return; e.preventDefault();
-    const dataStr = e.dataTransfer.getData("element-data");
-    if (!dataStr || !fabricCanvas) return;
-    const item = JSON.parse(dataStr);
-    const rect = wrapperRef.current.getBoundingClientRect();
-    const vpt = fabricCanvas.viewportTransform;
-    const tx = (e.clientX - rect.left - vpt[4]) / vpt[0];
-    const ty = (e.clientY - rect.top - vpt[5]) / vpt[3];
-    addElementToCanvas(item, snapEnabled ? snapToGrid(tx, GRID_SIZE) : tx, snapEnabled ? snapToGrid(ty, GRID_SIZE) : ty);
-  };
-
-  const handleImportImage = (e) => {
-    const file = e.target.files[0];
-    if (!file || !fabricCanvas || !isDesigner) return;
-    const reader = new FileReader();
-    reader.onload = f => {
-      const imgEl = new Image();
-      imgEl.onload = () => {
-        const imgInstance = new fabric.Image(imgEl);
-        imgInstance.scaleToWidth(300);
-        imgInstance.set({ left: 100, top: 100, rx: 8, ry: 8 });
-        fabricCanvas.add(imgInstance); fabricCanvas.setActiveObject(imgInstance); fabricCanvas.renderAll();
-      };
-      imgEl.src = f.target.result;
-    };
-    reader.readAsDataURL(file); e.target.value = null;
-  };
-
-  const setZoomLevel = (z) => { if (!fabricCanvas) return; fabricCanvas.setZoom(z); setZoom(Math.round(z * 100)); fabricCanvas.renderAll(); };
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="editor-layout">
-        {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
         <header className="editor-header">
           <div className="header-left">
-            <button className="btn-back" onClick={() => navigate(-1)} title="Retour">
-              <ArrowLeft size={16} />
-            </button>
+            <button className="btn-back" onClick={() => navigate(-1)} title="Retour"><ArrowLeft size={16} /></button>
             <div className="header-divider" />
             <div className="header-title">{designData?.maquette?.nom || "Projet sans nom"}</div>
 
-            {/* Version picker */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 8 }}>
               <div ref={dropdownRef} style={{ position: "relative" }}>
                 <button onClick={handleToggleDropdown} disabled={!fabricCanvas} className="version-btn">
@@ -796,26 +3589,19 @@ const DesignEditor = () => {
                   <span>v{currentVersionNum ?? "—"}</span>
                   <ChevronDown size={11} style={{ transform: dropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
                 </button>
-
                 {dropdownOpen && (
                   <div className="version-dropdown">
-                    <div className="version-dropdown__header">
-                      <Clock size={11} /> Historique
-                    </div>
+                    <div className="version-dropdown__header"><Clock size={11} /> Historique</div>
                     <div className="version-dropdown__list">
                       {versions.length === 0
                         ? <div className="version-dropdown__empty">Aucune version</div>
                         : versions.map(v => {
                           const isCurrent = v.numéro_version === currentVersionNum;
                           return (
-                            <div key={v._id} className={`version-item ${isCurrent ? "version-item--current" : ""}`}
-                              onClick={() => { if (!isCurrent && !loadingVersion) handleLoadVersion(v); }}>
+                            <div key={v._id} className={`version-item ${isCurrent ? "version-item--current" : ""}`} onClick={() => { if (!isCurrent && !loadingVersion) handleLoadVersion(v); }}>
                               <div className="version-item__icon"><GitBranch size={13} /></div>
                               <div className="version-item__info">
-                                <span className="version-item__name">
-                                  Version {v.numéro_version}
-                                  {isCurrent && <span className="version-item__badge">actuelle</span>}
-                                </span>
+                                <span className="version-item__name">Version {v.numéro_version}{isCurrent && <span className="version-item__badge">actuelle</span>}</span>
                                 <span className="version-item__date">{formatDate(v.date_creation)}</span>
                               </div>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -833,7 +3619,6 @@ const DesignEditor = () => {
                   </div>
                 )}
               </div>
-
               {isDesigner && (
                 <button onClick={handleNouvelleVersion} disabled={!fabricCanvas || creatingVersion} className="btn-new-version" title="Nouvelle version">
                   {creatingVersion ? <Loader size={13} className="spin" /> : versionSuccess ? <Check size={13} /> : <Plus size={13} />}
@@ -847,17 +3632,12 @@ const DesignEditor = () => {
             </div>
           </div>
 
-          {/* Toolbar designer */}
           {isDesigner && (
             <div className="header-center">
               <div className="toolbar-pill">
-                <button className={`toolbar-btn ${gridEnabled ? "active" : ""}`} onClick={() => setGridEnabled(g => !g)}>
-                  <GridIcon size={14} /><span>Grille</span>
-                </button>
+                <button className={`toolbar-btn ${gridEnabled ? "active" : ""}`} onClick={() => setGridEnabled(g => !g)}><GridIcon size={14} /><span>Grille</span></button>
                 <div className="toolbar-sep" />
-                <button className={`toolbar-btn ${snapEnabled ? "active" : ""}`} onClick={() => setSnapEnabled(s => !s)}>
-                  <LayoutTemplate size={14} /><span>Aimanter</span>
-                </button>
+                <button className={`toolbar-btn ${snapEnabled ? "active" : ""}`} onClick={() => setSnapEnabled(s => !s)}><LayoutTemplate size={14} /><span>Aimanter</span></button>
               </div>
               <div className="toolbar-pill zoom-pill">
                 <button className="toolbar-btn-icon" onClick={() => fabricCanvas && setZoomLevel(Math.max(ZOOM_MIN, fabricCanvas.getZoom() - ZOOM_STEP))}><ZoomOut size={14} /></button>
@@ -867,7 +3647,6 @@ const DesignEditor = () => {
             </div>
           )}
 
-          {/* Actions droite */}
           <div className="header-right">
             {isClient && (
               <>
@@ -878,8 +3657,7 @@ const DesignEditor = () => {
                 ) : (
                   <div className="client-actions">
                     <button onClick={openRejetModal} disabled={!designData} className="btn-reject">
-                      <span className="btn-reject__x">✕</span>
-                      Rejeter <span className="ver-tag">v{currentVersionNum}</span>
+                      <span className="btn-reject__x">✕</span> Rejeter <span className="ver-tag">v{currentVersionNum}</span>
                     </button>
                     <button onClick={handleValider} disabled={validating || !designData} className="btn-validate">
                       {validating ? <><Loader size={13} className="spin" /> Validation…</> : <><Check size={13} /> Valider <span className="ver-tag ver-tag--light">v{currentVersionNum}</span></>}
@@ -890,170 +3668,479 @@ const DesignEditor = () => {
             )}
             {isDesigner && (
               <>
-                <button className="btn-ghost" onClick={handleReset} title="Réinitialiser">
-                  <RotateCcw size={14} /><span>Réinitialiser</span>
-                </button>
-                <button className="btn-primary" onClick={() => triggerSave(fabricCanvas, designData?.version?._id)}>
-                  Enregistrer
-                </button>
+                <button className="btn-ghost" onClick={handleReset} title="Réinitialiser"><RotateCcw size={14} /><span>Réinitialiser</span></button>
+                <button className="btn-primary" onClick={() => triggerSave(fabricCanvas, designData?.version?._id)}>Enregistrer</button>
               </>
             )}
           </div>
         </header>
 
-        {/* Toast */}
-        {validationToast && (
-          <div className={`toast toast--${validationToast.type}`}>
-            {validationToast.type === "success" ? <Check size={16} /> : validationToast.type === "info" ? <span>📨</span> : <span>⚠️</span>}
-            {validationToast.msg}
-          </div>
-        )}
+        {toast && <ToastNotification message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
         <div className="editor-body">
-          {/* ── Sidebar gauche (designer) ── */}
           {isDesigner && (
-            <aside className="editor-sidebar">
+            <aside className={`editor-sidebar ${!isSidebarOpen ? "collapsed" : ""}`}>
               <div className="sidebar-header">
-                <span>Bibliothèque</span>
+                {isSidebarOpen ? <span>Bibliothèque</span> : ""}
+                <button className="sidebar-toggle-btn" onClick={() => setIsSidebarOpen(s => !s)} title={isSidebarOpen ? "Fermer panneau" : "Ouvrir panneau"}>
+                  {isSidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeft size={16} />}
+                </button>
               </div>
               <div className="sidebar-scroll custom-scrollbar">
                 {SIDEBAR_MENU.map(category => (
                   <div key={category.id} className="menu-group">
-                    <button className={`menu-trigger ${openMenu === category.id ? "active" : ""}`} onClick={() => setOpenMenu(openMenu === category.id ? "" : category.id)}>
-                      <div className="menu-trigger-left">{category.icon}<span>{category.label}</span></div>
-                      <ChevronDown size={13} className={`chevron ${openMenu === category.id ? "open" : ""}`} />
+                    <button 
+                      className={`menu-trigger ${openMenu === category.id ? "active" : ""}`} 
+                      onClick={() => {
+                        setOpenMenu(openMenu === category.id ? "" : category.id);
+                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                      }}
+                      title={!isSidebarOpen ? category.label : ""}
+                    >
+                      <div className="menu-trigger-left">{category.icon}{isSidebarOpen && <span>{category.label}</span>}</div>
+                      {isSidebarOpen && <ChevronDown size={13} className={`chevron ${openMenu === category.id ? "open" : ""}`} />}
                     </button>
-                    <div className={`menu-content ${openMenu === category.id ? "open" : ""}`}>
-                      <div className={category.layout === "grid" ? "tool-grid" : "tool-list"}>
-                        {category.items.map(item => {
-                          if (item.type === "action_image") return (
-                            <label key={item.id} className="tool-btn-list" title={item.label}>
-                              <div className="icon-wrap">{item.icon}</div>
-                              <span>{item.label}</span>
-                              <input type="file" accept="image/*" hidden onChange={handleImportImage} disabled={!fabricCanvas} />
-                            </label>
-                          );
-                          return (
-                            <button key={item.id} className={category.layout === "grid" ? "tool-btn-box" : "tool-btn-list"}
-                              draggable onDragStart={e => handleDragStart(e, item)} onClick={() => addElementToCanvas(item)}
-                              title={item.label} disabled={!fabricCanvas}>
-                              <div className="icon-wrap">{item.icon}</div>
-                              <span>{item.label}</span>
-                            </button>
-                          );
-                        })}
+                    {isSidebarOpen && (
+                      <div className={`menu-content ${openMenu === category.id ? "open" : ""}`}>
+                        <div className={category.layout === "grid" ? "tool-grid" : "tool-list"}>
+                          {category.id === "blocks" ? (
+                            <>
+                              <button
+                                className="tool-btn-list"
+                                draggable={draggableId === "block_card"}
+                                onDragStart={e => handleDragStart(e, { id: "block_card", label: "Carte Produit", icon: <Package size={15} />, type: "complex", variant: "card" })}
+                                onDragEnd={handleDragEnd}
+                                onClick={() => handleSidebarClick({ id: "block_card", label: "Carte Produit", icon: <Package size={15} />, type: "complex", variant: "card" })}
+                                onDoubleClick={e => handleSidebarDoubleClick(e, { id: "block_card", label: "Carte Produit", icon: <Package size={15} />, type: "complex", variant: "card" })}
+                                title="Clic: ajouter | Double-clic: glisser"
+                                disabled={!fabricCanvas}
+                              >
+                                <div className="icon-wrap"><Package size={15} /></div>
+                                <span>Carte Produit</span>
+                              </button>
+                              <button
+                                className="tool-btn-list"
+                                draggable={draggableId === "block_profile"}
+                                onDragStart={e => handleDragStart(e, { id: "block_profile", label: "Profil Utilisateur", icon: <Users size={15} />, type: "complex", variant: "profile" })}
+                                onDragEnd={handleDragEnd}
+                                onClick={() => handleSidebarClick({ id: "block_profile", label: "Profil Utilisateur", icon: <Users size={15} />, type: "complex", variant: "profile" })}
+                                onDoubleClick={e => handleSidebarDoubleClick(e, { id: "block_profile", label: "Profil Utilisateur", icon: <Users size={15} />, type: "complex", variant: "profile" })}
+                                title="Clic: ajouter | Double-clic: glisser"
+                                disabled={!fabricCanvas}
+                              >
+                                <div className="icon-wrap"><Users size={15} /></div>
+                                <span>Profil Utilisateur</span>
+                              </button>
+                              <button
+                                className="tool-btn-list"
+                                draggable={draggableId === "block_pricing"}
+                                onDragStart={e => handleDragStart(e, { id: "block_pricing", label: "Tableau de Prix", icon: <DollarSign size={15} />, type: "complex", variant: "pricing" })}
+                                onDragEnd={handleDragEnd}
+                                onClick={() => handleSidebarClick({ id: "block_pricing", label: "Tableau de Prix", icon: <DollarSign size={15} />, type: "complex", variant: "pricing" })}
+                                onDoubleClick={e => handleSidebarDoubleClick(e, { id: "block_pricing", label: "Tableau de Prix", icon: <DollarSign size={15} />, type: "complex", variant: "pricing" })}
+                                title="Clic: ajouter | Double-clic: glisser"
+                                disabled={!fabricCanvas}
+                              >
+                                <div className="icon-wrap"><DollarSign size={15} /></div>
+                                <span>Tableau de Prix</span>
+                              </button>
+                            </>
+                          ) : (
+                            category.items.map(item => {
+                              if (item.type === "action_image") return (
+                                <label key={item.id} className="tool-btn-list" title={item.label} style={{ cursor: "pointer" }}>
+                                  <div className="icon-wrap">{item.icon}</div>
+                                  <span>{item.label}</span>
+                                  <input type="file" accept="image/*" hidden onChange={handleImportImage} disabled={!fabricCanvas} />
+                                </label>
+                              );
+                              return (
+                                <button
+                                  key={item.id}
+                                  className={category.layout === "grid" ? "tool-btn-box" : "tool-btn-list"}
+                                  draggable={draggableId === item.id}
+                                  onDragStart={e => handleDragStart(e, item)}
+                                  onDragEnd={handleDragEnd}
+                                  onClick={() => handleSidebarClick(item)}
+                                  onDoubleClick={e => handleSidebarDoubleClick(e, item)}
+                                  title="Clic: ajouter | Double-clic: glisser"
+                                  disabled={!fabricCanvas}
+                                >
+                                  <div className="icon-wrap">{item.icon}</div>
+                                  <span>{item.label}</span>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
+                
+                {/* ── DRAWING TOOLS SECTION ── */}
+                <div className="menu-group tools-menu-group" style={{ position: "relative" }}>
+                  <button 
+                    className={`menu-trigger ${openMenu === "outils" ? "active" : ""}`} 
+                    onClick={() => {
+                       setOpenMenu(openMenu === "outils" ? "" : "outils");
+                       if (openMenu !== "outils" && !activeDrawingTool) setActiveDrawingTool("pen");
+                    }}
+                    title={!isSidebarOpen ? "Outils de dessin" : ""}
+                  >
+                    <div className="menu-trigger-left">
+                      <PenTool size={16} />{isSidebarOpen && <span>Outils</span>}
+                    </div>
+                    {isSidebarOpen && <ChevronDown size={13} className={`chevron ${openMenu === "outils" ? "open" : ""}`} />}
+                  </button>
+                  
+                  {/* Popover when Sidebar is Collapsed */}
+                  {!isSidebarOpen && openMenu === "outils" && (
+                    <div className="drawing-tools-popover">
+                      <button className="drawing-popover-close" onClick={() => { setOpenMenu(""); setActiveDrawingTool(null); }}><X size={12} /></button>
+                      <button className={`draw-tool ${!activeDrawingTool ? "active" : ""}`} aria-label="Select" onClick={() => setActiveDrawingTool(null)}><MousePointer2 size={18} /></button>
+                      
+                      <button className={`draw-tool draw-tool-color ${activeDrawingTool === "pen" ? "active" : ""}`} onClick={() => setActiveDrawingTool("pen")} title="Stylo">
+                        <div className="tool-icon-wrap">
+                          <PenTool size={18} />
+                          <div className="tool-color-indicator" style={{ background: drawingColor }} />
+                        </div>
+                      </button>
+                      <button className={`draw-tool draw-tool-color ${activeDrawingTool === "marker" ? "active" : ""}`} onClick={() => setActiveDrawingTool("marker")} title="Marqueur">
+                        <div className="tool-icon-wrap">
+                          <Minus size={18} strokeWidth={4} />
+                          <div className="tool-color-indicator" style={{ background: drawingColor }} />
+                        </div>
+                      </button>
+                      <button className={`draw-tool draw-tool-color ${activeDrawingTool === "highlighter" ? "active" : ""}`} onClick={() => setActiveDrawingTool("highlighter")} title="Surligneur">
+                        <div className="tool-icon-wrap">
+                          <Highlighter size={18} />
+                          <div className="tool-color-indicator" style={{ background: drawingColor }} />
+                        </div>
+                      </button>
+                      <button className={`draw-tool ${activeDrawingTool === "eraser" ? "active" : ""}`} onClick={() => setActiveDrawingTool("eraser")} title="Gomme"><Eraser size={18} /></button>
+                      
+                      <div className="draw-sep" />
+                      
+                      <div className="draw-quick-tools" style={{ display: "flex", gap: "8px", justifyContent: "space-between" }}>
+                        <button className="draw-tool draw-tool-sm" onClick={() => spawnToolElement("table")} title="Tableau"><Table size={16} /></button>
+                        <button className="draw-tool draw-tool-sm" onClick={() => spawnToolElement("sticker")} title="Sticker"><Star size={16} /></button>
+                        <button className="draw-tool draw-tool-sm" onClick={() => spawnToolElement("emoji")} title="Emoji"><Smile size={16} /></button>
+                      </div>
+
+                      <div className="draw-sep" />
+                      
+                      <div className="draw-color-pickers">
+                        {["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#0f172a", "#ffffff"].map(c => (
+                          <button key={c} className={`draw-color-swatch ${drawingColor === c ? "active" : ""}`} style={{ background: c }} onClick={() => setDrawingColor(c)} />
+                        ))}
+                      </div>
+                      
+                      <div className="draw-sep" />
+                      
+                      <div className="draw-width-wrap">
+                        <input type="range" min="1" max="20" value={drawingWidth} onChange={(e) => setDrawingWidth(Number(e.target.value))} className="draw-range range-input" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Inline Panel when Sidebar is Expanded */}
+                  {isSidebarOpen && openMenu === "outils" && (
+                     <div className="inline-tools-panel">
+                        <div className="tools-row-inline">
+                          <button className={`draw-tool-sm ${!activeDrawingTool ? "active" : ""}`} aria-label="Select" onClick={() => setActiveDrawingTool(null)}><MousePointer2 size={15} /></button>
+                          <button className={`draw-tool-sm ${activeDrawingTool === "pen" ? "active" : ""}`} onClick={() => setActiveDrawingTool("pen")} title="Stylo"><PenTool size={15} /></button>
+                          <button className={`draw-tool-sm ${activeDrawingTool === "marker" ? "active" : ""}`} onClick={() => setActiveDrawingTool("marker")} title="Marqueur"><Minus size={15} strokeWidth={4} /></button>
+                          <button className={`draw-tool-sm ${activeDrawingTool === "highlighter" ? "active" : ""}`} onClick={() => setActiveDrawingTool("highlighter")} title="Surligneur"><Highlighter size={15} /></button>
+                          <button className={`draw-tool-sm ${activeDrawingTool === "eraser" ? "active" : ""}`} onClick={() => setActiveDrawingTool("eraser")} title="Gomme"><Eraser size={15} /></button>
+                        </div>
+                        <div className="tools-row-inline" style={{ marginTop: 12 }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Couleur</span>
+                          <div className="color-picker-wrap" style={{ flex: 1, padding: "4px 8px" }}>
+                            <input type="color" value={drawingColor} onChange={(e) => setDrawingColor(e.target.value)} />
+                            <span>{drawingColor}</span>
+                          </div>
+                        </div>
+                        <div className="tools-row-inline" style={{ marginTop: 12 }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Insérer</span>
+                          <div style={{ display: "flex", gap: 6 }}>
+                             <button className="draw-tool-sm" onClick={() => spawnToolElement("table")} title="Tableau"><Table size={15} /></button>
+                             <button className="draw-tool-sm" onClick={() => spawnToolElement("sticker")} title="Sticker"><Star size={15} /></button>
+                             <button className="draw-tool-sm" onClick={() => spawnToolElement("emoji")} title="Emoji"><Smile size={15} /></button>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Épaisseur ({drawingWidth}px)</span>
+                          <input type="range" min="1" max="20" value={drawingWidth} onChange={(e) => setDrawingWidth(Number(e.target.value))} className="w-full range-input" />
+                        </div>
+                     </div>
+                  )}
+                </div>
               </div>
             </aside>
           )}
 
-          {/* ── Canvas ── */}
           <main className="editor-canvas-area" onDragOver={e => e.preventDefault()} onDrop={handleCanvasDrop}>
-
-            {/* Banner corrections (designer, version courante uniquement) */}
             {isDesigner && corrections.length > 0 && (
               <div className="corrections-banner-wrap">
                 <div className="corrections-banner" onClick={() => setShowCorrections(s => !s)}>
                   <span className="corrections-pulse" />
-                  <span>⚠️ {corrections.length} correction{corrections.length > 1 ? "s" : ""} pour cette version</span>
-                  <span className="corrections-toggle">{showCorrections ? "▲ Masquer" : "▼ Voir"}</span>
+                  <span>Corrections</span>
+                  <span className="corrections-toggle">{showCorrections ? "Hide" : "View"}</span>
                 </div>
                 {showCorrections && (
                   <div className="corrections-list">
-                    {corrections.map((c, ci) => {
-                      const projet = c.version_id?.id_maquette?.id_projet;
-                      const vNum = c.version_id?.numéro_version;
-                      return (
-                        <div key={c._id} className="correction-item">
-                          <div className="correction-item__meta">
-                            <span>{projet?.nom || "Projet"} · v{vNum} · {c.client_id?.nom || "—"}</span>
-                            <button className="btn-mark-read" onClick={async e => {
-                              e.stopPropagation();
-                              try { await API.patch(`/validations/${c._id}/lu-designer`); setCorrections(prev => prev.filter(x => x._id !== c._id)); } catch (_) { }
-                            }}>✓ Marquer corrigé</button>
-                          </div>
-                          {(c.commentaires || []).filter(cm => cm.commentaire_admin || cm.commentaire_client).map(cm => (
-                            <div key={cm._id} className="correction-comment">
-                              <div className="correction-comment__label">{cm.label_element || cm.id_element}</div>
-                              <div className="correction-comment__text">{cm.commentaire_admin || cm.commentaire_client}</div>
-                            </div>
-                          ))}
-                          {(c.commentaires || []).filter(cm => cm.commentaire_admin || cm.commentaire_client).length === 0 && (
-                            <div className="correction-comment__empty">Rejet général — aucune remarque spécifique.</div>
-                          )}
+                    {corrections.map((c, i) => (
+                      <div key={i} className="correction-item">
+                        <div className="correction-item__meta">
+                          <span>{c.element_nom || "Element"} - {c.type_correction}</span>
+                          <button className="btn-mark-read" onClick={() => markCorrectionAsRead(c._id)}>Mark as read</button>
                         </div>
-                      );
-                    })}
+                        <div className="correction-comment">
+                          <div className="correction-comment__label">{c.label_element || c.id_element}</div>
+                          <div className="correction-comment__text">{c.commentaire_admin || c.commentaire_client}</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             )}
 
+            {/* Text Formatting Toolbar - Simplified Version */}
+            {textToolbarVisible && (
+              <div 
+                className="text-formatting-toolbar" 
+                style={{ 
+                  position: 'fixed', 
+                  left: textToolbarPosition.x + 'px', 
+                  top: textToolbarPosition.y + 'px',
+                  zIndex: 1000,
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  display: 'flex',
+                  gap: '2px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  fontSize: '12px',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                {/* Text Formatting */}
+                <button 
+                  onClick={() => applyTextFormat('bold')}
+                  className="toolbar-btn-icon"
+                  title="Gras"
+                  style={{ 
+                    padding: '6px', 
+                    border: 'none', 
+                    background: selectedObj?.fontWeight === 'bold' ? '#6366f1' : 'transparent', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    color: selectedObj?.fontWeight === 'bold' ? 'white' : '#334155',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Bold size={12} />
+                </button>
+                <button 
+                  onClick={() => applyTextFormat('italic')}
+                  className="toolbar-btn-icon"
+                  title="Italique"
+                  style={{ 
+                    padding: '6px', 
+                    border: 'none', 
+                    background: selectedObj?.fontStyle === 'italic' ? '#6366f1' : 'transparent', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    color: selectedObj?.fontStyle === 'italic' ? 'white' : '#334155',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Italic size={12} />
+                </button>
+                <button 
+                  onClick={() => applyTextFormat('underline')}
+                  className="toolbar-btn-icon"
+                  title="Souligner"
+                  style={{ 
+                    padding: '6px', 
+                    border: 'none', 
+                    background: selectedObj?.underline ? '#6366f1' : 'transparent', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    color: selectedObj?.underline ? 'white' : '#334155',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Type size={12} style={{ textDecoration: 'underline' }} />
+                </button>
+                <button 
+                  onClick={() => applyTextFormat('strikethrough')}
+                  className="toolbar-btn-icon"
+                  title="Barrer"
+                  style={{ 
+                    padding: '6px', 
+                    border: 'none', 
+                    background: selectedObj?.linethrough ? '#6366f1' : 'transparent', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    color: selectedObj?.linethrough ? 'white' : '#334155',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Type size={12} style={{ textDecoration: 'line-through' }} />
+                </button>
+
+                {/* Separator */}
+                <div style={{ width: '1px', height: '20px', background: '#e2e8f0', margin: '0 4px' }} />
+
+                {/* Alignment */}
+                <button 
+                  onClick={() => applyTextFormat('align-left')}
+                  className="toolbar-btn-icon"
+                  title="Aligner à gauche"
+                  style={{ 
+                    padding: '6px', 
+                    border: 'none', 
+                    background: selectedObj?.textAlign === 'left' ? '#6366f1' : 'transparent', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    color: selectedObj?.textAlign === 'left' ? 'white' : '#334155',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <AlignLeft size={12} />
+                </button>
+                <button 
+                  onClick={() => applyTextFormat('align-center')}
+                  className="toolbar-btn-icon"
+                  title="Centrer"
+                  style={{ 
+                    padding: '6px', 
+                    border: 'none', 
+                    background: selectedObj?.textAlign === 'center' ? '#6366f1' : 'transparent', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    color: selectedObj?.textAlign === 'center' ? 'white' : '#334155',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <AlignCenter size={12} />
+                </button>
+                <button 
+                  onClick={() => applyTextFormat('align-right')}
+                  className="toolbar-btn-icon"
+                  title="Aligner à droite"
+                  style={{ 
+                    padding: '6px', 
+                    border: 'none', 
+                    background: selectedObj?.textAlign === 'right' ? '#6366f1' : 'transparent', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    color: selectedObj?.textAlign === 'right' ? 'white' : '#334155',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <AlignRight size={12} />
+                </button>
+                <button 
+                  onClick={() => applyTextFormat('align-justify')}
+                  className="toolbar-btn-icon"
+                  title="Justifier"
+                  style={{ 
+                    padding: '6px', 
+                    border: 'none', 
+                    background: selectedObj?.textAlign === 'justify' ? '#6366f1' : 'transparent', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer',
+                    color: selectedObj?.textAlign === 'justify' ? 'white' : '#334155',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <AlignLeft size={12} style={{ transform: 'scaleX(1.3)' }} />
+                </button>
+              </div>
+            )}
             {!designData
               ? <div className="loader-screen"><Loader size={40} className="spin" /><p>Chargement du studio…</p></div>
               : <div ref={wrapperRef} className="canvas-shadow" />
             }
           </main>
 
-          {/* ── Panneau droit (designer) ── */}
           {isDesigner && (
             <aside className="editor-right-panel">
+              {/* FIX: Added Images tab */}
               <div className="right-tabs">
                 <button className={`right-tab ${rightTab === "props" ? "active" : ""}`} onClick={() => setRightTab("props")}>Propriétés</button>
-                <button className={`right-tab ${rightTab === "layers" ? "active" : ""}`} onClick={() => setRightTab("layers")}>
-                  <Layers size={13} /> Calques
-                </button>
+                <button className={`right-tab ${rightTab === "layers" ? "active" : ""}`} onClick={() => setRightTab("layers")}><Layers size={13} /> Calques</button>
+                <button className={`right-tab ${rightTab === "images" ? "active" : ""}`} onClick={() => setRightTab("images")}><Images size={13} /></button>
               </div>
               <div className="right-panel-body custom-scrollbar">
-                {rightTab === "props"
-                  ? <PropertiesPanel selectedObject={selectedObj} canvas={fabricCanvas} onUpdate={() => { debouncedSave(fabricCanvas, designData?.version?._id); setLayersKey(k => k + 1); }} />
-                  : <LayersPanel canvas={fabricCanvas} selectedObject={selectedObj} onSelectObject={setSelectedObj} refreshKey={layersKey} />
-                }
+                {rightTab === "props" && (
+                  <PropertiesPanel
+                    selectedObject={selectedObj}
+                    canvas={fabricCanvas}
+                    onUpdate={() => { debouncedSave(fabricCanvas, designData?.version?._id); setLayersKey(k => k + 1); }}
+                    imageHistory={imageHistory}
+                    onReplaceImage={handleReplaceImage}
+                    onSelectImageFromHistory={handleSelectImageFromHistory}
+                    refreshKey={layersKey}
+                  />
+                )}
+                {rightTab === "layers" && (
+                  <LayersPanel canvas={fabricCanvas} selectedObject={selectedObj} onSelectObject={setSelectedObj} refreshKey={layersKey} />
+                )}
+                {rightTab === "images" && (
+                  <ImageHistoryPanel
+                    imageHistory={imageHistory}
+                    onReplaceImage={handleReplaceImage}
+                    onSelectImage={handleSelectImageFromHistory}
+                    canvas={fabricCanvas}
+                  />
+                )}
               </div>
             </aside>
           )}
         </div>
       </div>
 
-      {/* ══ POPUP REJET CLIENT ══════════════════════════════════════════════ */}
-      {rejetModal && (
+      <ModernModal isOpen={!!activeModal} onClose={() => setActiveModal(null)} title={activeModal?.title} content={activeModal?.content} />
+
+      <EmojiPickerModal isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onSelect={spawnRealEmoji} />
+      <StickerPickerModal isOpen={showStickerPicker} onClose={() => setShowStickerPicker(false)} onSelect={spawnRealSticker} />
+
+      {rejetModal && (() => {
+        const currentElements = getCurrentRejetElements();
+        return (
         <div className="rejet-overlay" onClick={() => setRejetModal(false)}>
           <div className="rejet-modal" onClick={e => e.stopPropagation()}>
             <div className="rejet-modal__header">
               <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                <div className="rejet-modal__icon-wrap">✕</div>
+                <div className="rejet-modal__icon-wrap">!</div>
                 <div>
                   <h3 className="rejet-modal__title">Rejeter la version {currentVersionNum}</h3>
                   <p className="rejet-modal__subtitle">Indiquez vos remarques. Les champs vides ne seront pas transmis.</p>
                 </div>
               </div>
-              <button onClick={() => setRejetModal(false)} className="rejet-modal__close">✕</button>
+              <button onClick={() => setRejetModal(false)} className="rejet-modal__close">×</button>
             </div>
-
             {rejetElements.length > 0 && (
               <div className="rejet-modal__counter">
                 <span>{rejetElements.length} élément{rejetElements.length > 1 ? "s" : ""}</span>
-                <span className="rejet-modal__counter-ok">
-                  {rejetElements.filter(e => e.commentaire_client.trim()).length} remarqué{rejetElements.filter(e => e.commentaire_client.trim()).length > 1 ? "s" : ""}
-                </span>
+                <span className="rejet-modal__counter-ok">{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length} remarqué{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""}</span>
               </div>
             )}
-
             <div className="rejet-modal__body">
               {rejetElements.length === 0
-                ? <div className="rejet-modal__empty"><span>🎨</span><p>Aucun élément détecté.</p></div>
+                ? <div className="rejet-modal__empty"><span>!</span><p>Aucun élément détecté sur le design.</p></div>
                 : rejetElements.map((el, i) => (
-                  <div key={el.id_element} className={`rejet-el ${el.commentaire_client.trim() ? "rejet-el--active" : ""}`}>
+                  <div key={el.id_element} className={`rejet-el ${el.commentaire_client && el.commentaire_client.trim() ? "rejet-el--active" : ""}`}>
                     <div className="rejet-el__head">
                       <div className="rejet-el__thumb-wrap">
-                        {el._thumbnail
-                          ? <img src={el._thumbnail} alt={el.label_element} className="rejet-el__thumb" />
-                          : <div className="rejet-el__thumb-fb">{el._typeIcon || "◆"}</div>
-                        }
-                        {el.commentaire_client.trim() && <span className="rejet-el__check">✓</span>}
+                        {el._thumbnail ? <img src={el._thumbnail} alt={el.label_element} className="rejet-el__thumb" /> : <div className="rejet-el__thumb-fb">{el._typeIcon || "?"}</div>}
+                        {el.commentaire_client && el.commentaire_client.trim() && <span className="rejet-el__check">!</span>}
                       </div>
                       <div className="rejet-el__info">
                         <span className="rejet-el__name">{el.label_element}</span>
@@ -1061,459 +4148,408 @@ const DesignEditor = () => {
                       </div>
                     </div>
                     <div className="rejet-el__body">
-                      <textarea
-                        value={el.commentaire_client}
-                        onChange={e => setRejetElements(prev => prev.map((item, idx) => idx === i ? { ...item, commentaire_client: e.target.value } : item))}
-                        placeholder="Décrivez la correction souhaitée… (vide = non transmis)"
-                        rows={2}
+                      <textarea 
+                        value={el.commentaire_client || ""} 
+                        onChange={e => setRejetElements(prev => prev.map((item, idx) => idx === i ? { ...item, commentaire_client: e.target.value } : item))} 
+                        placeholder="Décrivez la correction souhaitée pour cet élément..." 
+                        rows={3} 
                         className="rejet-el__textarea"
                       />
                     </div>
                   </div>
-                ))
-              }
+                ))}
             </div>
-
             <div className="rejet-modal__footer">
               <div className="rejet-modal__footer-info">
-                {rejetElements.filter(e => e.commentaire_client.trim()).length === 0
-                  ? <span style={{ color: "var(--muted)" }}>Aucune remarque — rejet général</span>
-                  : <span style={{ color: "#059669" }}>✓ {rejetElements.filter(e => e.commentaire_client.trim()).length} remarque{rejetElements.filter(e => e.commentaire_client.trim()).length > 1 ? "s" : ""} prête{rejetElements.filter(e => e.commentaire_client.trim()).length > 1 ? "s" : ""}</span>
-                }
+                {rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length === 0
+                  ? <span style={{ color: "var(--muted)" }}>Aucune remarque - rejet général</span>
+                  : <span style={{ color: "#059669" }}>! {rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length} remarque{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""} prête{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""}</span>}
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setRejetModal(false)} className="btn-cancel">Annuler</button>
                 <button onClick={handleRejetSubmit} disabled={rejetSubmitting} className="btn-submit-rejet">
-                  {rejetSubmitting ? <><Loader size={13} className="spin" /> Envoi…</> : <>✕ Justifier le rejet</>}
+                  {rejetSubmitting ? <><Loader size={13} className="spin" /> Envoi...</> : <>! Justifier le rejet</>}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()};
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
         :root {
-          --font: 'DM Sans', system-ui, sans-serif;
-          --font-mono: 'DM Mono', monospace;
-          --bg: #f4f5f7;
-          --canvas-bg: #e8eaed;
+          --font: 'Inter', system-ui, -apple-system, sans-serif;
+          --bg: #f8fafc;
+          --canvas-bg: #f1f5f9;
           --surface: #ffffff;
-          --surface-2: #f8f9fa;
-          --surface-3: #f1f3f5;
-          --border: #e3e6ea;
-          --border-2: #d0d5dd;
-          --text: #111827;
-          --text-2: #4b5563;
-          --muted: #9ca3af;
-          --primary: #5b6af0;
-          --primary-dark: #4755e6;
-          --primary-bg: #eef0fd;
-          --primary-border: #c7cbf9;
+          --surface-2: #f8fafc;
+          --surface-3: #f1f5f9;
+          --border: #e2e8f0;
+          --border-2: #cbd5e1;
+          --text: #0f172a;
+          --text-2: #334155;
+          --muted: #64748b;
+          --primary: #6366f1;
+          --primary-dark: #4f46e5;
+          --primary-bg: #eef2ff;
+          --primary-border: #c7d2fe;
           --danger: #ef4444;
           --danger-bg: #fef2f2;
-          --danger-border: #fecaca;
+          --danger-border: #fee2e2;
           --success: #10b981;
           --success-bg: #ecfdf5;
+          --warn: #f59e0b;
           --warn-bg: #fffbeb;
-          --warn-text: #d97706;
-          --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-          --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
-          --shadow-lg: 0 12px 32px rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.06);
+          --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+          --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+          --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+          --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
           --r: 8px;
           --r-lg: 12px;
-          --sidebar-w: 256px;
-          --panel-w: 268px;
-          --header-h: 56px;
+          --sidebar-w: 260px;
+          --panel-w: 280px;
+          --header-h: 60px;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: var(--font); background: var(--bg); color: var(--text); overflow: hidden; -webkit-font-smoothing: antialiased; }
 
-        /* ── Layout ── */
         .editor-layout { display: flex; flex-direction: column; height: 100vh; width: 100vw; position: fixed; inset: 0; }
         .editor-body { display: flex; flex: 1; overflow: hidden; }
 
-        /* ── Header ── */
         .editor-header {
           height: var(--header-h); background: var(--surface); display: flex; align-items: center;
-          justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--border);
+          justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--border);
           box-shadow: var(--shadow-sm); z-index: 20; position: relative; gap: 12px;
         }
-        .header-left, .header-right { display: flex; align-items: center; gap: 10px; }
-        .header-center { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; }
+        .header-left, .header-right { display: flex; align-items: center; gap: 12px; }
+        .header-center { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; }
+        .btn-back { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); color: var(--text-2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+        .btn-back:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-2); transform: scale(1.02); }
+        .header-divider { width: 1px; height: 24px; background: var(--border); }
+        .header-title { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 
-        .btn-back {
-          width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--r);
-          background: var(--surface-2); color: var(--text-2); cursor: pointer; display: flex;
-          align-items: center; justify-content: center; transition: .15s;
-        }
-        .btn-back:hover { background: var(--surface-3); color: var(--text); border-color: var(--border-2); }
-
-        .header-divider { width: 1px; height: 20px; background: var(--border); }
-        .header-title { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Version button */
-        .version-btn {
-          display: inline-flex; align-items: center; gap: 5px; font-family: var(--font);
-          font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: var(--r);
-          background: var(--primary-bg); color: var(--primary); border: 1px solid var(--primary-border);
-          cursor: pointer; transition: .15s;
-        }
-        .version-btn:hover:not(:disabled) { background: #e5e7fb; }
+        .version-btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: var(--r); background: var(--primary-bg); color: var(--primary); border: 1px solid var(--primary-border); cursor: pointer; transition: all 0.2s ease; }
+        .version-btn:hover:not(:disabled) { background: #e0e7ff; transform: translateY(-1px); }
         .version-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .btn-new-version {
-          width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white;
-          border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: .15s;
-        }
-        .btn-new-version:hover:not(:disabled) { background: var(--primary-dark); transform: scale(1.08); }
+        .btn-new-version { width: 32px; height: 32px; border-radius: var(--r); background: var(--primary); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+        .btn-new-version:hover:not(:disabled) { background: var(--primary-dark); transform: scale(1.05); }
         .btn-new-version:disabled { opacity: 0.5; cursor: not-allowed; }
+        .save-badge { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 
-        /* Save badge */
-        .save-badge {
-          font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-2);
-          border: 1px solid var(--border); padding: 3px 9px; border-radius: 20px;
-          display: flex; align-items: center; gap: 5px; white-space: nowrap;
-        }
-
-        /* Version dropdown */
-        .version-dropdown {
-          position: absolute; top: calc(100% + 8px); left: 0;
-          background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-          box-shadow: var(--shadow-lg); min-width: 272px; z-index: 9999; overflow: hidden;
-          animation: dropIn .15s ease;
-        }
-        @keyframes dropIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
-        .version-dropdown__header {
-          padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 10px;
-          font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
-          display: flex; align-items: center; gap: 5px;
-        }
-        .version-dropdown__list { max-height: 280px; overflow-y: auto; }
-        .version-dropdown__empty { padding: 16px; text-align: center; font-size: 13px; color: var(--muted); }
-
-        .version-item {
-          display: flex; align-items: center; gap: 10px; padding: 10px 14px;
-          border-bottom: 1px solid var(--surface-2); cursor: pointer; transition: background .1s;
-        }
+        .version-dropdown { position: absolute; top: calc(100% + 8px); left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-xl); min-width: 280px; z-index: 9999; overflow: hidden; animation: dropIn 0.2s ease; }
+        @keyframes dropIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+        .version-dropdown__header { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; }
+        .version-dropdown__list { max-height: 320px; overflow-y: auto; }
+        .version-dropdown__empty { padding: 20px; text-align: center; font-size: 13px; color: var(--muted); }
+        .version-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--surface-2); cursor: pointer; transition: background 0.15s; }
         .version-item:hover:not(.version-item--current) { background: var(--surface-2); }
         .version-item--current { background: var(--primary-bg); cursor: default; }
-        .version-item__icon {
-          width: 30px; height: 30px; border-radius: 8px; background: var(--surface-3);
-          display: flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0;
-        }
+        .version-item__icon { width: 32px; height: 32px; border-radius: 8px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; }
         .version-item--current .version-item__icon { background: var(--primary-bg); color: var(--primary); }
-        .version-item__info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .version-item__info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
         .version-item__name { font-size: 13px; font-weight: 600; color: var(--text); }
         .version-item--current .version-item__name { color: var(--primary); }
-        .version-item__badge { margin-left: 6px; font-size: 10px; background: var(--primary); color: white; border-radius: 10px; padding: 1px 7px; }
-        .version-item__date { font-size: 11px; color: var(--muted); }
-        .version-item__load { font-size: 11px; font-weight: 600; color: var(--text-2); display: flex; align-items: center; gap: 4px; }
-        .version-item__delete {
-          width: 26px; height: 26px; border-radius: 6px; background: transparent;
-          border: none; color: var(--danger); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: .15s;
-        }
-        .version-item__delete:hover { background: var(--danger-bg); }
+        .version-item__badge { margin-left: 8px; font-size: 9px; background: var(--primary); color: white; border-radius: 10px; padding: 2px 8px; }
+        .version-item__date { font-size: 10px; color: var(--muted); }
+        .version-item__load { font-size: 11px; font-weight: 500; color: var(--text-2); display: flex; align-items: center; gap: 4px; }
+        .version-item__delete { width: 28px; height: 28px; border-radius: 6px; background: transparent; border: none; color: var(--danger); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .version-item__delete:hover { background: var(--danger-bg); transform: scale(1.05); }
 
-        /* Toolbar */
-        .toolbar-pill {
-          display: flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border);
-          border-radius: var(--r); overflow: hidden; height: 34px;
-        }
-        .toolbar-btn {
-          display: flex; align-items: center; gap: 5px; padding: 0 12px; height: 100%;
-          font-size: 12px; font-weight: 500; background: none; border: none; color: var(--text-2); cursor: pointer; transition: .15s;
-        }
-        .toolbar-btn:hover { background: var(--surface-3); color: var(--text); }
-        .toolbar-btn.active { background: var(--surface); color: var(--primary); font-weight: 600; }
-        .toolbar-sep { width: 1px; height: 18px; background: var(--border); }
+        .toolbar-pill { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; height: 38px; box-shadow: var(--shadow-sm); }
+        .toolbar-btn { display: flex; align-items: center; gap: 6px; padding: 0 14px; height: 100%; font-size: 12px; font-weight: 500; background: none; border: none; color: var(--text-2); cursor: pointer; transition: all 0.2s; }
+        .toolbar-btn:hover { background: var(--surface-2); color: var(--text); }
+        .toolbar-btn.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
+        .toolbar-sep { width: 1px; height: 20px; background: var(--border); }
         .zoom-pill { padding: 0 4px; gap: 0; }
-        .toolbar-btn-icon {
-          width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-          background: none; border: none; color: var(--text-2); cursor: pointer; border-radius: 6px; transition: .15s;
-        }
-        .toolbar-btn-icon:hover { background: var(--surface-3); color: var(--text); }
-        .zoom-val { font-size: 12px; font-weight: 600; width: 44px; text-align: center; cursor: pointer; color: var(--text); font-family: var(--font-mono); }
+        .toolbar-btn-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--text-2); cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+        .toolbar-btn-icon:hover { background: var(--surface-2); color: var(--text); }
+        .zoom-val { font-size: 12px; font-weight: 600; width: 48px; text-align: center; cursor: pointer; color: var(--text); }
 
-        /* Header buttons */
-        .btn-ghost {
-          display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500;
-          background: none; border: 1px solid var(--border); color: var(--text-2); padding: 6px 12px;
-          border-radius: var(--r); cursor: pointer; transition: .15s; font-family: var(--font);
-        }
-        .btn-ghost:hover { background: var(--surface-2); border-color: var(--border-2); color: var(--text); }
-        .btn-primary {
-          background: var(--primary); color: white; border: none; padding: 7px 16px;
-          font-size: 13px; font-weight: 600; border-radius: var(--r); cursor: pointer;
-          transition: .15s; font-family: var(--font); letter-spacing: -.01em;
-        }
-        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(91,106,240,.3); }
-
-        /* Client actions */
-        .client-actions {
-          display: flex; align-items: center; gap: 6px; background: var(--surface-2);
-          border: 1px solid var(--border); border-radius: var(--r-lg); padding: 4px;
-        }
-        .btn-reject {
-          display: inline-flex; align-items: center; gap: 6px; background: var(--surface);
-          color: var(--danger); border: 1px solid var(--danger-border); border-radius: var(--r);
-          padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; transition: .15s; font-family: var(--font);
-        }
+        .btn-ghost { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); padding: 7px 14px; border-radius: var(--r); cursor: pointer; transition: all 0.2s; font-family: var(--font); }
+        .btn-ghost:hover { background: var(--surface-2); border-color: var(--border-2); color: var(--text); transform: translateY(-1px); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; padding: 8px 18px; font-size: 13px; font-weight: 600; border-radius: var(--r); cursor: pointer; transition: all 0.2s; font-family: var(--font); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+        .client-actions { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 4px; }
+        .btn-reject { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); color: var(--danger); border: 1px solid var(--danger-border); border-radius: var(--r); padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: var(--font); }
         .btn-reject:hover:not(:disabled) { background: var(--danger-bg); transform: translateY(-1px); }
-        .btn-reject:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-reject__x { width: 16px; height: 16px; border-radius: 50%; background: var(--danger-bg); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; }
-        .btn-validate {
-          display: inline-flex; align-items: center; gap: 6px;
-          background: linear-gradient(135deg, #059669, #047857); color: white; border: none;
-          border-radius: var(--r); padding: 7px 16px; font-size: 12px; font-weight: 700;
-          cursor: pointer; transition: .15s; box-shadow: 0 2px 8px rgba(5,150,105,.25); font-family: var(--font);
-        }
-        .btn-validate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(5,150,105,.35); }
-        .btn-validate:disabled { opacity: .65; cursor: not-allowed; transform: none; }
-        .ver-tag { background: rgba(0,0,0,.1); border-radius: 4px; padding: 1px 5px; font-size: 10px; margin-left: 2px; }
-        .ver-tag--light { background: rgba(255,255,255,.25); }
+        .btn-validate { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: var(--r); padding: 8px 18px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16,185,129,0.25); font-family: var(--font); }
+        .btn-validate:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(16,185,129,0.35); }
+        .btn-validate:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+        .ver-tag { background: rgba(0,0,0,0.1); border-radius: 4px; padding: 2px 6px; font-size: 10px; margin-left: 4px; }
+        .ver-tag--light { background: rgba(255,255,255,0.25); }
+        .status-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--r); padding: 8px 16px; font-size: 12px; font-weight: 700; }
+        .status-pill--success { background: var(--success-bg); color: #059669; border: 1px solid rgba(5,150,105,0.2); }
+        .status-pill--warn { background: var(--warn-bg); color: #d97706; border: 1px solid rgba(217,119,6,0.2); }
 
-        /* Status pills */
-        .status-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--r); padding: 7px 14px; font-size: 12px; font-weight: 700; }
-        .status-pill--success { background: var(--success-bg); color: #059669; border: 1px solid rgba(5,150,105,.2); }
-        .status-pill--warn { background: var(--warn-bg); color: var(--warn-text); border: 1px solid rgba(217,119,6,.2); }
+        .modern-toast { position: fixed; top: 80px; right: 20px; z-index: 10000; display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-radius: var(--r-lg); color: var(--text); font-weight: 500; font-size: 13px; box-shadow: var(--shadow-xl); border-left: 4px solid; animation: slideInRight 0.3s ease; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); }
+        .modern-toast--success { border-left-color: var(--success); }
+        .modern-toast--info { border-left-color: var(--primary); }
+        .modern-toast--error { border-left-color: var(--danger); }
+        .modern-toast--warning { border-left-color: var(--warn); }
+        .modern-toast__icon { display: flex; align-items: center; }
+        .modern-toast--success .modern-toast__icon { color: var(--success); }
+        .modern-toast--info .modern-toast__icon { color: var(--primary); }
+        .modern-toast__message { margin: 0; flex: 1; }
+        .modern-toast__close { background: none; border: none; cursor: pointer; color: var(--muted); display: flex; align-items: center; padding: 4px; border-radius: 4px; transition: all 0.2s; }
+        .modern-toast__close:hover { background: var(--surface-2); color: var(--text); }
+        @keyframes slideInRight { from { opacity:0; transform:translateX(80px); } to { opacity:1; transform:translateX(0); } }
 
-        /* Toast */
-        .toast {
-          position: fixed; top: 20px; right: 20px; z-index: 9999;
-          display: flex; align-items: center; gap: 10px; padding: 12px 20px;
-          border-radius: var(--r-lg); color: white; font-weight: 600; font-size: 13px;
-          box-shadow: var(--shadow-lg); max-width: 360px; animation: slideIn .25s ease;
-        }
-        @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
-        .toast--success { background: linear-gradient(135deg,#059669,#047857); }
-        .toast--info { background: linear-gradient(135deg,#3b82f6,#2563eb); }
-        .toast--error { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .modern-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 10001; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease; }
+        .modern-modal { background: var(--surface); border-radius: 20px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: var(--shadow-xl); animation: scaleIn 0.25s cubic-bezier(0.34,1.2,0.64,1); }
+        @keyframes scaleIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+        .modern-modal__header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modern-modal__header h3 { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; }
+        .modern-modal__close { background: var(--surface-2); border: none; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: all 0.2s; }
+        .modern-modal__close:hover { background: var(--surface-3); transform: rotate(90deg); }
+        .modern-modal__body { padding: 24px; font-size: 14px; line-height: 1.6; color: var(--text-2); }
+        .modern-modal__footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; }
+        .modern-modal__btn { padding: 8px 20px; border-radius: var(--r); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: var(--font); }
+        .modern-modal__btn--primary { background: var(--primary); color: white; border: none; }
+        .modern-modal__btn--primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+        .modern-modal__btn--secondary { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); }
+        .modern-modal__btn--secondary:hover { background: var(--surface-3); }
 
-        /* ── Sidebar ── */
-        .editor-sidebar {
-          width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border);
-          display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
-        }
-        .sidebar-header {
-          padding: 12px 16px; border-bottom: 1px solid var(--border);
-          font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
-        }
-        .sidebar-scroll { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-
-        .menu-trigger {
-          display: flex; align-items: center; justify-content: space-between; width: 100%;
-          padding: 9px 10px; background: transparent; border: none; border-radius: var(--r);
-          cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text); transition: .15s; font-family: var(--font);
-        }
+        .editor-sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .editor-sidebar.collapsed { width: 68px; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+        .editor-sidebar.collapsed .sidebar-header { justify-content: center; padding: 14px 0; }
+        .sidebar-toggle-btn { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: all 0.2s; }
+        .sidebar-toggle-btn:hover { background: var(--surface-3); color: var(--text); border-color: var(--border-2); transform: scale(1.05); }
+        .sidebar-scroll { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 4px; overflow-x: hidden; }
+        .editor-sidebar.collapsed .sidebar-scroll { padding: 12px 6px; }
+        .menu-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 12px; background: transparent; border: none; border-radius: var(--r); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text); transition: all 0.2s; font-family: var(--font); }
         .menu-trigger:hover { background: var(--surface-2); }
         .menu-trigger.active { background: var(--primary-bg); color: var(--primary); }
-        .menu-trigger-left { display: flex; align-items: center; gap: 8px; }
-        .chevron { color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+        .editor-sidebar.collapsed .menu-trigger { padding: 14px 0; justify-content: center; }
+        .menu-trigger-left { display: flex; align-items: center; gap: 10px; }
+        .editor-sidebar.collapsed .menu-trigger-left { gap: 0; }
+        .editor-sidebar.collapsed .menu-trigger-left span { display: none; }
+        .chevron { color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
         .chevron.open { transform: rotate(180deg); }
-        .menu-trigger.active .chevron { color: var(--primary); }
-
-        .menu-content { max-height: 0; overflow: hidden; opacity: 0; transition: all .25s ease-in-out; }
-        .menu-content.open { max-height: 700px; opacity: 1; padding: 6px 4px 12px; }
-
-        .tool-list { display: flex; flex-direction: column; gap: 3px; }
-        .tool-btn-list {
-          display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px;
-          background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
-          font-size: 12px; font-weight: 500; color: var(--text-2); cursor: grab; transition: .15s; font-family: var(--font);
-        }
-        .tool-btn-list:hover:not(:disabled) { border-color: var(--primary-border); color: var(--primary); background: var(--primary-bg); }
-        .icon-wrap { color: var(--muted); transition: .15s; flex-shrink: 0; }
-        .tool-btn-list:hover:not(:disabled) .icon-wrap { color: var(--primary); }
-
-        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-        .tool-btn-box {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 7px; padding: 14px 6px; background: var(--surface); border: 1px solid var(--border);
-          border-radius: var(--r); cursor: grab; transition: .15s; text-align: center; font-family: var(--font);
-        }
-        .tool-btn-box span { font-size: 10px; font-weight: 500; color: var(--muted); }
+        .menu-content { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.25s ease; }
+        .menu-content.open { max-height: 800px; opacity: 1; padding: 8px 4px 12px; }
+        .editor-sidebar.collapsed .menu-content { display: none; }
+        .editor-sidebar.collapsed .menu-content.tools-content { display: block; overflow: visible; padding: 0; }
+        .tool-list { display: flex; flex-direction: column; gap: 4px; }
+        .tool-btn-list { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); font-size: 12px; font-weight: 500; color: var(--text-2); cursor: pointer; transition: all 0.2s; font-family: var(--font); user-select: none; }
+        .tool-btn-list:hover:not(:disabled) { border-color: var(--primary-border); color: var(--primary); background: var(--primary-bg); transform: translateX(2px); }
+        .icon-wrap { color: var(--muted); transition: all 0.2s; flex-shrink: 0; }
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .tool-btn-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); cursor: pointer; transition: all 0.2s; text-align: center; font-family: var(--font); user-select: none; }
+        .tool-btn-box span { font-size: 11px; font-weight: 500; color: var(--muted); }
         .tool-btn-box .icon-wrap { color: var(--text-2); }
-        .tool-btn-box:hover:not(:disabled) { border-color: var(--primary-border); background: var(--primary-bg); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+        .tool-btn-box:hover:not(:disabled) { border-color: var(--primary-border); background: var(--primary-bg); transform: translateY(-2px); box-shadow: var(--shadow-md); }
         .tool-btn-box:hover:not(:disabled) span, .tool-btn-box:hover:not(:disabled) .icon-wrap { color: var(--primary); }
 
-        /* ── Canvas ── */
-        .editor-canvas-area {
-          flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 40px;
-          background: var(--canvas-bg); background-image: radial-gradient(circle, #c8cdd4 1px, transparent 1px);
-          background-size: 22px 22px; position: relative;
-        }
-        .canvas-shadow { box-shadow: 0 8px 40px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08); border-radius: 4px; overflow: hidden; background: white; }
-        .loader-screen { display: flex; flex-direction: column; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; font-weight: 500; }
+        /* Drawing popover styles */
+        .drawing-tools-popover { position: absolute; left: 80px; top: -50px; background: var(--surface); padding: 12px; border-radius: var(--r-lg); box-shadow: var(--shadow-xl); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; z-index: 1000; animation: scaleInLeft 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes scaleInLeft { from { opacity: 0; transform: scale(0.9) translateX(-10px); } to { opacity: 1; transform: scale(1) translateX(0); } }
+        .drawing-popover-close { position: absolute; top: 8px; right: 8px; background: transparent; border: none; cursor: pointer; color: var(--muted); }
+        .drawing-popover-close:hover { color: var(--danger); }
+        .draw-tool { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: var(--surface-2); border: 1px solid transparent; border-radius: 12px; cursor: pointer; color: var(--text-2); transition: all 0.2s; }
+        .draw-tool:hover { background: var(--surface-3); transform: translateY(-2px); }
+        .draw-tool.active { background: var(--primary-bg); border-color: var(--primary-border); color: var(--primary); box-shadow: var(--shadow-sm); }
+        .tool-icon-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tool-color-indicator { width: 16px; height: 4px; border-radius: 2px; }
+        .draw-sep { height: 1px; width: 100%; background: var(--border); }
+        .draw-color-pickers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .draw-color-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform 0.2s; }
+        .draw-color-swatch:hover { transform: scale(1.1); }
+        .draw-color-swatch.active { border-color: var(--surface); box-shadow: 0 0 0 2px var(--primary); transform: scale(1.15); }
+        .draw-range { width: 100%; height: 6px; border-radius: 3px; background: var(--surface-3); outline: none; -webkit-appearance: none; accent-color: var(--primary); margin: 8px 0; }
+        
+        .inline-tools-panel { padding: 12px 8px; background: var(--surface-2); border-radius: var(--r); border: 1px solid var(--border); margin-top: 8px; }
+        .tools-row-inline { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+        .draw-tool-sm { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--text-2); transition: all 0.2s; }
+        .draw-tool-sm:hover { background: var(--surface-2); transform: translateY(-1px); }
+        .draw-tool-sm.active { background: var(--primary-bg); border-color: var(--primary-border); color: var(--primary); }
 
-        /* Corrections banner */
-        .corrections-banner-wrap { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 100; width: calc(100% - 48px); max-width: 700px; }
-        .corrections-banner {
-          display: flex; align-items: center; gap: 10px; background: #dc2626;
-          border-radius: var(--r-lg); padding: 10px 16px; cursor: pointer; color: white;
-          font-weight: 700; font-size: 12px; box-shadow: 0 4px 16px rgba(220,38,38,.3);
-        }
-        .corrections-pulse { width: 7px; height: 7px; border-radius: 50%; background: white; flex-shrink: 0; animation: pulse 1.5s ease-in-out infinite; }
-        .corrections-toggle { margin-left: auto; font-size: 10px; opacity: .85; }
-        .corrections-list {
-          background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-          margin-top: 6px; overflow: hidden; box-shadow: var(--shadow-lg);
-        }
-        .correction-item { padding: 14px 16px; border-bottom: 1px solid var(--surface-2); }
+        .editor-canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 40px; background: var(--canvas-bg); background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px); background-size: 24px 24px; position: relative; }
+        .canvas-shadow { box-shadow: var(--shadow-xl); border-radius: 12px; overflow: hidden; background: white; transition: box-shadow 0.3s; }
+        .canvas-shadow:hover { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .loader-screen { display: flex; flex-direction: column; align-items: center; gap: 16px; color: var(--muted); font-size: 14px; font-weight: 500; }
+
+        .corrections-banner-wrap { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100; width: calc(100% - 48px); max-width: 720px; }
+        .corrections-banner { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg,#dc2626,#b91c1c); border-radius: var(--r-lg); padding: 12px 20px; cursor: pointer; color: white; font-weight: 700; font-size: 12px; box-shadow: 0 4px 16px rgba(220,38,38,0.4); transition: transform 0.2s; }
+        .corrections-banner:hover { transform: translateY(-2px); }
+        .corrections-pulse { width: 8px; height: 8px; border-radius: 50%; background: white; flex-shrink: 0; animation: pulse 1.5s ease-in-out infinite; }
+        .corrections-toggle { margin-left: auto; font-size: 10px; opacity: 0.9; }
+        .corrections-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); margin-top: 8px; overflow: hidden; box-shadow: var(--shadow-lg); }
+        .correction-item { padding: 16px 20px; border-bottom: 1px solid var(--surface-2); }
         .correction-item:last-child { border-bottom: none; }
-        .correction-item__meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-        .btn-mark-read { background: var(--primary-bg); color: var(--primary); border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font); }
-        .correction-comment { background: #fff7f7; border: 1px solid var(--danger-border); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; }
-        .correction-comment:last-child { margin-bottom: 0; }
-        .correction-comment__label { font-size: 10px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+        .correction-item__meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+        .btn-mark-read { background: var(--primary-bg); color: var(--primary); border: none; border-radius: 6px; padding: 4px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
+        .btn-mark-read:hover { background: var(--primary-border); transform: scale(1.02); }
+        .correction-comment { background: #fff7f7; border: 1px solid var(--danger-border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+        .correction-comment__label { font-size: 10px; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; }
         .correction-comment__text { font-size: 13px; color: var(--text); line-height: 1.5; }
-        .correction-comment__empty { font-size: 13px; color: var(--danger); font-style: italic; }
 
-        /* ── Right panel ── */
-        .editor-right-panel {
-          width: var(--panel-w); background: var(--surface); border-left: 1px solid var(--border);
-          display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
-        }
-        .right-tabs { display: flex; background: var(--surface-2); border-bottom: 1px solid var(--border); padding: 4px 4px 0; gap: 3px; }
-        .right-tab {
-          flex: 1; padding: 9px 8px; font-size: 12px; font-weight: 500; color: var(--muted);
-          background: none; border: none; cursor: pointer; border-radius: 6px 6px 0 0;
-          transition: .15s; display: flex; align-items: center; justify-content: center; gap: 5px; font-family: var(--font);
-        }
-        .right-tab.active { color: var(--primary); background: var(--surface); font-weight: 600; }
-        .right-panel-body { flex: 1; overflow-y: auto; padding: 14px; }
+        .editor-right-panel { width: var(--panel-w); background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+        .right-tabs { display: flex; background: var(--surface-2); border-bottom: 1px solid var(--border); padding: 6px 8px 0; gap: 4px; }
+        .right-tab { flex: 1; padding: 10px 8px; font-size: 11px; font-weight: 600; color: var(--muted); background: none; border: none; cursor: pointer; border-radius: 8px 8px 0 0; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: var(--font); }
+        .right-tab.active { color: var(--primary); background: var(--surface); font-weight: 700; }
+        .right-panel-body { flex: 1; overflow-y: auto; padding: 16px; }
 
-        /* Props panel */
-        .props-empty { text-align: center; color: var(--muted); padding: 36px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 12px; line-height: 1.5; }
-        .props-empty-icon { width: 52px; height: 52px; border-radius: var(--r-lg); background: var(--surface-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); }
-        .props-section { margin-bottom: 20px; }
-        .props-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
-        .props-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 0; }
-        .props-grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 10px; }
-        .prop-field { display: flex; flex-direction: column; gap: 3px; }
+        .props-empty { text-align: center; color: var(--muted); padding: 48px 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; font-size: 13px; line-height: 1.5; }
+        .props-empty-icon { width: 64px; height: 64px; border-radius: var(--r-lg); background: var(--surface-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); }
+        .props-section { margin-bottom: 24px; }
+        .props-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+        .props-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 0; }
+        .props-grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 12px; }
+        .prop-field { display: flex; flex-direction: column; gap: 4px; }
         .prop-field-label { font-size: 10px; font-weight: 600; color: var(--muted); }
-        .prop-field-input { border: 1px solid var(--border); background: var(--surface-2); border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: var(--font-mono); width: 100%; outline: none; transition: .15s; }
-        .prop-field-input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 2px var(--primary-bg); }
-        .props-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .prop-field-input { border: 1px solid var(--border); background: var(--surface-2); border-radius: 6px; padding: 7px 9px; font-size: 12px; font-family: monospace; width: 100%; outline: none; transition: all 0.2s; }
+        .prop-field-input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px var(--primary-bg); }
+        .props-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .props-label { font-size: 12px; font-weight: 500; color: var(--text-2); }
-        .color-row { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); padding: 3px 7px; border-radius: 6px; background: var(--surface-2); }
-        .props-color { border: none; width: 22px; height: 22px; cursor: pointer; border-radius: 4px; padding: 0; background: none; }
-        .color-hex { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
-        .props-input-sm { width: 56px; border: 1px solid var(--border); border-radius: 6px; padding: 5px 7px; font-size: 12px; text-align: center; background: var(--surface-2); outline: none; font-family: var(--font-mono); transition: .15s; }
+        .color-row { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; background: var(--surface-2); }
+        .props-color { border: none; width: 24px; height: 24px; cursor: pointer; border-radius: 4px; padding: 0; background: none; }
+        .color-hex { font-size: 11px; color: var(--muted); font-family: monospace; }
+        .props-input-sm { width: 60px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 12px; text-align: center; background: var(--surface-2); outline: none; font-family: monospace; }
         .props-input-sm:focus { border-color: var(--primary); background: white; }
-        .props-input-xs { width: 100%; border: 1px solid var(--border); border-radius: 5px; padding: 5px 3px; font-size: 11px; text-align: center; background: var(--surface-2); outline: none; font-family: var(--font-mono); }
-        .props-select { width: 100%; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); font-size: 12px; font-family: var(--font); }
+        .props-input-xs { width: 100%; border: 1px solid var(--border); border-radius: 5px; padding: 6px 4px; font-size: 11px; text-align: center; background: var(--surface-2); outline: none; font-family: monospace; }
+        .props-select { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); font-size: 12px; font-family: var(--font); }
         .btn-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-        .props-toggle { flex: 1; background: var(--surface-2); border: none; border-right: 1px solid var(--border); padding: 7px 9px; cursor: pointer; display: flex; justify-content: center; color: var(--muted); transition: .15s; }
+        .props-toggle { flex: 1; background: var(--surface-2); border: none; border-right: 1px solid var(--border); padding: 8px 10px; cursor: pointer; display: flex; justify-content: center; color: var(--muted); transition: all 0.2s; }
         .props-toggle:last-child { border: none; }
         .props-toggle.active { background: white; color: var(--primary); }
-        .props-toggle:hover:not(.active) { background: var(--surface-3); }
-        .custom-checkbox { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
+        .custom-checkbox { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+        .btn-edit-component { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; background: var(--primary-bg); border: 1px solid var(--primary-border); border-radius: var(--r); color: var(--primary); font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: var(--font); }
+        .btn-edit-component:hover { background: #e0e7ff; transform: translateY(-1px); }
 
-        /* Layers */
-        .layers-panel { display: flex; flex-direction: column; gap: 8px; }
-        .layers-empty { text-align: center; color: var(--muted); padding: 20px; font-size: 12px; }
-        .layers-list { display: flex; flex-direction: column; gap: 2px; }
-        .layers-order-btns { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
-        .layers-order-btns button { padding: 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: .15s; }
-        .layers-order-btns button:hover:not(:disabled) { color: var(--primary); background: var(--primary-bg); border-color: var(--primary-border); }
-        .layers-order-btns button:disabled { opacity: .35; cursor: not-allowed; }
-        .layer-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: var(--r); cursor: pointer; font-size: 12px; font-weight: 500; transition: .15s; border: 1px solid transparent; }
-        .layer-item:hover { background: var(--surface-2); }
+        .layers-panel { display: flex; flex-direction: column; gap: 12px; }
+        .layers-order-btns { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+        .layers-order-btns button { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .layers-order-btns button:hover:not(:disabled) { color: var(--primary); background: var(--primary-bg); border-color: var(--primary-border); transform: scale(1.02); }
+        .layer-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: var(--r); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; border: 1px solid transparent; }
+        .layer-item:hover { background: var(--surface-2); transform: translateX(2px); }
         .layer-item.selected { background: var(--primary-bg); color: var(--primary); border-color: var(--primary-border); }
-        .layer-thumb { width: 18px; height: 18px; border-radius: 3px; border: 1px solid rgba(0,0,0,.1); flex-shrink: 0; }
+        .layer-thumb { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
         .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .layer-actions { display: flex; gap: 3px; opacity: 0; }
+        .layer-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
         .layer-item:hover .layer-actions, .layer-item.selected .layer-actions { opacity: 1; }
-        .layer-actions button { background: var(--surface); border: 1px solid var(--border); padding: 4px; border-radius: 4px; cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: .15s; }
-        .layer-actions button:hover { border-color: var(--primary-border); color: var(--primary); }
+        .layer-actions button { background: var(--surface); border: 1px solid var(--border); padding: 5px; border-radius: 4px; cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .layer-actions button:hover { border-color: var(--primary-border); color: var(--primary); transform: scale(1.05); }
         .icon-danger { color: var(--danger) !important; }
 
-        /* ── Rejet modal ── */
-        .rejet-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(8px);
-          z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn .2s ease;
-        }
-        .rejet-modal {
-          background: var(--surface); border-radius: 18px; width: 100%; max-width: 580px;
-          max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;
-          box-shadow: 0 32px 72px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.12); animation: popIn .22s ease;
-        }
-        @keyframes popIn { from { opacity:0; transform:scale(.96) translateY(12px); } to { opacity:1; transform:scale(1) translateY(0); } }
-        .rejet-modal__header {
-          padding: 20px 22px 16px; display: flex; justify-content: space-between; align-items: flex-start;
-          border-bottom: 1px solid var(--border); background: linear-gradient(to bottom,#fff7f7,white); flex-shrink: 0;
-        }
-        .rejet-modal__icon-wrap {
-          width: 38px; height: 38px; border-radius: var(--r-lg); background: var(--danger-bg);
-          display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;
-          color: var(--danger); flex-shrink: 0;
-        }
-        .rejet-modal__title { font-size: 16px; font-weight: 700; color: var(--text); margin: 0 0 3px; }
-        .rejet-modal__subtitle { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5; }
-        .rejet-modal__close {
-          background: var(--surface-2); border: none; border-radius: 7px; width: 30px; height: 30px;
-          display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-2);
-          font-size: 13px; flex-shrink: 0; transition: .15s;
-        }
-        .rejet-modal__close:hover { background: var(--surface-3); }
-        .rejet-modal__counter {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 7px 22px; background: var(--surface-2); border-bottom: 1px solid var(--border);
-          font-size: 11px; color: var(--muted); font-weight: 700; flex-shrink: 0;
-        }
-        .rejet-modal__counter-ok { color: #059669; font-weight: 700; }
-        .rejet-modal__body { flex: 1; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
-        .rejet-modal__empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 36px 0; color: var(--muted); font-size: 13px; }
-        .rejet-modal__footer {
-          padding: 14px 22px; border-top: 1px solid var(--border); display: flex;
-          justify-content: space-between; align-items: center; background: var(--surface-2); flex-shrink: 0; gap: 12px;
-        }
-        .rejet-modal__footer-info { font-size: 11px; font-weight: 600; }
+        /* ── Image History Panel ── */
+        .img-history-empty { text-align: center; color: var(--muted); padding: 40px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 13px; }
+        .img-history-empty span { font-size: 11px; color: var(--border-2); }
+        .img-history-panel { display: flex; flex-direction: column; gap: 8px; }
+        .img-history-item { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: var(--r); cursor: pointer; transition: all 0.2s; background: var(--surface); }
+        .img-history-item:hover { border-color: var(--primary-border); background: var(--primary-bg); transform: translateX(2px); }
+        .img-history-thumb-wrap { flex-shrink: 0; width: 52px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--surface-3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+        .img-history-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .img-history-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .img-history-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .img-history-meta { font-size: 10px; color: var(--muted); }
+        .img-history-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .img-history-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: all 0.2s; }
+        .img-history-btn:hover { background: var(--primary-bg); border-color: var(--primary-border); color: var(--primary); transform: scale(1.05); }
 
-        .rejet-el { border-radius: var(--r-lg); border: 1.5px solid var(--border); overflow: hidden; transition: border-color .2s, box-shadow .2s; }
-        .rejet-el--active { border-color: #bbf7d0; box-shadow: 0 2px 8px rgba(5,150,105,.1); }
-        .rejet-el__head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+        .component-editor-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); z-index: 10002; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease; }
+        .component-editor-modal { background: var(--surface); border-radius: 20px; width: 100%; max-width: 540px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-xl); animation: scaleIn 0.25s cubic-bezier(0.34,1.2,0.64,1); }
+        .component-editor-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to right, var(--primary-bg), var(--surface)); }
+        .component-editor-header h3 { font-size: 17px; font-weight: 700; color: var(--text); margin: 0; }
+        .component-editor-header button { background: var(--surface-2); border: none; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: all 0.2s; }
+        .component-editor-header button:hover { background: var(--surface-3); transform: rotate(90deg); }
+        .component-editor-body { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+        .editor-field { display: flex; flex-direction: column; gap: 6px; }
+        .editor-field label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .editor-field input[type="text"], .editor-field input[type="number"], .editor-field input[type="email"], .editor-field select, .editor-field textarea { padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 13px; font-family: var(--font); background: var(--surface-2); transition: all 0.2s; color: var(--text); width: 100%; resize: vertical; }
+        .editor-field input:focus, .editor-field select:focus, .editor-field textarea:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 3px var(--primary-bg); }
+        .editor-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .editor-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+        .color-picker-wrap { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border: 1.5px solid var(--border); border-radius: var(--r); background: var(--surface-2); transition: border-color 0.2s; }
+        .color-picker-wrap:focus-within { border-color: var(--primary); }
+        .color-picker-wrap input[type="color"] { width: 32px; height: 28px; border: none; padding: 0; cursor: pointer; border-radius: 6px; background: none; }
+        .color-picker-wrap span { font-size: 12px; color: var(--muted); font-family: monospace; }
+        .size-selector { display: flex; gap: 8px; }
+        .size-btn { flex: 1; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--text-2); cursor: pointer; transition: all 0.2s; font-family: var(--font); text-align: center; }
+        .size-btn.active { border-color: var(--primary); background: var(--primary-bg); color: var(--primary); }
+        .size-btn:hover:not(.active) { border-color: var(--border-2); background: var(--surface-3); }
+        .range-input { width: 100%; height: 6px; accent-color: var(--primary); cursor: pointer; }
+        .toggle-wrap { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .toggle-wrap input[type="checkbox"] { display: none; }
+        .toggle-slider-ui { display: inline-block; width: 40px; height: 22px; background: #e2e8f0; border-radius: 11px; position: relative; transition: background 0.2s; cursor: pointer; }
+        .toggle-slider-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: white; transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+        .toggle-wrap input:checked + .toggle-slider-ui { background: var(--primary); }
+        .toggle-wrap input:checked + .toggle-slider-ui::after { transform: translateX(18px); }
+        .component-editor-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; }
+        .btn-cancel { background: var(--surface-2); border: 1px solid var(--border); padding: 9px 20px; border-radius: var(--r); font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font); transition: all 0.2s; color: var(--text-2); }
+        .btn-cancel:hover { background: var(--surface-3); transform: translateY(-1px); }
+        .btn-save { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; padding: 9px 24px; border-radius: var(--r); font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
+        .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
+
+        .pricing-editor { max-width: 680px; }
+        .pricing-row-editor { background: var(--surface-2); border-radius: var(--r-lg); padding: 18px; margin-bottom: 16px; border: 1px solid var(--border); }
+        .pricing-row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .pricing-row-header h4 { font-size: 14px; font-weight: 700; color: var(--text); margin: 0; }
+        .btn-icon-danger { background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: 6px; padding: 5px 10px; cursor: pointer; color: var(--danger); transition: all 0.2s; }
+        .btn-icon-danger:hover { background: var(--danger-border); transform: scale(1.02); }
+        .feature-item { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+        .feature-item input { flex: 1; }
+        .btn-icon-sm { background: var(--surface-3); border: 1px solid var(--border); border-radius: 5px; padding: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+        .btn-icon-sm:hover { background: var(--surface); transform: scale(1.02); }
+        .btn-add-feature { background: var(--surface); border: 1px dashed var(--border); border-radius: var(--r); padding: 8px 14px; font-size: 11px; font-weight: 500; cursor: pointer; width: 100%; text-align: center; margin-top: 8px; transition: all 0.2s; color: var(--primary); }
+        .btn-add-feature:hover { background: var(--primary-bg); border-color: var(--primary-border); transform: translateY(-1px); }
+        .btn-add-row { background: var(--primary-bg); border: 1px solid var(--primary-border); border-radius: var(--r); padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 12px; transition: all 0.2s; color: var(--primary); font-family: var(--font); }
+        .btn-add-row:hover { background: #e0e7ff; transform: translateY(-1px); }
+
+        .rejet-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.85); backdrop-filter: blur(12px); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.3s ease; }
+        .rejet-modal { background: var(--surface); border-radius: 20px; width: 100%; max-width: 800px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1); animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1); border: 1px solid rgba(255,255,255,0.1); }
+        .rejet-modal__header { padding: 20px 24px 16px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); background: linear-gradient(135deg,#fef2f2, #ffffff); flex-shrink: 0; position: relative; }
+        .rejet-modal__icon-wrap { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#dc2626,#b91c1c); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: white; flex-shrink: 0; box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
+        .rejet-modal__title { font-size: 18px; font-weight: 800; color: var(--text); margin: 0 0 4px; letter-spacing: -0.02em; }
+        .rejet-modal__subtitle { font-size: 13px; color: var(--text-2); margin: 0; line-height: 1.5; font-weight: 500; }
+        .rejet-modal__close { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08); border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-2); font-size: 14px; flex-shrink: 0; transition: all 0.2s; }
+        .rejet-modal__close:hover { background: rgba(0,0,0,0.1); transform: scale(1.05); }
+        .rejet-modal__counter { display: flex; justify-content: space-between; align-items: center; padding: 8px 24px; background: linear-gradient(to right, #f8fafc, #f1f5f9); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-2); font-weight: 600; flex-shrink: 0; }
+        .rejet-modal__counter-ok { color: var(--success); font-weight: 700; }
+        .rejet-modal__body { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; background: #fafbfc; }
+        .rejet-modal__footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); flex-shrink: 0; gap: 12px; }
+        .rejet-modal__footer-info { font-size: 12px; font-weight: 500; }
+        .rejet-modal__empty { text-align: center; color: var(--muted); padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .rejet-el { border-radius: var(--r); border: 1px solid var(--border); overflow: hidden; transition: all 0.2s; background: white; }
+        .rejet-el--active { border-color: #10b981; box-shadow: 0 2px 8px rgba(16,185,129,0.15); }
+        .rejet-el__head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
         .rejet-el__thumb-wrap { position: relative; flex-shrink: 0; }
-        .rejet-el__thumb { width: 72px; height: 44px; border-radius: 5px; object-fit: contain; border: 1px solid var(--border); background: #f0f2f5; display: block; }
-        .rejet-el__thumb-fb { width: 72px; height: 44px; border-radius: 5px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 18px; border: 1px solid var(--border); }
-        .rejet-el__check { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #059669; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: white; }
-        .rejet-el__info { display: flex; flex-direction: column; gap: 2px; }
-        .rejet-el__name { font-size: 12px; font-weight: 700; color: var(--text); }
-        .rejet-el__type { font-size: 10px; color: var(--muted); text-transform: capitalize; }
-        .rejet-el__body { padding: 9px 12px; background: white; }
-        .rejet-el__textarea {
-          width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: var(--r);
-          font-size: 12px; font-family: var(--font); resize: none; outline: none; box-sizing: border-box;
-          transition: border-color .2s, box-shadow .2s; color: var(--text); line-height: 1.5; background: var(--surface-2);
-        }
-        .rejet-el__textarea:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,.08); background: white; }
-        .rejet-el__textarea::placeholder { color: var(--muted); }
+        .rejet-el__thumb { width: 60px; height: 36px; border-radius: 4px; object-fit: contain; border: 1px solid var(--border); background: #f8fafc; display: block; }
+        .rejet-el__thumb-fb { width: 60px; height: 36px; border-radius: 4px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 16px; border: 1px solid var(--border); }
+        .rejet-el__check { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background: #10b981; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: white; }
+        .rejet-el__info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+        .rejet-el__name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rejet-el__type { font-size: 9px; color: var(--muted); text-transform: capitalize; }
+        .rejet-el__body { padding: 12px 16px; background: white; border-top: 1px solid var(--border); }
+        .rejet-el__textarea { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 8px; font-size: 13px; font-family: var(--font); resize: vertical; outline: none; box-sizing: border-box; transition: all 0.2s; color: var(--text); line-height: 1.5; background: #ffffff; min-height: 80px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); }
+        .rejet-el__textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-bg), inset 0 1px 2px rgba(0,0,0,0.05); background: #ffffff; }
+        .rejet-el__textarea::placeholder { color: var(--muted); opacity: 0.8; font-style: italic; }
+        .btn-submit-rejet { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg,#dc2626,#b91c1c); color: white; border: none; border-radius: var(--r); padding: 8px 16px; font-weight: 700; font-size: 12px; cursor: pointer; font-family: var(--font); box-shadow: 0 2px 8px rgba(220,38,38,0.25); transition: all 0.2s; }
+        .btn-submit-rejet:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(220,38,38,0.35); }
+        .btn-submit-rejet:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-cancel { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); border-radius: var(--r); padding: 8px 16px; font-weight: 600; font-size: 12px; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
+        .btn-cancel:hover { background: var(--surface-3); color: var(--text); }
 
-        .btn-cancel { background: var(--surface-3); color: var(--text-2); border: none; border-radius: var(--r); padding: 9px 18px; font-weight: 600; font-size: 12px; cursor: pointer; font-family: var(--font); transition: .15s; }
-        .btn-cancel:hover { background: var(--border); }
-        .btn-submit-rejet {
-          display: inline-flex; align-items: center; gap: 7px;
-          background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; border: none;
-          border-radius: var(--r); padding: 10px 20px; font-weight: 700; font-size: 12px;
-          cursor: pointer; font-family: var(--font); box-shadow: 0 3px 10px rgba(220,38,38,.25); transition: .18s;
-        }
-        .btn-submit-rejet:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(220,38,38,.35); }
-        .btn-submit-rejet:disabled { opacity: .7; cursor: not-allowed; transform: none; }
+        .canvas-container { cursor: default !important; }
+        .canvas-container canvas { cursor: default !important; }
 
-        /* ── Utilities ── */
-        .fade-in { animation: fadeIn .25s ease; }
+        .fade-in { animation: fadeIn 0.25s ease; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform:rotate(360deg); } }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+        .w-full { width: 100%; }
+        .editor-textarea { width: 100%; min-height: 60px; }\n\n        /* Bottom Toolbar Styles */\n        .bottom-toolbar { position: fixed; bottom: 0; left: 0; right: 0; height: 48px; background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 24px; z-index: 100; }\n        .bottom-toolbar__section { display: flex; align-items: center; }\n        .tool-group { display: flex; align-items: center; gap: 4px; }\n        .bottom-toolbar .toolbar-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; color: var(--text-2); }\n        .bottom-toolbar .toolbar-btn:hover { background: var(--surface-2); color: var(--text); }\n        .bottom-toolbar .toolbar-btn.active { background: var(--primary-bg); color: var(--primary); }
       `}</style>
     </>
   );
