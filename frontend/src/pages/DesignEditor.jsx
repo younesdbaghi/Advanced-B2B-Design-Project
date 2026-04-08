@@ -33,6 +33,164 @@ const SIDEBAR_MENU = [
 
 const snapToGrid = (value, gridSize) => Math.round(value / gridSize) * gridSize;
 
+const reviveVideos = (canvas) => {
+  if (!canvas) return;
+  canvas.getObjects().forEach(o => {
+    if (o.customName === "Lecteur Vidéo" && o.videoSrc) {
+      if (o.getElement && o.getElement()?.tagName === "VIDEO") return;
+
+      // Validate video source
+      if (!o.videoSrc || (typeof o.videoSrc === 'string' && !o.videoSrc.trim())) {
+        console.error("Invalid video source:", o.videoSrc);
+        return;
+      }
+
+      const videoEl = document.createElement('video');
+      if (!o.videoSrc.startsWith("data:") && !o.videoSrc.startsWith("blob:")) {
+        videoEl.crossOrigin = "anonymous";
+      }
+      videoEl.loop = true;
+      videoEl.muted = true;
+      videoEl.src = o.videoSrc;
+
+      // Add timeout for video loading
+      const timeout = setTimeout(() => {
+        if (!isReady) {
+          console.error("Video loading timeout:", o.videoSrc);
+        }
+      }, 10000); // 10 second timeout
+
+      let isReady = false;
+      const onReady = () => {
+        if (isReady) return;
+        isReady = true;
+        clearTimeout(timeout);
+        if (o.type === "group" || typeof o.setElement !== "function") {
+          const vImg = new fabric.Image(videoEl, {
+            left: o.left, top: o.top,
+            originX: o.originX || "left", originY: o.originY || "top",
+            width: videoEl.videoWidth || o.width || 320,
+            height: videoEl.videoHeight || o.height || 180,
+            angle: o.angle || 0
+          });
+
+          if (videoEl.videoWidth) {
+            vImg.scaleToWidth(o.width * o.scaleX || 320);
+          } else {
+            vImg.set({ scaleX: o.scaleX || 1, scaleY: o.scaleY || 1 });
+          }
+
+          vImg.customName = "Lecteur Vidéo";
+          vImg.videoSrc = videoEl.src;
+          const idx = canvas.getObjects().indexOf(o);
+          try {
+            canvas.remove(o);
+            canvas.add(vImg);
+            if (idx !== -1 && typeof vImg.moveTo === "function") {
+              vImg.moveTo(idx);
+            } else if (idx !== -1 && typeof canvas.moveTo === "function") {
+              canvas.moveTo(vImg, idx);
+            }
+          } catch (e) { console.error(e); }
+
+          if (canvas.getActiveObject() === o) {
+            canvas.discardActiveObject();
+            canvas.setActiveObject(vImg);
+          }
+          videoEl.play().catch(() => { });
+          const render = () => {
+            if (canvas.getObjects().includes(vImg)) { canvas.renderAll(); fabric.util.requestAnimFrame(render); }
+          };
+          fabric.util.requestAnimFrame(render);
+        } else {
+          o.setElement(videoEl);
+          videoEl.play().catch(() => { });
+          const render = () => {
+            if (canvas.getObjects().includes(o)) { canvas.renderAll(); fabric.util.requestAnimFrame(render); }
+          };
+          fabric.util.requestAnimFrame(render);
+        }
+      };
+
+      videoEl.addEventListener('loadedmetadata', onReady);
+      videoEl.addEventListener('loadeddata', onReady);
+      videoEl.addEventListener('canplay', onReady);
+      videoEl.addEventListener('error', (e) => {
+        clearTimeout(timeout);
+        console.error("Video loading failed:", {
+          src: o.videoSrc,
+          error: videoEl.error,
+          networkState: videoEl.networkState,
+          readyState: videoEl.readyState
+        });
+      });
+    }
+  });
+};
+
+const DEFAULT_MAP_LAT = 48.8566;
+const DEFAULT_MAP_LNG = 2.3522;
+const DEFAULT_MAP_ZOOM = 14;
+
+const findMapRectLayer = (group) => {
+  const objs = group.getObjects?.() || [];
+  if (objs[1]?.type === "rect") return objs[1];
+  if (objs[0]?.type === "rect") return objs[0];
+  return null;
+};
+
+const loadOsmMapIntoGroup = (group, canvas) => {
+  if (!group || group.type !== "group" || group.customName !== "Carte (Map)" || !canvas) return;
+  const mapRect = findMapRectLayer(group);
+  if (!mapRect) return;
+  const lat = group.mapLat != null ? Number(group.mapLat) : DEFAULT_MAP_LAT;
+  const lng = group.mapLng != null ? Number(group.mapLng) : DEFAULT_MAP_LNG;
+  const zoom = Math.min(18, Math.max(1, Number(group.mapZoom) || DEFAULT_MAP_ZOOM));
+  const w = Math.max(1, Math.round(mapRect.width || 1));
+  const h = Math.max(1, Math.round(mapRect.height || 1));
+  const url = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=${w}x${h}&maptype=mapnik`;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    try {
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, w, h);
+      mapRect.set("fill", new fabric.Pattern({ source: c, repeat: "no-repeat" }));
+      group.dirty = true;
+      canvas.renderAll();
+    } catch {
+      mapRect.set("fill", "#dbeafe");
+      canvas.renderAll();
+    }
+  };
+  img.onerror = () => {
+    mapRect.set("fill", "#dbeafe");
+    canvas.renderAll();
+  };
+  img.src = url;
+};
+
+const reviveMaps = (canvas) => {
+  if (!canvas) return;
+  canvas.getObjects().forEach((o) => {
+    if (o.type === "group" && o.customName === "Carte (Map)") loadOsmMapIntoGroup(o, canvas);
+  });
+};
+
+const hexForColorInput = (fill) => {
+  if (typeof fill !== "string" || !fill.startsWith("#")) return "#ffffff";
+  if (fill.length === 7) return fill.toLowerCase();
+  if (fill.length === 4) {
+    const r = fill[1], g = fill[2], b = fill[3];
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return "#ffffff";
+};
+
 const getObjectLabel = (obj) => {
   if (!obj) return "Objet";
   if (obj.customName) return obj.customName;
@@ -56,6 +214,50 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
     if (!selectedObject) { setProps({}); return; }
     const o = selectedObject;
     const shadow = o.shadow || {};
+
+    let cardProps = {};
+    if (o.type === "group" && o.customName === "Carte Produit") {
+      const objs = o.getObjects();
+      cardProps = {
+        cardTitle: objs[2]?.text || "",
+        cardPrice: objs[3]?.text || "",
+        cardButton: objs[5]?.text || "",
+        cardImageName: objs[1]?.cardImageName || "",
+        cardBgColor: hexForColorInput(objs[0]?.fill),
+      };
+    }
+
+    let profileProps = {};
+    if (o.type === "group" && o.customName === "Profil Utilisateur") {
+      const objs = o.getObjects();
+      profileProps = {
+        profileName: objs[2]?.text || "",
+        profileRole: objs[3]?.text || "",
+        profileImageName: objs[1]?.profileImageName || "",
+        profileBgColor: hexForColorInput(objs[0]?.fill),
+      };
+    }
+
+    let pricingProps = {};
+    if (o.type === "group" && o.customName === "Tableau de Prix") {
+      const objs = o.getObjects();
+      pricingProps = { pricingTitle: objs[1]?.text || "", pricingPrice: objs[2]?.text || "", pricingButton: objs[7]?.text || "" };
+    }
+
+    let videoProps = {};
+    if (o.customName === "Lecteur Vidéo") {
+      videoProps = { videoSrc: o.videoSrc || "" };
+    }
+
+    let mapProps = {};
+    if (o.type === "group" && o.customName === "Carte (Map)") {
+      mapProps = {
+        mapLat: o.mapLat != null ? Number(o.mapLat) : DEFAULT_MAP_LAT,
+        mapLng: o.mapLng != null ? Number(o.mapLng) : DEFAULT_MAP_LNG,
+        mapZoom: o.mapZoom != null ? Number(o.mapZoom) : DEFAULT_MAP_ZOOM,
+      };
+    }
+
     setProps({
       left: Math.round(o.left || 0), top: Math.round(o.top || 0),
       width: Math.round((o.width || 0) * (o.scaleX || 1)), height: Math.round((o.height || 0) * (o.scaleY || 1)),
@@ -72,6 +274,11 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
       shadowBlur: shadow.blur || 10,
       shadowOffsetX: shadow.offsetX !== undefined ? shadow.offsetX : 5,
       shadowOffsetY: shadow.offsetY !== undefined ? shadow.offsetY : 5,
+      ...cardProps,
+      ...profileProps,
+      ...pricingProps,
+      ...videoProps,
+      ...mapProps,
     });
   }, [selectedObject]);
 
@@ -113,6 +320,179 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
     canvas.renderAll(); onUpdate?.();
   };
 
+  const applyGroupText = (index, key, value) => {
+    if (!selectedObject || !canvas) return;
+    const o = selectedObject;
+    if (o.type === "group") {
+      const objs = o.getObjects();
+      if (objs[index]) {
+        objs[index].set("text", value);
+        canvas.renderAll();
+        onUpdate?.();
+        setProps(p => ({ ...p, [key]: value }));
+      }
+    }
+  };
+
+  const applyGroupBgFill = (index, key, value) => {
+    if (!selectedObject || !canvas) return;
+    const o = selectedObject;
+    if (o.type !== "group") return;
+    const objs = o.getObjects();
+    const bg = objs[index];
+    if (!bg) return;
+    bg.set("fill", value);
+    o.dirty = true;
+    canvas.renderAll();
+    onUpdate?.();
+    setProps((p) => ({ ...p, [key]: value }));
+  };
+
+  const applyMapField = (key, raw) => {
+    if (!selectedObject || !canvas) return;
+    const o = selectedObject;
+    if (o.customName !== "Carte (Map)") return;
+    let num;
+    if (key === "mapZoom") {
+      num = Math.min(18, Math.max(1, parseInt(raw, 10) || DEFAULT_MAP_ZOOM));
+    } else {
+      num = parseFloat(String(raw).replace(",", "."));
+    }
+    if (Number.isNaN(num)) return;
+    o[key] = num;
+    setProps((p) => ({ ...p, [key]: num }));
+    onUpdate?.();
+  };
+
+  const refreshMapPreview = () => {
+    if (!selectedObject || !canvas) return;
+    if (selectedObject.customName !== "Carte (Map)") return;
+    loadOsmMapIntoGroup(selectedObject, canvas);
+    onUpdate?.();
+  };
+
+  const handleCardImageUpload = (e) => {
+    const file = e.target.files[0];
+    e.target.value = null;
+    if (!file || !selectedObject || !canvas) return;
+
+    const o = selectedObject;
+    if (o.type !== "group" || o.customName !== "Carte Produit") return;
+
+    const slots = o.getObjects();
+    const imageSlot = slots[1];
+    if (!imageSlot || imageSlot.type !== "rect") return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const src = ev.target?.result;
+      if (typeof src !== "string") return;
+
+      const img = new Image();
+      img.onload = () => {
+        const targetW = Math.max(1, Math.round(imageSlot.width || 240));
+        const targetH = Math.max(1, Math.round(imageSlot.height || 140));
+        const patternCanvas = document.createElement("canvas");
+        patternCanvas.width = targetW;
+        patternCanvas.height = targetH;
+
+        const ctx = patternCanvas.getContext("2d");
+        if (!ctx) return;
+
+        // "cover" crop so card images always fill the slot cleanly.
+        const scale = Math.max(targetW / img.width, targetH / img.height);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const offsetX = (targetW - drawW) / 2;
+        const offsetY = (targetH - drawH) / 2;
+        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+
+        imageSlot.set("fill", new fabric.Pattern({ source: patternCanvas, repeat: "no-repeat" }));
+        imageSlot.set("stroke", "#cbd5e1");
+        imageSlot.cardImageName = file.name;
+        o.dirty = true;
+        canvas.renderAll();
+        onUpdate?.();
+        setProps((p) => ({ ...p, cardImageName: file.name }));
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleProfileImageUpload = (e) => {
+    const file = e.target.files[0];
+    e.target.value = null;
+    if (!file || !selectedObject || !canvas) return;
+
+    const o = selectedObject;
+    if (o.type !== "group" || o.customName !== "Profil Utilisateur") return;
+
+    const slots = o.getObjects();
+    const avatarSlot = slots[1];
+    if (!avatarSlot || avatarSlot.type !== "circle") return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const src = ev.target?.result;
+      if (typeof src !== "string") return;
+
+      const img = new Image();
+      img.onload = () => {
+        const targetSize = Math.max(1, Math.round((avatarSlot.radius || 35) * 2));
+        const patternCanvas = document.createElement("canvas");
+        patternCanvas.width = targetSize;
+        patternCanvas.height = targetSize;
+
+        const ctx = patternCanvas.getContext("2d");
+        if (!ctx) return;
+
+        // Cover crop then clip to a circle for a clean avatar.
+        const scale = Math.max(targetSize / img.width, targetSize / img.height);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const offsetX = (targetSize - drawW) / 2;
+        const offsetY = (targetSize - drawH) / 2;
+
+        ctx.beginPath();
+        ctx.arc(targetSize / 2, targetSize / 2, targetSize / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+
+        avatarSlot.set("fill", new fabric.Pattern({ source: patternCanvas, repeat: "no-repeat" }));
+        avatarSlot.set("stroke", "#e2e8f0");
+        avatarSlot.set("strokeWidth", 1);
+        avatarSlot.profileImageName = file.name;
+        o.dirty = true;
+        canvas.renderAll();
+        onUpdate?.();
+        setProps((p) => ({ ...p, profileImageName: file.name }));
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleVideoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedObject || !canvas) return;
+
+    try {
+      const blobUrl = URL.createObjectURL(file);
+      const o = selectedObject;
+      if (o.customName === "Lecteur Vidéo") {
+        o.videoSrc = blobUrl;
+        setProps(p => ({ ...p, videoSrc: blobUrl }));
+        onUpdate?.();
+        reviveVideos(canvas);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de l'importation de la vidéo.");
+    }
+  };
+
   if (!selectedObject) return (
     <div className="props-empty">
       <div className="props-empty-icon"><LayoutTemplate size={28} /></div>
@@ -136,6 +516,17 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
     boxStroke: props.boxStroke ?? "#000000", boxStrokeWidth: props.boxStrokeWidth ?? 0,
     shadowEnabled: props.shadowEnabled ?? false, shadowColor: props.shadowColor ?? "rgba(0,0,0,0.3)",
     shadowBlur: props.shadowBlur ?? 10, shadowOffsetX: props.shadowOffsetX ?? 5, shadowOffsetY: props.shadowOffsetY ?? 5,
+    cardTitle: props.cardTitle ?? "", cardPrice: props.cardPrice ?? "", cardButton: props.cardButton ?? "",
+    cardImageName: props.cardImageName ?? "",
+    cardBgColor: props.cardBgColor ?? "#ffffff",
+    profileName: props.profileName ?? "", profileRole: props.profileRole ?? "",
+    profileImageName: props.profileImageName ?? "",
+    profileBgColor: props.profileBgColor ?? "#ffffff",
+    mapLat: props.mapLat ?? DEFAULT_MAP_LAT,
+    mapLng: props.mapLng ?? DEFAULT_MAP_LNG,
+    mapZoom: props.mapZoom ?? DEFAULT_MAP_ZOOM,
+    pricingTitle: props.pricingTitle ?? "", pricingPrice: props.pricingPrice ?? "", pricingButton: props.pricingButton ?? "",
+    videoSrc: props.videoSrc ?? "",
   };
 
   return (
@@ -151,6 +542,85 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
           <PropField label="Opacité %" value={v.opacity} onChange={val => apply("opacity", +val)} type="number" min="0" max="100" />
         </div>
       </section>
+
+      {isGroup && selectedObject.customName === "Carte Produit" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Contenu Carte Produit</h4>
+          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <PropField label="Couleur de fond" type="color" value={v.cardBgColor} onChange={val => applyGroupBgFill(0, "cardBgColor", val)} />
+            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+              Uploader image produit
+              <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleCardImageUpload} />
+            </label>
+            {v.cardImageName && (
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>Image active: {v.cardImageName}</div>
+            )}
+            <PropField label="Titre" value={v.cardTitle} onChange={val => applyGroupText(2, "cardTitle", val)} />
+            <PropField label="Prix" value={v.cardPrice} onChange={val => applyGroupText(3, "cardPrice", val)} />
+            <PropField label="Texte Bouton" value={v.cardButton} onChange={val => applyGroupText(5, "cardButton", val)} />
+          </div>
+        </section>
+      )}
+
+      {isGroup && selectedObject.customName === "Profil Utilisateur" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Contenu Profil</h4>
+          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <PropField label="Couleur de fond" type="color" value={v.profileBgColor} onChange={val => applyGroupBgFill(0, "profileBgColor", val)} />
+            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+              Uploader photo profil
+              <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleProfileImageUpload} />
+            </label>
+            {v.profileImageName && (
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>Photo active: {v.profileImageName}</div>
+            )}
+            <PropField label="Nom" value={v.profileName} onChange={val => applyGroupText(2, "profileName", val)} />
+            <PropField label="Rôle" value={v.profileRole} onChange={val => applyGroupText(3, "profileRole", val)} />
+          </div>
+        </section>
+      )}
+
+      {isGroup && selectedObject.customName === "Tableau de Prix" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Contenu Prix</h4>
+          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <PropField label="Offre" value={v.pricingTitle} onChange={val => applyGroupText(1, "pricingTitle", val)} />
+            <PropField label="Prix" value={v.pricingPrice} onChange={val => applyGroupText(2, "pricingPrice", val)} />
+            <PropField label="Texte Bouton" value={v.pricingButton} onChange={val => applyGroupText(7, "pricingButton", val)} />
+          </div>
+        </section>
+      )}
+
+      {isGroup && selectedObject.customName === "Carte (Map)" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Carte (OpenStreetMap)</h4>
+          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <PropField label="Latitude" type="number" value={v.mapLat} onChange={val => applyMapField("mapLat", val)} />
+            <PropField label="Longitude" type="number" value={v.mapLng} onChange={val => applyMapField("mapLng", val)} />
+            <PropField label="Zoom (1–18)" type="number" value={v.mapZoom} onChange={val => applyMapField("mapZoom", val)} min="1" max="18" />
+            <button type="button" className="version-btn" style={{ width: "100%", justifyContent: "center" }} onClick={refreshMapPreview}>
+              Actualiser la carte
+            </button>
+            <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4, margin: 0 }}>
+              Aperçu statique (OpenStreetMap). Cliquez sur « Actualiser » après modification des coordonnées.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {selectedObject.customName === "Lecteur Vidéo" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Vidéo</h4>
+          <PropField label="Lien externe (YouTube, MP4)" value={v.videoSrc && !v.videoSrc.startsWith("blob:") ? v.videoSrc : ""} onChange={val => applyVideoSrc(val)} />
+          <div style={{ marginTop: 8 }}>
+            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+              Tester une vidéo locale
+              <input type="file" accept="video/mp4,video/webm" style={{ display: "none" }} onChange={handleVideoUpload} />
+            </label>
+            {v.videoSrc && v.videoSrc.startsWith("blob:") && <div style={{ marginTop: 8, fontSize: 11, color: "var(--warning)", lineHeight: "1.2" }}>⚠️ Vidéo locale active.<br />(Visualisation temporaire, utilisez un lien externe pour la sauvegarde complète).</div>}
+          </div>
+        </section>
+      )}
 
       {isText && (
         <section className="props-section">
@@ -410,6 +880,8 @@ const DesignEditor = () => {
         if (designData.version?.contenu?.objects?.length) {
           const loadRes = canvas.loadFromJSON(designData.version.contenu);
           if (loadRes && typeof loadRes.then === "function") await loadRes;
+          reviveVideos(canvas);
+          reviveMaps(canvas);
         }
         canvas.renderAll(); setSaveStatus("À jour ☁️");
         if (!isDesigner) lockCanvasObjects(canvas);
@@ -447,6 +919,57 @@ const DesignEditor = () => {
     return () => fabricCanvas.off();
   }, [fabricCanvas, snapEnabled]);
 
+  // ─── AUTO-CONTINUATION LISTE À PUCES & NUMÉROTÉE ──────────────────────────
+  useEffect(() => {
+    if (!fabricCanvas) return;
+
+    // Use keyup so that Fabric and the browser have already processed the Enter key
+    const handleKeyUp = (e) => {
+      if (e.key !== "Enter") return;
+
+      const obj = fabricCanvas.getActiveObject();
+      // Must be editing and have access to the internal hidden text input
+      if (!obj || !obj.isEditing || obj.type !== "textbox" || !obj.hiddenTextarea) return;
+
+      const cursor = obj.hiddenTextarea.selectionStart;
+      const text = obj.hiddenTextarea.value;
+
+      // The character right before the cursor should now be the new line \n
+      if (cursor === 0 || text[cursor - 1] !== '\n') return;
+
+      // Find what the previous line started with
+      const textBeforeNewline = text.substring(0, cursor - 1);
+      const lastNewline = textBeforeNewline.lastIndexOf("\n");
+      const previousLine = textBeforeNewline.substring(lastNewline + 1);
+
+      let prefix = null;
+      if (previousLine.startsWith("• ")) prefix = "• ";
+      else {
+        const olMatch = previousLine.match(/^(\d+)\.\s/);
+        if (olMatch) prefix = `${parseInt(olMatch[1], 10) + 1}. `;
+      }
+
+      if (prefix) {
+        // Inject the prefix directly into the hidden textarea
+        const newText = text.substring(0, cursor) + prefix + text.substring(cursor);
+        obj.hiddenTextarea.value = newText;
+
+        // Move the cursor after the injected prefix
+        const newCursor = cursor + prefix.length;
+        obj.hiddenTextarea.selectionStart = newCursor;
+        obj.hiddenTextarea.selectionEnd = newCursor;
+
+        // Fire a native 'input' event. This forces Fabric.js to detect the change exactly
+        // as if the user had typed the prefix manually, updating all its internal states smoothly!
+        obj.hiddenTextarea.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+        fabricCanvas.renderAll();
+      }
+    };
+
+    document.addEventListener("keyup", handleKeyUp);
+    return () => document.removeEventListener("keyup", handleKeyUp);
+  }, [fabricCanvas]);
+
   useEffect(() => {
     if (!fabricCanvas) return;
     gridLinesRef.current.forEach(l => fabricCanvas.remove(l));
@@ -466,7 +989,7 @@ const DesignEditor = () => {
     if (!vId || !isDesigner) return;
     setSaveStatus("Sauvegarde…");
     try {
-      const json = c.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry"]);
+      const json = c.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "videoSrc", "mapLat", "mapLng", "mapZoom"]);
       json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
       await API.put(`/versions/${vId}`, { contenu: json });
       setSaveStatus("À jour ☁️");
@@ -483,10 +1006,14 @@ const DesignEditor = () => {
     fabricCanvas.on("object:modified", handleChange);
     fabricCanvas.on("object:added", handleChange);
     fabricCanvas.on("object:removed", handleRemove);
+    fabricCanvas.on("text:changed", handleChange);
+    fabricCanvas.on("editing:exited", handleChange);
     return () => {
       fabricCanvas.off("object:modified", handleChange);
       fabricCanvas.off("object:added", handleChange);
       fabricCanvas.off("object:removed", handleRemove);
+      fabricCanvas.off("text:changed", handleChange);
+      fabricCanvas.off("editing:exited", handleChange);
     };
   }, [fabricCanvas, designData, debouncedSave, isDesigner]);
 
@@ -496,8 +1023,16 @@ const DesignEditor = () => {
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (e.key === "Delete" || e.key === "Backspace") {
-        const obj = fabricCanvas?.getActiveObject();
-        if (obj && !obj.isEditing) { fabricCanvas.remove(obj); setSelectedObj(null); }
+        const activeObjects = fabricCanvas?.getActiveObjects() || [];
+        if (activeObjects.length > 0) {
+          // Si l'un des objets est en cours d'édition de texte (ex: Focus dans un Textbox), on ne supprime pas !
+          if (activeObjects.some(obj => obj.isEditing)) return;
+
+          activeObjects.forEach(obj => fabricCanvas.remove(obj));
+          fabricCanvas.discardActiveObject();
+          fabricCanvas.renderAll();
+          setSelectedObj(null);
+        }
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "d") {
         e.preventDefault();
@@ -514,7 +1049,7 @@ const DesignEditor = () => {
     if (!fabricCanvas || !maquetteIdRef.current || creatingVersion || !isDesigner) return;
     setCreatingVersion(true);
     try {
-      const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry"]);
+      const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "videoSrc", "mapLat", "mapLng", "mapZoom"]);
       const { data } = await API.post("/versions", { contenu: json, id_maquette: maquetteIdRef.current, commentaire: "Nouvelle version manuelle" });
       const newVersion = data.version;
       setCurrentVersionNum(newVersion.numéro_version);
@@ -541,6 +1076,8 @@ const DesignEditor = () => {
       if (contenu?.objects?.length > 0) {
         const loadRes = fabricCanvas.loadFromJSON(contenu);
         if (loadRes && typeof loadRes.then === "function") await loadRes;
+        reviveVideos(fabricCanvas);
+        reviveMaps(fabricCanvas);
         fabricCanvas.renderAll();
       } else {
         fabricCanvas.remove(...fabricCanvas.getObjects());
@@ -575,10 +1112,12 @@ const DesignEditor = () => {
       if (contenu?.objects?.length > 0) {
         const loadRes = fabricCanvas.loadFromJSON(contenu);
         if (loadRes && typeof loadRes.then === "function") await loadRes;
+        reviveVideos(fabricCanvas);
+        reviveMaps(fabricCanvas);
       } else { fabricCanvas.remove(...fabricCanvas.getObjects()); fabricCanvas.backgroundColor = "#ffffff"; }
       fabricCanvas.renderAll();
       try {
-        const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry"]);
+        const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "videoSrc", "mapLat", "mapLng", "mapZoom"]);
         json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
         await API.put(`/versions/${designData?.version?._id}`, { contenu: json });
         setSaveStatus("À jour ☁️");
@@ -730,18 +1269,43 @@ const DesignEditor = () => {
       else if (item.variant === "toggle") { const bg = new fabric.Rect({ width: 50, height: 26, rx: 13, ry: 13, fill: "#10b981", originX: "center", originY: "center" }); const circle = new fabric.Circle({ radius: 10, fill: "#ffffff", originX: "center", originY: "center", left: 10 }); elements = [bg, circle]; }
       else if (item.variant === "checkbox") { const bg = new fabric.Rect({ width: 24, height: 24, rx: 4, ry: 4, fill: "#4f46e5", originX: "center", originY: "center" }); const check = new fabric.Text("✓", { fontSize: 16, fill: "#ffffff", originX: "center", originY: "center", top: 1 }); const label = new fabric.Text("Option", { fontSize: 14, fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: 20 }); elements = [bg, check, label]; }
       else if (item.variant === "slider") { const line = new fabric.Line([-75, 0, 75, 0], { stroke: "#cbd5e1", strokeWidth: 4 }); const lineActive = new fabric.Line([-75, 0, 0, 0], { stroke: "#4f46e5", strokeWidth: 4 }); const handle = new fabric.Circle({ radius: 10, fill: "#ffffff", stroke: "#4f46e5", strokeWidth: 2, originX: "center", originY: "center" }); elements = [line, lineActive, handle]; }
-      else if (item.variant === "video") { const bg = new fabric.Rect({ width: 320, height: 180, fill: "#1e293b", rx: 8, ry: 8, originX: "center", originY: "center" }); const playBtn = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" }); const playIcon = new fabric.Triangle({ width: 20, height: 20, fill: "#ffffff", originX: "center", originY: "center", left: 4, angle: 90 }); elements = [bg, playBtn, playIcon]; }
-      else if (item.variant === "map") { const bg = new fabric.Rect({ width: 300, height: 200, fill: "#e0f2fe", rx: 8, ry: 8, originX: "center", originY: "center" }); const pin = new fabric.Circle({ radius: 15, fill: "#ef4444", originX: "center", originY: "center", top: -10 }); const shadow = new fabric.Ellipse({ rx: 10, ry: 4, fill: "rgba(0,0,0,0.2)", originX: "center", originY: "center", top: 10 }); elements = [bg, shadow, pin]; }
+      else if (item.variant === "video") {
+        const bg = new fabric.Rect({ width: 320, height: 180, fill: "#1e293b", rx: 8, ry: 8, originX: "center", originY: "center" });
+        const playBtn = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" });
+        const playIcon = new fabric.Triangle({ width: 20, height: 20, fill: "#ffffff", originX: "center", originY: "center", left: 4, angle: 90 });
+        const txt = new fabric.Text("Sélectionnez puis uploader via la barre droite", { fontSize: 13, fill: "#e2e8f0", fontFamily: "Inter", originX: "center", originY: "center", top: 60 });
+        elements = [bg, playBtn, playIcon, txt];
+      }
+      else if (item.variant === "map") {
+        const mw = 300;
+        const mh = 200;
+        const frame = new fabric.Rect({ width: mw, height: mh, fill: "#ffffff", stroke: "#cbd5e1", strokeWidth: 1, rx: 8, ry: 8, originX: "center", originY: "center" });
+        const mapArea = new fabric.Rect({ width: mw - 8, height: mh - 8, fill: "#dbeafe", rx: 6, ry: 6, originX: "center", originY: "center", top: 0, left: 0, stroke: "#bae6fd", strokeWidth: 1 });
+        const shadow = new fabric.Ellipse({ rx: 10, ry: 4, fill: "rgba(0,0,0,0.2)", originX: "center", originY: "center", top: 58 });
+        const pin = new fabric.Circle({ radius: 12, fill: "#ef4444", stroke: "#ffffff", strokeWidth: 2, originX: "center", originY: "center", top: -22 });
+        elements = [frame, mapArea, shadow, pin];
+      }
       else if (item.variant === "card") { const bg = new fabric.Rect({ width: 240, height: 320, fill: "#ffffff", rx: 12, ry: 12, stroke: "#e2e8f0", strokeWidth: 1, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 10, offsetY: 4 }) }); const img = new fabric.Rect({ width: 240, height: 140, fill: "#cbd5e1", originX: "center", originY: "top", top: -160, rx: 12, ry: 12 }); const title = new fabric.Text("Produit", { fontSize: 18, fontWeight: "bold", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "top", left: -100, top: -5 }); const price = new fabric.Text("29,99 €", { fontSize: 16, fill: "#4f46e5", fontWeight: "600", fontFamily: "Inter", originX: "left", originY: "top", left: -100, top: 25 }); const btnBg = new fabric.Rect({ width: 200, height: 40, fill: "#0f172a", rx: 6, ry: 6, originX: "center", originY: "bottom", top: 140 }); const btnTxt = new fabric.Text("Ajouter", { fontSize: 14, fill: "#ffffff", fontWeight: "500", fontFamily: "Inter", originX: "center", originY: "bottom", top: 130 }); elements = [bg, img, title, price, btnBg, btnTxt]; }
       else if (item.variant === "profile") { const bg = new fabric.Rect({ width: 300, height: 120, fill: "#ffffff", rx: 12, ry: 12, stroke: "#e2e8f0", strokeWidth: 1, originX: "center", originY: "center" }); const avatar = new fabric.Circle({ radius: 35, fill: "#cbd5e1", originX: "center", originY: "center", left: -90 }); const name = new fabric.Text("Marie D.", { fontSize: 20, fontWeight: "bold", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -30, top: -15 }); const role = new fabric.Text("Marketing", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: -30, top: 15 }); elements = [bg, avatar, name, role]; }
       else if (item.variant === "chart_bar") { const lineX = new fabric.Line([-100, 80, 100, 80], { stroke: "#94a3b8", strokeWidth: 2 }); const lineY = new fabric.Line([-100, 80, -100, -80], { stroke: "#94a3b8", strokeWidth: 2 }); const bar1 = new fabric.Rect({ width: 30, height: 80, fill: "#4f46e5", originY: "bottom", left: -70, top: 80 }); const bar2 = new fabric.Rect({ width: 30, height: 130, fill: "#3b82f6", originY: "bottom", left: -20, top: 80 }); const bar3 = new fabric.Rect({ width: 30, height: 50, fill: "#60a5fa", originY: "bottom", left: 30, top: 80 }); elements = [lineX, lineY, bar1, bar2, bar3]; }
       else if (item.variant === "nav_menu") { const bg = new fabric.Rect({ width: 800, height: 60, fill: "#ffffff", stroke: "#e2e8f0", strokeWidth: 1, originX: "center", originY: "center" }); const logo = new fabric.Text("✨ Marque", { fontSize: 20, fontWeight: "bold", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -360 }); const links = new fabric.Text("Accueil    Produits    Contact", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "right", originY: "center", left: 360 }); elements = [bg, logo, links]; }
       else if (item.variant === "tabs") { const line = new fabric.Line([-150, 20, 150, 20], { stroke: "#e2e8f0", strokeWidth: 2 }); const activeLine = new fabric.Line([-150, 20, -50, 20], { stroke: "#4f46e5", strokeWidth: 2 }); const t1 = new fabric.Text("Général", { fontSize: 14, fontWeight: "600", fill: "#4f46e5", fontFamily: "Inter", originX: "center", originY: "center", left: -100 }); const t2 = new fabric.Text("Sécurité", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 0 }); const t3 = new fabric.Text("Facturation", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 100 }); elements = [line, activeLine, t1, t2, t3]; }
+      else if (item.variant === "pricing") { const bg = new fabric.Rect({ width: 260, height: 350, fill: "#ffffff", rx: 12, ry: 12, stroke: "#e2e8f0", strokeWidth: 1, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 10, offsetY: 4 }) }); const title = new fabric.Text("Basique", { fontSize: 20, fontWeight: "bold", fill: "#0f172a", fontFamily: "Inter", originX: "center", originY: "top", top: -140 }); const price = new fabric.Text("9€ / mois", { fontSize: 28, fontWeight: "bold", fill: "#4f46e5", fontFamily: "Inter", originX: "center", originY: "top", top: -100 }); const feat1 = new fabric.Text("✓ Option 1", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "top", left: -100, top: -40 }); const feat2 = new fabric.Text("✓ Option 2", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "top", left: -100, top: -10 }); const feat3 = new fabric.Text("✓ Option 3", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "top", left: -100, top: 20 }); const btnBg = new fabric.Rect({ width: 200, height: 40, fill: "#4f46e5", rx: 6, ry: 6, originX: "center", originY: "bottom", top: 140 }); const btnTxt = new fabric.Text("Choisir", { fontSize: 14, fill: "#ffffff", fontWeight: "600", fontFamily: "Inter", originX: "center", originY: "bottom", top: 130 }); elements = [bg, title, price, feat1, feat2, feat3, btnBg, btnTxt]; }
       else { const bg = new fabric.Rect({ width: 200, height: 80, fill: "#f8fafc", stroke: "#94a3b8", strokeDashArray: [5, 5], strokeWidth: 2, rx: 8, ry: 8, originX: "center", originY: "center" }); const txt = new fabric.Text(item.label, { fontSize: 14, fill: "#64748b", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center" }); elements = [bg, txt]; }
       obj = new fabric.Group(elements, { left: x, top: y });
       obj.customName = item.label;
+      if (item.type === "complex" && item.variant === "map") {
+        obj.mapLat = DEFAULT_MAP_LAT;
+        obj.mapLng = DEFAULT_MAP_LNG;
+        obj.mapZoom = DEFAULT_MAP_ZOOM;
+      }
     }
-    if (obj) { fabricCanvas.add(obj); fabricCanvas.setActiveObject(obj); fabricCanvas.renderAll(); }
+    if (obj) {
+      fabricCanvas.add(obj);
+      fabricCanvas.setActiveObject(obj);
+      fabricCanvas.renderAll();
+      if (item.type === "complex" && item.variant === "map") loadOsmMapIntoGroup(obj, fabricCanvas);
+    }
   };
 
   const handleDragStart = (e, item) => e.dataTransfer.setData("element-data", JSON.stringify(item));
