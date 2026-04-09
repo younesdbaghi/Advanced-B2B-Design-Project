@@ -120,6 +120,167 @@ const SIDEBAR_MENU = [
 
 const snapToGrid = (value, gridSize) => Math.round(value / gridSize) * gridSize;
 
+const reviveVideos = (canvas) => {
+  if (!canvas) return;
+  canvas.getObjects().forEach(o => {
+    if (o.customName === "Lecteur Vidéo" && o.videoSrc) {
+      if (o.getElement && o.getElement()?.tagName === "VIDEO") return;
+
+      // Validate video source
+      if (!o.videoSrc || (typeof o.videoSrc === 'string' && !o.videoSrc.trim())) {
+        console.error("Invalid video source:", o.videoSrc);
+        return;
+      }
+
+      const videoEl = document.createElement('video');
+      if (!o.videoSrc.startsWith("data:") && !o.videoSrc.startsWith("blob:")) {
+        videoEl.crossOrigin = "anonymous";
+      }
+      videoEl.loop = true;
+      videoEl.muted = true;
+      videoEl.src = o.videoSrc;
+
+      // Add timeout for video loading
+      const timeout = setTimeout(() => {
+        if (!isReady) {
+          console.error("Video loading timeout:", o.videoSrc);
+        }
+      }, 10000); // 10 second timeout
+
+      let isReady = false;
+      const onReady = () => {
+        if (isReady) return;
+        isReady = true;
+        clearTimeout(timeout);
+        if (o.type === "group" || typeof o.setElement !== "function") {
+          const vImg = new fabric.Image(videoEl, {
+            left: o.left, top: o.top,
+            originX: o.originX || "left", originY: o.originY || "top",
+            width: videoEl.videoWidth || o.width || 320,
+            height: videoEl.videoHeight || o.height || 180,
+            angle: o.angle || 0
+          });
+
+          if (videoEl.videoWidth) {
+            vImg.scaleToWidth(o.width * o.scaleX || 320);
+          } else {
+            vImg.set({ scaleX: o.scaleX || 1, scaleY: o.scaleY || 1 });
+          }
+
+          vImg.customName = "Lecteur Vidéo";
+          vImg.videoSrc = videoEl.src;
+          const idx = canvas.getObjects().indexOf(o);
+          try {
+            canvas.remove(o);
+            canvas.add(vImg);
+            if (idx !== -1 && typeof vImg.moveTo === "function") {
+              vImg.moveTo(idx);
+            } else if (idx !== -1 && typeof canvas.moveTo === "function") {
+              canvas.moveTo(vImg, idx);
+            }
+          } catch (e) { console.error(e); }
+
+          if (canvas.getActiveObject() === o) {
+            canvas.discardActiveObject();
+            canvas.setActiveObject(vImg);
+          }
+          videoEl.play().catch(() => { });
+          const render = () => {
+            if (canvas.getObjects().includes(vImg)) { canvas.renderAll(); fabric.util.requestAnimFrame(render); }
+          };
+          fabric.util.requestAnimFrame(render);
+        } else {
+          o.setElement(videoEl);
+          videoEl.play().catch(() => { });
+          const render = () => {
+            if (canvas.getObjects().includes(o)) { canvas.renderAll(); fabric.util.requestAnimFrame(render); }
+          };
+          fabric.util.requestAnimFrame(render);
+        }
+      };
+
+      videoEl.addEventListener('loadedmetadata', onReady);
+      videoEl.addEventListener('loadeddata', onReady);
+      videoEl.addEventListener('canplay', onReady);
+      videoEl.addEventListener('error', (e) => {
+        clearTimeout(timeout);
+        console.error("Video loading failed:", {
+          src: o.videoSrc,
+          error: videoEl.error,
+          networkState: videoEl.networkState,
+          readyState: videoEl.readyState
+        });
+      });
+    }
+  });
+};
+
+const DEFAULT_MAP_LAT = 48.8566;
+const DEFAULT_MAP_LNG = 2.3522;
+const DEFAULT_MAP_ZOOM = 14;
+
+const findMapRectLayer = (group) => {
+  const objs = group.getObjects?.() || [];
+  if (objs[1]?.type === "rect") return objs[1];
+  if (objs[0]?.type === "rect") return objs[0];
+  return null;
+};
+
+const loadOsmMapIntoGroup = (group, canvas) => {
+  if (!group || group.type !== "group" || group.customName !== "Carte (Map)" || !canvas) return;
+  const mapRect = findMapRectLayer(group);
+  if (!mapRect) return;
+  
+  // On récupère les valeurs soit à la racine de l'objet, soit dans componentData
+  const lat = group.mapLat ?? group.componentData?.mapLat ?? DEFAULT_MAP_LAT;
+  const lng = group.mapLng ?? group.componentData?.mapLng ?? DEFAULT_MAP_LNG;
+  const zoom = Math.min(18, Math.max(1, Number(group.mapZoom ?? group.componentData?.mapZoom) || DEFAULT_MAP_ZOOM));
+  
+  const w = Math.max(1, Math.round(mapRect.width || 1));
+  const h = Math.max(1, Math.round(mapRect.height || 1));
+  const url = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=${w}x${h}&maptype=mapnik`;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    try {
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, w, h);
+      mapRect.set("fill", new fabric.Pattern({ source: c, repeat: "no-repeat" }));
+      group.dirty = true;
+      canvas.renderAll();
+    } catch {
+      mapRect.set("fill", "#dbeafe");
+      canvas.renderAll();
+    }
+  };
+  img.onerror = () => {
+    mapRect.set("fill", "#dbeafe");
+    canvas.renderAll();
+  };
+  img.src = url;
+};
+
+const reviveMaps = (canvas) => {
+  if (!canvas) return;
+  canvas.getObjects().forEach((o) => {
+    if (o.type === "group" && o.customName === "Carte (Map)") loadOsmMapIntoGroup(o, canvas);
+  });
+};
+
+const hexForColorInput = (fill) => {
+  if (typeof fill !== "string" || !fill.startsWith("#")) return "#ffffff";
+  if (fill.length === 7) return fill.toLowerCase();
+  if (fill.length === 4) {
+    const r = fill[1], g = fill[2], b = fill[3];
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return "#ffffff";
+};
+
 const getObjectLabel = (obj) => {
   if (!obj) return "Objet";
   if (obj.customName) return obj.customName;
@@ -150,7 +311,7 @@ const getObjectLabel = (obj) => {
 };
 
 // ─── MODERN MODAL ─────────────────────────────────────────────────────────────
-const ModernModal = ({ isOpen, onClose, title, content, onAction }) => {
+const ModernModal = ({ isOpen, onClose, title, content, onAction = null }) => {
   if (!isOpen) return null;
   return (
     <div className="modern-modal-overlay" onClick={onClose}>
@@ -184,7 +345,9 @@ const ImageHistoryPanel = ({ imageHistory, onReplaceImage, onSelectImage, canvas
     if (!file || !replacingId) return;
     const reader = new FileReader();
     reader.onload = (f) => {
-      onReplaceImage(replacingId, f.target.result, file.name);
+      if (typeof f.target?.result === "string") {
+        onReplaceImage(replacingId, f.target.result, file.name);
+      }
     };
     reader.readAsDataURL(file);
     e.target.value = null;
@@ -866,6 +1029,50 @@ const PropertiesPanel = ({
     if (!selectedObject) { setProps({}); setEditorVariant(null); setEditorData(null); return; }
     const o = selectedObject;
     const shadow = o.shadow || {};
+
+    let cardProps = {};
+    if (o.type === "group" && o.customName === "Carte Produit") {
+      const objs = o.getObjects();
+      cardProps = {
+        cardTitle: objs[2]?.text || "",
+        cardPrice: objs[3]?.text || "",
+        cardButton: objs[5]?.text || "",
+        cardImageName: objs[1]?.cardImageName || "",
+        cardBgColor: hexForColorInput(objs[0]?.fill),
+      };
+    }
+
+    let profileProps = {};
+    if (o.type === "group" && o.customName === "Profil Utilisateur") {
+      const objs = o.getObjects();
+      profileProps = {
+        profileName: objs[2]?.text || "",
+        profileRole: objs[3]?.text || "",
+        profileImageName: objs[1]?.profileImageName || "",
+        profileBgColor: hexForColorInput(objs[0]?.fill),
+      };
+    }
+
+    let pricingProps = {};
+    if (o.type === "group" && o.customName === "Tableau de Prix") {
+      const objs = o.getObjects();
+      pricingProps = { pricingTitle: objs[1]?.text || "", pricingPrice: objs[2]?.text || "", pricingButton: objs[7]?.text || "" };
+    }
+
+    let videoProps = {};
+    if (o.customName === "Lecteur Vidéo") {
+      videoProps = { videoSrc: o.videoSrc || "" };
+    }
+
+    let mapProps = {};
+    if (o.type === "group" && o.customName === "Carte (Map)") {
+      mapProps = {
+        mapLat: o.mapLat != null ? Number(o.mapLat) : DEFAULT_MAP_LAT,
+        mapLng: o.mapLng != null ? Number(o.mapLng) : DEFAULT_MAP_LNG,
+        mapZoom: o.mapZoom != null ? Number(o.mapZoom) : DEFAULT_MAP_ZOOM,
+      };
+    }
+
     setProps({
       left: Math.round(o.left || 0), top: Math.round(o.top || 0),
       width: Math.round((o.width || 0) * (o.scaleX || 1)), height: Math.round((o.height || 0) * (o.scaleY || 1)),
@@ -883,8 +1090,13 @@ const PropertiesPanel = ({
       shadowBlur: shadow.blur || 10,
       shadowOffsetX: shadow.offsetX !== undefined ? shadow.offsetX : 5,
       shadowOffsetY: shadow.offsetY !== undefined ? shadow.offsetY : 5,
-      // For images
-      imageShape: o.customImageShape || "rect"
+      // Fusion des deux versions : support images ET composants complexes
+      imageShape: o.customImageShape || "rect",
+      ...cardProps,
+      ...profileProps,
+      ...pricingProps,
+      ...videoProps,
+      ...mapProps,
     });
 
     if (o.customVariant && o.componentData) {
@@ -955,250 +1167,243 @@ const PropertiesPanel = ({
     canvas.renderAll(); onUpdate?.();
   };
 
-  // FIX: handleComponentSave now reads from canvas object directly and updates both canvas + state
-  const handleComponentSave = (updatedData) => {
-    if (!selectedObject || !canvas) return;
+// --- LOGIQUE DE SAUVEGARDE ET MISE À JOUR DES COMPOSANTS (FUSIONNÉE) ---
 
-    // Merge updated data into the canvas object's componentData
-    selectedObject.componentData = { ...(selectedObject.componentData || {}), ...updatedData };
+const handleComponentSave = (updatedData) => {
+  if (!selectedObject || !canvas) return;
 
-    const variant = selectedObject.customVariant;
-    if (variant === "button") updateButtonOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "input") updateInputOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "profile") updateProfileOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "pricing") updatePricingOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "slider") updateSliderOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "card") updateCardOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "modal") updateModalOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "nav_menu") updateNavMenuOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "hero") updateHeroOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "tabs") updateTabsOnCanvas(selectedObject, selectedObject.componentData);
-    else if (variant === "table") updateTableOnCanvas(selectedObject, selectedObject.componentData);
+  // Fusion des données dans l'objet canvas
+  selectedObject.componentData = { ...(selectedObject.componentData || {}), ...updatedData };
 
+  const variant = selectedObject.customVariant;
+  if (variant === "button") updateButtonOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "input") updateInputOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "profile") updateProfileOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "pricing") updatePricingOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "slider") updateSliderOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "card") updateCardOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "modal") updateModalOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "nav_menu") updateNavMenuOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "hero") updateHeroOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "tabs") updateTabsOnCanvas(selectedObject, selectedObject.componentData);
+  else if (variant === "table") updateTableOnCanvas(selectedObject, selectedObject.componentData);
+
+  canvas.renderAll();
+  onUpdate?.();
+
+  setEditorData({ ...selectedObject.componentData, variant });
+  setShowComponentEditor(false);
+};
+
+const handleUngroup = () => {
+  if (!selectedObject || !canvas || selectedObject.type !== "group") return;
+  const items = [...selectedObject.getObjects()];
+  const transforms = items.map(child => fabric.util.qrDecompose(child.calcTransformMatrix()));
+  
+  canvas.remove(selectedObject);
+  items.forEach((child, i) => {
+      const opt = transforms[i];
+      child.set({
+          left: opt.translateX, top: opt.translateY,
+          scaleX: opt.scaleX, scaleY: opt.scaleY,
+          angle: opt.angle, skewX: opt.skewX, skewY: opt.skewY,
+          group: null
+      });
+      child.setCoords();
+      canvas.add(child);
+  });
+  canvas.discardActiveObject();
+  canvas.requestRenderAll();
+  onUpdate?.();
+};
+
+// --- Fonctions utilitaires de origin (Cartes, Profils, Maps, Vidéos) ---
+
+const applyGroupText = (index, key, value) => {
+  if (!selectedObject || !canvas || selectedObject.type !== "group") return;
+  const objs = selectedObject.getObjects();
+  if (objs[index]) {
+    objs[index].set("text", value);
     canvas.renderAll();
     onUpdate?.();
+    setProps(p => ({ ...p, [key]: value }));
+  }
+};
 
-    // FIX: Update local state so panel reflects new values
-    setEditorData({ ...selectedObject.componentData, variant });
-    setShowComponentEditor(false);
-  };
-
-  const handleUngroup = () => {
-    if (!selectedObject || !canvas || selectedObject.type !== "group") return;
-    
-    // We get all items inside the group
-    const items = [...selectedObject.getObjects()];
-    
-    // Store their absolute transform matrices before destroying the group
-    const transforms = items.map(child => fabric.util.qrDecompose(child.calcTransformMatrix()));
-    
-    // Remove the group from the canvas
-    canvas.remove(selectedObject);
-    
-    // Add each child back to the canvas globally with the correct absolute positions
-    items.forEach((child, i) => {
-        const opt = transforms[i];
-        child.set({
-            left: opt.translateX,
-            top: opt.translateY,
-            scaleX: opt.scaleX,
-            scaleY: opt.scaleY,
-            angle: opt.angle,
-            skewX: opt.skewX,
-            skewY: opt.skewY,
-            group: null // explicitly detach
-        });
-        child.setCoords();
-        canvas.add(child);
-    });
-    
-    // Deselect everything so the user can immediately click individual elements
-    canvas.discardActiveObject();
-    canvas.requestRenderAll();
+const applyGroupBgFill = (index, key, value) => {
+  if (!selectedObject || !canvas || selectedObject.type !== "group") return;
+  const objs = selectedObject.getObjects();
+  if (objs[index]) {
+    objs[index].set("fill", value);
+    selectedObject.dirty = true;
+    canvas.renderAll();
     onUpdate?.();
-  };
+    setProps((p) => ({ ...p, [key]: value }));
+  }
+};
 
-  // ── Component update helpers ──────────────────────────────────────────────
-  const updateButtonOnCanvas = (group, data) => {
-    const sizeMap = {
-      small: { width: 110, height: 38, fontSize: 12 },
-      medium: { width: 150, height: 46, fontSize: 15 },
-      large: { width: 190, height: 56, fontSize: 18 },
+const applyMapField = (key, raw) => {
+  if (!selectedObject || !canvas || selectedObject.customName !== "Carte (Map)") return;
+  let num = key === "mapZoom" ? Math.min(18, Math.max(1, parseInt(raw, 10))) : parseFloat(String(raw).replace(",", "."));
+  if (Number.isNaN(num)) return;
+  selectedObject[key] = num;
+  setProps((p) => ({ ...p, [key]: num }));
+  onUpdate?.();
+};
+
+const refreshMapPreview = () => {
+  if (!selectedObject || !canvas || selectedObject.customName !== "Carte (Map)") return;
+  loadOsmMapIntoGroup(selectedObject, canvas);
+  onUpdate?.();
+};
+
+const handleCardImageUpload = (e) => {
+  const file = e.target.files[0];
+  if (!file || !selectedObject || !canvas || selectedObject.customName !== "Carte Produit") return;
+  const imageSlot = selectedObject.getObjects()[1];
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const patternCanvas = document.createElement("canvas");
+      patternCanvas.width = imageSlot.width; patternCanvas.height = imageSlot.height;
+      const ctx = patternCanvas.getContext("2d");
+      const scale = Math.max(imageSlot.width / img.width, imageSlot.height / img.height);
+      ctx.drawImage(img, (imageSlot.width - img.width * scale) / 2, (imageSlot.height - img.height * scale) / 2, img.width * scale, img.height * scale);
+      imageSlot.set("fill", new fabric.Pattern({ source: patternCanvas, repeat: "no-repeat" }));
+      canvas.renderAll(); onUpdate?.();
+      setProps(p => ({ ...p, cardImageName: file.name }));
     };
-    const dims = sizeMap[data.buttonSize] || sizeMap.medium;
-    const bg = group._objects?.[0];
-    const txt = group._objects?.[1];
-    if (bg) bg.set({ width: dims.width, height: dims.height, fill: data.buttonColor, rx: data.borderRadius, ry: data.borderRadius });
-    if (txt) txt.set({ text: data.buttonText, fontSize: dims.fontSize, fill: data.buttonTextColor });
-    group._objects?.forEach(o => o.setCoords?.());
+    if (typeof ev.target?.result === "string") img.src = ev.target.result;
   };
+  reader.readAsDataURL(file);
+};
 
-  const updateInputOnCanvas = (group, data) => {
-    const bg = group._objects?.[0];
-    const placeholder = group._objects?.[2];
-    if (bg) bg.set({ width: data.inputWidth, height: data.inputHeight, fill: data.bgColor, stroke: data.borderColor });
-    if (placeholder) placeholder.set({ text: data.placeholder, fill: "#94a3b8" });
-    group._objects?.forEach(o => o.setCoords?.());
+const handleProfileImageUpload = (e) => {
+  const file = e.target.files[0];
+  if (!file || !selectedObject || !canvas || selectedObject.customName !== "Profil Utilisateur") return;
+  const avatarSlot = selectedObject.getObjects()[1];
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const size = avatarSlot.radius * 2;
+      const patternCanvas = document.createElement("canvas");
+      patternCanvas.width = size; patternCanvas.height = size;
+      const ctx = patternCanvas.getContext("2d");
+      ctx.beginPath(); ctx.arc(size/2, size/2, size/2, 0, Math.PI*2); ctx.clip();
+      const scale = Math.max(size / img.width, size / img.height);
+      ctx.drawImage(img, (size - img.width * scale) / 2, (size - img.height * scale) / 2, img.width * scale, img.height * scale);
+      avatarSlot.set("fill", new fabric.Pattern({ source: patternCanvas, repeat: "no-repeat" }));
+      canvas.renderAll(); onUpdate?.();
+      setProps(p => ({ ...p, profileImageName: file.name }));
+    };
+    if (typeof ev.target?.result === "string") img.src = ev.target.result;
   };
+  reader.readAsDataURL(file);
+};
 
-  const updateProfileOnCanvas = (group, data) => {
-    if (!group._objects) return;
-    const avatar = group._objects.find(o => o.type === "circle");
-    const texts = group._objects.filter(o => o.type === "i-text" || o.type === "text");
-    if (avatar) avatar.set({ fill: data.avatarColor });
-    if (texts[0]) texts[0].set({ text: data.profileName });
-    if (texts[1]) texts[1].set({ text: data.profileRole });
-    if (texts[2]) texts[2].set({ text: data.profileEmail });
-    group._objects.forEach(o => o.setCoords?.());
-  };
+const handleVideoUpload = (e) => {
+  const file = e.target.files[0];
+  if (!file || !selectedObject || !canvas || selectedObject.customName !== "Lecteur Vidéo") return;
+  const blobUrl = URL.createObjectURL(file);
+  selectedObject.videoSrc = blobUrl;
+  setProps(p => ({ ...p, videoSrc: blobUrl }));
+  onUpdate?.();
+  reviveVideos(canvas);
+};
+const applyVideoSrc = (val) => {
+  if (!selectedObject || !canvas || selectedObject.customName !== "Lecteur Vidéo") return;
+  selectedObject.videoSrc = val;
+  setProps(p => ({ ...p, videoSrc: val }));
+  onUpdate?.();
+  reviveVideos(canvas);
+};
+// --- HELPERS DE MISE À JOUR VISUELLE (HEAD) ---
 
-  const updatePricingOnCanvas = (group, data) => {
-    if (!data.pricingRows || !group._objects) return;
-    const bg = group._objects[0];
-    const toRemove = group._objects.slice(1);
-    toRemove.forEach(o => group.remove(o));
+const updateButtonOnCanvas = (group, data) => {
+  const sizeMap = { small: { w: 110, h: 38, f: 12 }, medium: { w: 150, h: 46, f: 15 }, large: { w: 190, h: 56, f: 18 } };
+  const dims = sizeMap[data.buttonSize] || sizeMap.medium;
+  if (group._objects[0]) group._objects[0].set({ width: dims.w, height: dims.h, fill: data.buttonColor, rx: data.borderRadius, ry: data.borderRadius });
+  if (group._objects[1]) group._objects[1].set({ text: data.buttonText, fontSize: dims.f, fill: data.buttonTextColor });
+};
 
-    const startX = -175, colWidth = 200;
-    data.pricingRows.forEach((row, idx) => {
-      const x = startX + idx * colWidth;
-      const colBg = new fabric.Rect({ width: 185, height: 295, fill: row.color + "12", stroke: row.color, strokeWidth: row.popular ? 2.5 : 1.5, rx: 14, ry: 14, left: x, top: 0, originX: "center", originY: "center" });
-      const title = new fabric.Text(row.name, { fontSize: 16, fontWeight: "800", fill: row.color, fontFamily: "Inter", left: x, top: -130, originX: "center" });
-      const price = new fabric.Text(row.price, { fontSize: 28, fontWeight: "900", fill: row.color, fontFamily: "Inter", left: x, top: -102, originX: "center" });
-      group.add(colBg, title, price);
-      if (row.popular) {
-        const badge = new fabric.Text("⭐ POPULAIRE", { fontSize: 8, fontWeight: "800", fill: "white", fontFamily: "Inter", left: x, top: -148, originX: "center", backgroundColor: row.color, padding: 5 });
-        group.add(badge);
-      }
-      row.features.forEach((f, fi) => {
-        const ft = new fabric.Text(`✓  ${f}`, { fontSize: 11, fill: "#374151", fontFamily: "Inter", left: x, top: -60 + fi * 22, originX: "center" });
-        group.add(ft);
-      });
-      const btnBg = new fabric.Rect({ width: 155, height: 32, rx: 8, ry: 8, fill: row.color, left: x, top: 120, originX: "center", originY: "center" });
-      const btnT = new fabric.Text("Choisir ce plan", { fontSize: 10, fontWeight: "700", fill: "white", fontFamily: "Inter", left: x, top: 120, originX: "center", originY: "center" });
-      group.add(btnBg, btnT);
-    });
-    group._objects.forEach(o => o.setCoords?.());
-  };
+const updateInputOnCanvas = (group, data) => {
+  if (group._objects[0]) group._objects[0].set({ width: data.inputWidth, height: data.inputHeight, fill: data.bgColor, stroke: data.borderColor });
+  if (group._objects[2]) group._objects[2].set({ text: data.placeholder });
+};
 
-  const updateSliderOnCanvas = (group, data) => {
-    const pct = (data.sliderValue - data.min) / (data.max - data.min);
-    const newX = -75 + pct * 150;
-    const lineActive = group._objects?.[1];
-    const handle = group._objects?.[2];
-    const valueText = group._objects?.[3];
-    if (lineActive) lineActive.set({ x2: newX, stroke: data.sliderColor });
-    if (handle) handle.set({ left: newX, stroke: data.sliderColor });
-    if (valueText) valueText.set({ text: `${data.sliderValue}${data.unit}`, fill: data.sliderColor });
-    group._objects?.forEach(o => o.setCoords?.());
-  };
+const updateProfileOnCanvas = (group, data) => {
+  const avatar = group._objects.find(o => o.type === "circle");
+  const texts = group._objects.filter(o => o.type === "i-text" || o.type === "text");
+  if (avatar) avatar.set({ fill: data.avatarColor });
+  if (texts[0]) texts[0].set({ text: data.profileName });
+  if (texts[1]) texts[1].set({ text: data.profileRole });
+};
 
-  const updateModalOnCanvas = (group, data) => {
-    // Data is merged, no visual update needed directly except re-render
-  };
+const updatePricingOnCanvas = (group, data) => {
+  if (!data.pricingRows) return;
+  const toRemove = group._objects.slice(1);
+  toRemove.forEach(o => group.remove(o));
+  const startX = -175;
+  data.pricingRows.forEach((row, idx) => {
+    const x = startX + idx * 200;
+    group.add(new fabric.Rect({ width: 185, height: 295, fill: row.color + "12", stroke: row.color, strokeWidth: 2, rx: 14, ry: 14, left: x, top: 0, originX: "center", originY: "center" }));
+    group.add(new fabric.Text(row.name, { fontSize: 16, fontWeight: "800", fill: row.color, left: x, top: -130, originX: "center" }));
+    group.add(new fabric.Text(row.price, { fontSize: 28, fontWeight: "900", fill: row.color, left: x, top: -102, originX: "center" }));
+  });
+};
 
-  const updateCardOnCanvas = (group, data) => {
-    if (!group._objects) return;
-    // Find objects by index positions from the factory (more reliable than text matching)
-    const allObjs = group._objects;
-    // cardBg=0, imgZone=1, imgIcon=2, titleTxt=3, descTxt=4, starRow=5, priceTxt=6, btnBg=7, btnTxt=8
-    if (allObjs[3]) allObjs[3].set({ text: data.productTitle || "Produit Premium" });
-    if (allObjs[4]) allObjs[4].set({ text: data.productDesc || "Description courte du produit" });
-    if (allObjs[6]) allObjs[6].set({ text: data.productPrice || "29€", fill: data.productColor || "#6366f1" });
-    if (allObjs[5]) {
-      const stars = "★".repeat(Math.floor(data.productRating || 5)) + "☆".repeat(5 - Math.floor(data.productRating || 5));
-      allObjs[5].set({ text: `${stars}  (${data.productReviews || "128"})` });
+const updateSliderOnCanvas = (group, data) => {
+  const pct = (data.sliderValue - data.min) / (data.max - data.min);
+  const newX = -75 + pct * 150;
+  if (group._objects[1]) group._objects[1].set({ x2: newX, stroke: data.sliderColor });
+  if (group._objects[2]) group._objects[2].set({ left: newX, stroke: data.sliderColor });
+  if (group._objects[3]) group._objects[3].set({ text: `${data.sliderValue}${data.unit}`, fill: data.sliderColor });
+};
+
+const updateCardOnCanvas = (group, data) => {
+  if (group._objects[3]) group._objects[3].set({ text: data.productTitle });
+  if (group._objects[6]) group._objects[6].set({ text: data.productPrice, fill: data.productColor });
+  if (group._objects[7]) group._objects[7].set({ fill: data.productColor });
+};
+
+const updateNavMenuOnCanvas = (group, data) => {
+  if (group._objects[1]) group._objects[1].set({ text: data.navLogo, fill: data.navColor });
+  if (group._objects[6]) group._objects[6].set({ fill: data.navColor });
+};
+
+const updateHeroOnCanvas = (group, data) => {
+  if (group._objects[0]) group._objects[0].set({ fill: data.heroBg });
+  if (group._objects[5]) group._objects[5].set({ text: data.heroTitle });
+};
+
+const updateTabsOnCanvas = (group, data) => {
+  if (group._objects[2]) group._objects[2].set({ text: data.tab1 });
+  if (group._objects[3]) group._objects[3].set({ text: data.tab2 });
+};
+
+const updateTableOnCanvas = (group, data) => {
+  if (!data.tableData) return;
+  const oldObjs = [...group._objects];
+  oldObjs.forEach(o => group.remove(o));
+  const cellW = 120, cellH = 50;
+  for (let i = 0; i < data.rows; i++) {
+    for (let j = 0; j < data.cols; j++) {
+      const x = - (data.cols * cellW) / 2 + j * cellW;
+      const y = - (data.rows * cellH) / 2 + i * cellH;
+      group.add(new fabric.Rect({ left: x, top: y, width: cellW, height: cellH, fill: i === 0 ? data.headerBg : data.rowBg, stroke: data.strokeColor }));
+      group.add(new fabric.Text(data.tableData[i]?.[j] || "", { left: x + 10, top: y + 15, fontSize: 14, fontFamily: "Inter" }));
     }
-    if (allObjs[7]) allObjs[7].set({ fill: data.productColor || "#6366f1" });
+  }
+};
 
-    if (data.productImageUrl && data.productImageUrl !== group.componentData?.lastProductImageUrl) {
-      fabric.Image.fromURL(data.productImageUrl).then(img => {
-        const imgZone = allObjs[1];
-        if (imgZone) {
-          img.scaleToWidth(256);
-          img.set({
-            originX: "center", originY: "top",
-            left: imgZone.left, top: imgZone.top,
-            clipPath: new fabric.Rect({ width: 256, height: 160, rx: 10, ry: 10, originX: "center", originY: "top" })
-          });
-          if (allObjs[2]) allObjs[2].set({ opacity: 0 }); // hide icon
-          if (allObjs.length > 9) group.remove(allObjs[9]); // replace previous
-          group.add(img);
-          group.componentData.lastProductImageUrl = data.productImageUrl;
-          group.canvas?.renderAll();
-        }
-      });
-    }
-    group._objects?.forEach(o => o.setCoords?.());
-  };
-
-  const updateNavMenuOnCanvas = (group, data) => {
-    if (!group._objects) return;
-    const allObjs = group._objects;
-    // bg=0, logo=1, nav1=2, navUnderline=3, nav2=4, nav3=5, ctaBg=6, ctaTxt=7
-    if (allObjs[1]) allObjs[1].set({ text: data.navLogo || "◈ Logo", fill: data.navColor || "#6366f1" });
-    if (allObjs[2]) allObjs[2].set({ text: data.nav1 || "Accueil" });
-    if (allObjs[3]) allObjs[3].set({ fill: data.navColor || "#6366f1", left: (allObjs[2]?.left || -60) + (allObjs[2]?.width || 50) / 2 - 10 });
-    if (allObjs[4]) allObjs[4].set({ text: data.nav2 || "À propos", left: (allObjs[2]?.left || -60) + (allObjs[2]?.width || 50) + 40 });
-    if (allObjs[5]) allObjs[5].set({ text: data.nav3 || "Contact", left: (allObjs[4]?.left || 20) + (allObjs[4]?.width || 50) + 40 });
-    if (allObjs[6]) allObjs[6].set({ fill: data.navColor || "#6366f1" });
-    if (allObjs[7]) allObjs[7].set({ text: data.navBtn || "Connexion" });
-    group._objects?.forEach(o => o.setCoords?.());
-  };
-
-  const updateHeroOnCanvas = (group, data) => {
-    if (!group._objects) return;
-    const allObjs = group._objects;
-    // bg=0, dec1=1, dec2=2, badgeBg=3, badgeTxt=4, h1=5, sub=6, btn=7, btnTxt=8, btnOutline=9, btnOutlineTxt=10
-    if (allObjs[0]) allObjs[0].set({ fill: data.heroBg || "#4f46e5" });
-    if (allObjs[4]) allObjs[4].set({ text: data.heroBadge || "✨ NOUVEAU DESIGN" });
-    if (allObjs[5]) allObjs[5].set({ text: data.heroTitle || "Titre Principal" });
-    if (allObjs[6]) allObjs[6].set({ text: data.heroSub || "Sous-titre descriptif accrocheur pour présenter votre produit" });
-    if (allObjs[7]) allObjs[7].set({ fill: data.heroBtnBg || "#ffffff" });
-    if (allObjs[8]) allObjs[8].set({ text: data.heroBtn || "Commencer", fill: data.heroBg || "#4f46e5" });
-    if (allObjs[10]) allObjs[10].set({ text: data.heroBtnOutline || "En savoir plus" });
-    group._objects?.forEach(o => o.setCoords?.());
-  };
-
-  const updateTabsOnCanvas = (group, data) => {
-    if (!group._objects) return;
-    const allObjs = group._objects;
-    // bg=0, tab1Bg=1, t1=2, t2=3, t3=4
-    if (allObjs[2]) allObjs[2].set({ text: data.tab1 || "Général" });
-    if (allObjs[3]) allObjs[3].set({ text: data.tab2 || "Sécurité" });
-    if (allObjs[4]) allObjs[4].set({ text: data.tab3 || "Avancé" });
-    group._objects?.forEach(o => o.setCoords?.());
-  };
-
-  const updateTableOnCanvas = (group, data) => {
-    if (!group._objects || !data.tableData) return;
-    const r = data.rows || 3, c = data.cols || 3;
-    const cellW = 120, cellH = 50;
-    
-    // Vider le group pour recréer proprement
-    const oldObjs = [...group._objects];
-    oldObjs.forEach(o => group.remove(o));
-
-    const totalW = c * cellW;
-    const totalH = r * cellH;
-    const startX = -totalW / 2;
-    const startY = -totalH / 2;
-
-    for (let i = 0; i < r; i++) {
-      for (let j = 0; j < c; j++) {
-        const bg = new fabric.Rect({
-          left: startX + j * cellW, top: startY + i * cellH, width: cellW, height: cellH,
-          fill: i === 0 ? data.headerBg : data.rowBg, stroke: data.strokeColor, strokeWidth: 1
-        });
-        const txt = new fabric.Text(data.tableData[i]?.[j] || "", {
-          left: startX + j * cellW + 16, top: startY + i * cellH + 16,
-          fontSize: 14, fill: i === 0 ? "#0f172a" : "#475569",
-          fontWeight: i === 0 ? "bold" : "normal", fontFamily: "Inter"
-        });
-        group.add(bg, txt);
-      }
-    }
-    group._objects?.forEach(o => o.setCoords?.());
-  };
+const updateModalOnCanvas = (group, data) => {
+  const titleText = group._objects?.find((o) => (o.type === "text" || o.type === "i-text") && /fenêtre modale|modal/i.test(o.text || ""));
+  const bodyText = group._objects?.find((o) => (o.type === "text" || o.type === "i-text") && (o.text || "") !== titleText?.text);
+  if (titleText) titleText.set({ text: data.modalTitle || "Fenêtre modale" });
+  if (bodyText) bodyText.set({ text: data.modalContent || "Contenu de la modal." });
+};
 
   if (!selectedObject) return (
     <div className="props-empty">
@@ -1210,7 +1415,7 @@ const PropertiesPanel = ({
   const isText = ["i-text", "textbox"].includes(selectedObject.type);
   const isLine = selectedObject.type === "line";
   const isGroup = selectedObject.type === "group";
-  const isInteractiveComponent = isGroup && editorVariant && ["button", "checkbox", "toggle", "slider", "modal", "input", "nav_menu", "hero", "tabs", "table"].includes(editorVariant);
+  const isInteractiveComponent = isGroup && editorVariant && ["button", "slider", "modal", "input", "nav_menu", "hero", "tabs", "table", "profile", "pricing", "card"].includes(editorVariant);
 
   const v = {
     left: props.left ?? 0, top: props.top ?? 0, width: props.width ?? 0, height: props.height ?? 0,
@@ -1227,6 +1432,17 @@ const PropertiesPanel = ({
     boxStrokeWidth: props.boxStrokeWidth ?? 0,
     shadowEnabled: props.shadowEnabled ?? false, shadowColor: props.shadowColor ?? "rgba(0,0,0,0.3)",
     shadowBlur: props.shadowBlur ?? 10, shadowOffsetX: props.shadowOffsetX ?? 5, shadowOffsetY: props.shadowOffsetY ?? 5,
+    cardTitle: props.cardTitle ?? "", cardPrice: props.cardPrice ?? "", cardButton: props.cardButton ?? "",
+    cardImageName: props.cardImageName ?? "",
+    cardBgColor: props.cardBgColor ?? "#ffffff",
+    profileName: props.profileName ?? "", profileRole: props.profileRole ?? "",
+    profileImageName: props.profileImageName ?? "",
+    profileBgColor: props.profileBgColor ?? "#ffffff",
+    mapLat: props.mapLat ?? DEFAULT_MAP_LAT,
+    mapLng: props.mapLng ?? DEFAULT_MAP_LNG,
+    mapZoom: props.mapZoom ?? DEFAULT_MAP_ZOOM,
+    pricingTitle: props.pricingTitle ?? "", pricingPrice: props.pricingPrice ?? "", pricingButton: props.pricingButton ?? "",
+    videoSrc: props.videoSrc ?? "",
   };
 
   return (
@@ -1248,6 +1464,86 @@ const PropertiesPanel = ({
           </section>
         )}
 
+      {isGroup && selectedObject.customName === "Carte Produit" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Contenu Carte Produit</h4>
+          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <PropField label="Couleur de fond" type="color" value={v.cardBgColor} onChange={val => applyGroupBgFill(0, "cardBgColor", val)} />
+            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+              Uploader image produit
+              <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleCardImageUpload} />
+            </label>
+            {v.cardImageName && (
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>Image active: {v.cardImageName}</div>
+            )}
+            <PropField label="Titre" value={v.cardTitle} onChange={val => applyGroupText(2, "cardTitle", val)} />
+            <PropField label="Prix" value={v.cardPrice} onChange={val => applyGroupText(3, "cardPrice", val)} />
+            <PropField label="Texte Bouton" value={v.cardButton} onChange={val => applyGroupText(5, "cardButton", val)} />
+          </div>
+        </section>
+      )}
+
+      {isGroup && selectedObject.customName === "Profil Utilisateur" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Contenu Profil</h4>
+          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <PropField label="Couleur de fond" type="color" value={v.profileBgColor} onChange={val => applyGroupBgFill(0, "profileBgColor", val)} />
+            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+              Uploader photo profil
+              <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleProfileImageUpload} />
+            </label>
+            {v.profileImageName && (
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>Photo active: {v.profileImageName}</div>
+            )}
+            <PropField label="Nom" value={v.profileName} onChange={val => applyGroupText(2, "profileName", val)} />
+            <PropField label="Rôle" value={v.profileRole} onChange={val => applyGroupText(3, "profileRole", val)} />
+          </div>
+        </section>
+      )}
+
+      {isGroup && selectedObject.customName === "Tableau de Prix" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Contenu Prix</h4>
+          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <PropField label="Offre" value={v.pricingTitle} onChange={val => applyGroupText(1, "pricingTitle", val)} />
+            <PropField label="Prix" value={v.pricingPrice} onChange={val => applyGroupText(2, "pricingPrice", val)} />
+            <PropField label="Texte Bouton" value={v.pricingButton} onChange={val => applyGroupText(7, "pricingButton", val)} />
+          </div>
+        </section>
+      )}
+
+      {isGroup && selectedObject.customName === "Carte (Map)" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Carte (OpenStreetMap)</h4>
+          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <PropField label="Latitude" type="number" value={v.mapLat} onChange={val => applyMapField("mapLat", val)} />
+            <PropField label="Longitude" type="number" value={v.mapLng} onChange={val => applyMapField("mapLng", val)} />
+            <PropField label="Zoom (1–18)" type="number" value={v.mapZoom} onChange={val => applyMapField("mapZoom", val)} min="1" max="18" />
+            <button type="button" className="version-btn" style={{ width: "100%", justifyContent: "center" }} onClick={refreshMapPreview}>
+              Actualiser la carte
+            </button>
+            <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4, margin: 0 }}>
+              Aperçu statique (OpenStreetMap). Cliquez sur « Actualiser » après modification des coordonnées.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {selectedObject.customName === "Lecteur Vidéo" && (
+        <section className="props-section">
+          <h4 className="props-section-title">Vidéo</h4>
+          <PropField label="Lien externe (YouTube, MP4)" value={v.videoSrc && !v.videoSrc.startsWith("blob:") ? v.videoSrc : ""} onChange={val => applyVideoSrc(val)} />
+          <div style={{ marginTop: 8 }}>
+            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+              Tester une vidéo locale
+              <input type="file" accept="video/mp4,video/webm" style={{ display: "none" }} onChange={handleVideoUpload} />
+            </label>
+            {v.videoSrc && v.videoSrc.startsWith("blob:") && <div style={{ marginTop: 8, fontSize: 11, color: "var(--warning)", lineHeight: "1.2" }}>⚠️ Vidéo locale active.<br />(Visualisation temporaire, utilisez un lien externe pour la sauvegarde complète).</div>}
+          </div>
+        </section>
+      )}
+
+      {isText && (
         <section className="props-section">
           <h4 className="props-section-title">Dimensions & Position</h4>
           <div className="props-grid-2">
@@ -1259,6 +1555,7 @@ const PropertiesPanel = ({
             <PropField label="Opacité %" value={v.opacity} onChange={val => apply("opacity", +val)} type="number" min="0" max="100" />
           </div>
         </section>
+      )}
 
         {isText && (
           <section className="props-section">
@@ -1401,12 +1698,15 @@ const PropertiesPanel = ({
   );
 };
 
-const PropField = ({ label, value, onChange, type = "text", min, max }) => (
-  <div className="prop-field">
-    <span className="prop-field-label">{label}</span>
-    <input className="prop-field-input" type={type} value={value ?? ""} min={min} max={max} onChange={e => onChange(e.target.value)} />
-  </div>
-);
+const PropField = (props) => {
+  const { label, value, onChange, type = "text", min = undefined, max = undefined } = props;
+  return (
+    <div className="prop-field">
+      <span className="prop-field-label">{label}</span>
+      <input className="prop-field-input" type={type} value={value ?? ""} min={min} max={max} onChange={e => onChange(e.target.value)} />
+    </div>
+  );
+};
 
 // ─── LAYERS PANEL ─────────────────────────────────────────────────────────────
 const LayersPanel = ({ canvas, selectedObject, onSelectObject, refreshKey }) => {
@@ -1608,6 +1908,21 @@ const DesignEditor = () => {
     if (currentVersionIdRef.current) fetchCorrectionsForVersion(currentVersionIdRef.current);
   }, [id, isDesigner, fetchCorrectionsForVersion]);
 
+  const markCorrectionAsRead = useCallback(async (correctionId) => {
+    if (!correctionId) return;
+    try {
+      if (API?.patch) {
+        await API.patch(`/validations/corrections/${correctionId}/read`);
+      } else if (API?.put) {
+        await API.put(`/validations/corrections/${correctionId}/read`);
+      }
+    } catch (_) {
+      // Fallback local si l'endpoint n'existe pas encore côté backend
+    } finally {
+      setCorrections((prev) => prev.filter((c) => c._id !== correctionId));
+    }
+  }, []);
+
   const fetchVersions = async () => {
     if (!maquetteIdRef.current) return;
     try { const { data } = await API.get(`/versions/maquette/${maquetteIdRef.current}`); setVersions(data); }
@@ -1669,7 +1984,7 @@ const DesignEditor = () => {
       if (fabricCanvas && obj.fill) {
         // Update color picker when element is selected
         const colorInput = document.querySelector('input[type="color"]');
-        if (colorInput && obj.fill) {
+        if (colorInput instanceof HTMLInputElement && typeof obj.fill === 'string') {
           colorInput.value = obj.fill;
         }
       }
@@ -1739,8 +2054,10 @@ const DesignEditor = () => {
         setZoom(100);
         
         if (designData.version?.contenu?.objects?.length) {
-          await new Promise(resolve => canvas.loadFromJSON(designData.version.contenu, resolve, customFabricReviver));
-          canvas.getObjects().forEach(restoreInteractivity);
+          const loadRes = canvas.loadFromJSON(designData.version.contenu);
+          if (loadRes && typeof loadRes.then === "function") await loadRes;
+          reviveVideos(canvas);
+          reviveMaps(canvas);
         }
         
         // Ensure viewport is centered after loading
@@ -2006,6 +2323,57 @@ const DesignEditor = () => {
 
   // Grid
 
+  // ─── AUTO-CONTINUATION LISTE À PUCES & NUMÉROTÉE ──────────────────────────
+  useEffect(() => {
+    if (!fabricCanvas) return;
+
+    // Use keyup so that Fabric and the browser have already processed the Enter key
+    const handleKeyUp = (e) => {
+      if (e.key !== "Enter") return;
+
+      const obj = fabricCanvas.getActiveObject();
+      // Must be editing and have access to the internal hidden text input
+      if (!obj || !obj.isEditing || obj.type !== "textbox" || !obj.hiddenTextarea) return;
+
+      const cursor = obj.hiddenTextarea.selectionStart;
+      const text = obj.hiddenTextarea.value;
+
+      // The character right before the cursor should now be the new line \n
+      if (cursor === 0 || text[cursor - 1] !== '\n') return;
+
+      // Find what the previous line started with
+      const textBeforeNewline = text.substring(0, cursor - 1);
+      const lastNewline = textBeforeNewline.lastIndexOf("\n");
+      const previousLine = textBeforeNewline.substring(lastNewline + 1);
+
+      let prefix = null;
+      if (previousLine.startsWith("• ")) prefix = "• ";
+      else {
+        const olMatch = previousLine.match(/^(\d+)\.\s/);
+        if (olMatch) prefix = `${parseInt(olMatch[1], 10) + 1}. `;
+      }
+
+      if (prefix) {
+        // Inject the prefix directly into the hidden textarea
+        const newText = text.substring(0, cursor) + prefix + text.substring(cursor);
+        obj.hiddenTextarea.value = newText;
+
+        // Move the cursor after the injected prefix
+        const newCursor = cursor + prefix.length;
+        obj.hiddenTextarea.selectionStart = newCursor;
+        obj.hiddenTextarea.selectionEnd = newCursor;
+
+        // Fire a native 'input' event. This forces Fabric.js to detect the change exactly
+        // as if the user had typed the prefix manually, updating all its internal states smoothly!
+        obj.hiddenTextarea.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+        fabricCanvas.renderAll();
+      }
+    };
+
+    document.addEventListener("keyup", handleKeyUp);
+    return () => document.removeEventListener("keyup", handleKeyUp);
+  }, [fabricCanvas]);
+
   useEffect(() => {
     if (!fabricCanvas) return;
     gridLinesRef.current.forEach(l => fabricCanvas.remove(l));
@@ -2025,7 +2393,12 @@ const DesignEditor = () => {
     if (isSwitchingVersion.current || !vId || !isDesigner) return;
     setSaveStatus("Sauvegarde…");
     try {
-      const json = c.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", "imageHistoryId"]);
+      const json = c.toJSON([
+        "excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", 
+        "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", 
+        "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", 
+        "imageHistoryId", "videoSrc", "mapLat", "mapLng", "mapZoom"
+      ]);
       json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
       await API.put(`/versions/${vId}`, { contenu: json });
       setSaveStatus("À jour ☁️");
@@ -2042,10 +2415,14 @@ const DesignEditor = () => {
     fabricCanvas.on("object:modified", handleChange);
     fabricCanvas.on("object:added", handleChange);
     fabricCanvas.on("object:removed", handleRemove);
+    fabricCanvas.on("text:changed", handleChange);
+    fabricCanvas.on("editing:exited", handleChange);
     return () => {
       fabricCanvas.off("object:modified", handleChange);
       fabricCanvas.off("object:added", handleChange);
       fabricCanvas.off("object:removed", handleRemove);
+      fabricCanvas.off("text:changed", handleChange);
+      fabricCanvas.off("editing:exited", handleChange);
     };
   }, [fabricCanvas, designData, debouncedSave, isDesigner]);
 
@@ -2101,11 +2478,15 @@ const DesignEditor = () => {
 
       // Delete
       if (e.key === "Delete" || e.key === "Backspace") {
-        const obj = canvas.getActiveObject();
-        if (obj && !obj.isEditing) {
-          canvas.remove(obj);
+        const activeObjects = fabricCanvas?.getActiveObjects() || [];
+        if (activeObjects.length > 0) {
+          // Si l'un des objets est en cours d'édition de texte (ex: Focus dans un Textbox), on ne supprime pas !
+          if (activeObjects.some(obj => obj.isEditing)) return;
+
+          activeObjects.forEach(obj => fabricCanvas.remove(obj));
+          fabricCanvas.discardActiveObject();
+          fabricCanvas.renderAll();
           setSelectedObj(null);
-          canvas.renderAll();
         }
       }
 
@@ -2178,7 +2559,27 @@ const DesignEditor = () => {
     if (!fabricCanvas || !maquetteIdRef.current || creatingVersion || !isDesigner) return;
     setCreatingVersion(true);
     try {
-      const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", "imageHistoryId"]);
+      const json = fabricCanvas.toJSON([
+        "excludeFromExport", 
+        "isPlaceholder", 
+        "placeholderLabel", 
+        "customName", 
+        "boxPaddingTop", 
+        "boxPaddingRight", 
+        "boxPaddingBottom", 
+        "boxPaddingLeft", 
+        "boxStroke", 
+        "boxStrokeWidth", 
+        "rx", 
+        "ry", 
+        "componentData", 
+        "customVariant", 
+        "imageHistoryId", 
+        "videoSrc", 
+        "mapLat", 
+        "mapLng", 
+        "mapZoom"
+      ]);
       const { data } = await API.post("/versions", { contenu: json, id_maquette: maquetteIdRef.current, commentaire: "Nouvelle version manuelle" });
       const newVersion = data.version;
       setCurrentVersionNum(newVersion.numéro_version);
@@ -2205,7 +2606,15 @@ const DesignEditor = () => {
       }
       if (contenu?.objects?.length > 0) {
         await new Promise(resolve => fabricCanvas.loadFromJSON(contenu, resolve, customFabricReviver));
+        
         fabricCanvas.getObjects().forEach(restoreInteractivity);
+        reviveVideos(fabricCanvas);
+        reviveMaps(fabricCanvas);
+        fabricCanvas.renderAll();
+        const loadRes = fabricCanvas.loadFromJSON(contenu);
+        if (loadRes && typeof loadRes.then === "function") await loadRes;
+        reviveVideos(fabricCanvas);
+        reviveMaps(fabricCanvas);
         fabricCanvas.renderAll();
       } else {
         fabricCanvas.remove(...fabricCanvas.getObjects());
@@ -2237,15 +2646,39 @@ const DesignEditor = () => {
     try {
       const contenu = designData.version.contenu;
       if (contenu?.objects?.length > 0) {
-        await new Promise(resolve => fabricCanvas.loadFromJSON(contenu, resolve, customFabricReviver));
-        fabricCanvas.getObjects().forEach(restoreInteractivity);
-      } else { fabricCanvas.remove(...fabricCanvas.getObjects()); fabricCanvas.backgroundColor = "#ffffff"; }
-      fabricCanvas.renderAll();
-      const json = fabricCanvas.toJSON(["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", "imageHistoryId"]);
-      json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
-      await API.put(`/versions/${designData?.version?._id}`, { contenu: json });
-      setSaveStatus("À jour ☁️"); showToast("Réinitialisation effectuée", "success");
-    } catch { setSaveStatus("Erreur ❌"); showToast("Erreur lors de la réinitialisation", "error"); }
+// Chargement du contenu avec le reviver personnalisé pour les métadonnées
+await new Promise(resolve => fabricCanvas.loadFromJSON(contenu, resolve, customFabricReviver));
+        
+// Restauration de toutes les fonctionnalités spécifiques
+fabricCanvas.getObjects().forEach(restoreInteractivity);
+reviveVideos(fabricCanvas);
+reviveMaps(fabricCanvas);
+} else { 
+fabricCanvas.remove(...fabricCanvas.getObjects()); 
+fabricCanvas.backgroundColor = "#ffffff"; 
+}
+
+fabricCanvas.renderAll();
+
+// Exportation avec la liste complète des propriétés fusionnées
+const json = fabricCanvas.toJSON([
+"excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", 
+"boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", 
+"boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", 
+"imageHistoryId", "videoSrc", "mapLat", "mapLng", "mapZoom"
+]);
+
+json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
+
+await API.put(`/versions/${designData?.version?._id}`, { contenu: json });
+
+setSaveStatus("À jour ☁️"); 
+showToast("Réinitialisation effectuée", "success");
+} catch (err) { 
+console.error(err);
+setSaveStatus("Erreur ❌"); 
+showToast("Erreur lors de la réinitialisation", "error"); 
+}
     finally { setTimeout(() => { isSwitchingVersion.current = false; }, 300); }
   };
 
@@ -3048,7 +3481,7 @@ const DesignEditor = () => {
             if (fabricCanvas && obj.fill) {
               // Update color picker when element is selected
               const colorInput = document.querySelector('input[type="color"]');
-              if (colorInput && obj.fill) {
+              if (colorInput instanceof HTMLInputElement && typeof obj.fill === 'string') {
                 colorInput.value = obj.fill;
               }
             }
@@ -3099,7 +3532,7 @@ const DesignEditor = () => {
 
         const reader = new FileReader();
         reader.onload = f => {
-          const newSrc = f.target.result;
+          const newSrc = typeof f.target?.result === "string" ? f.target.result : "";
           const imgEl = new Image();
           imgEl.onload = () => {
             const historyId = addImageToHistory(newSrc, file.name, imgEl.naturalWidth, imgEl.naturalHeight);
@@ -3151,6 +3584,7 @@ const DesignEditor = () => {
     const reader = new FileReader();
     reader.onload = (f) => {
       const imgEl = document.createElement("img");
+      if (typeof f.target?.result !== "string") return;
       imgEl.src = f.target.result;
       imgEl.onload = () => {
         const imgInstance = new fabric.Image(imgEl, {
@@ -3165,12 +3599,15 @@ const DesignEditor = () => {
         fabricCanvas.renderAll();
         
         // Add to image history
-        const historyId = addImageToHistory(f.target.result, file.name, imgEl.width, imgEl.height);
+        const historyId = typeof f.target?.result === "string"
+          ? addImageToHistory(f.target.result, file.name, imgEl.width, imgEl.height)
+          : null;
         imgInstance.imageHistoryId = historyId;
         
         debouncedSave(fabricCanvas, currentVersionIdRef.current);
         showToast("Image importée avec succès", "success");
       };
+      if (typeof f.target?.result !== "string") return;
       imgEl.src = f.target.result;
     };
     reader.readAsDataURL(file);
@@ -3572,7 +4009,6 @@ const DesignEditor = () => {
     } finally { setRejetSubmitting(false); }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="editor-layout">

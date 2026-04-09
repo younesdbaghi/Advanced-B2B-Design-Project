@@ -85,11 +85,11 @@ const DesignerDashboard = () => {
   // ─── PROFESSIONAL PDF REPORT GENERATOR (RETOURNE BLOB) ───────────────────────
   const generateProfessionalPDFBlob = (correction, maquetteName, versionNum, projectName) => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     let yPosition = 15;
-    
+
     // Colors - Modern Professional Palette
     const primaryColor = [67, 56, 202]; // #4338CA - Deep Indigo
     const secondaryColor = [79, 70, 229]; // #4F46E5 - Indigo
@@ -109,7 +109,7 @@ const DesignerDashboard = () => {
     // Header background bar
     doc.setFillColor(...primaryColor);
     doc.rect(0, 0, pageWidth, 55, "F");
-    
+
     // Decorative circle
     doc.setFillColor(...secondaryColor);
     doc.circle(pageWidth - 25, 25, 15, "F");
@@ -148,40 +148,40 @@ const DesignerDashboard = () => {
     // Card background
     doc.setFillColor(...bgLight);
     doc.roundedRect(15, yPosition, pageWidth - 30, 45, 5, 5, "F");
-    
+
     // Card border accent
     doc.setDrawColor(...primaryColor);
     doc.setLineWidth(0.5);
     doc.roundedRect(15, yPosition, pageWidth - 30, 45, 5, 5);
-    
+
     // Project icon and title
     doc.setFillColor(...primaryColor);
     doc.circle(30, yPosition + 12, 4, "F");
-    
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(...darkText);
     doc.text("PROJET", 40, yPosition + 10);
-    
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.setTextColor(...darkText);
     doc.text(projectName || "Sans projet", 40, yPosition + 20);
-    
+
     // Design info
     doc.setFillColor(...secondaryColor);
     doc.circle(30, yPosition + 32, 4, "F");
-    
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(...darkText);
     doc.text("MAQUETTE", 40, yPosition + 30);
-    
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.setTextColor(...darkText);
     doc.text(maquetteName, 40, yPosition + 40);
-    
+
     yPosition += 55;
 
     // ──── CLIENT INFO BOX ────
@@ -199,13 +199,13 @@ const DesignerDashboard = () => {
     doc.text("👤 FEEDBACK CLIENT", 25, yPosition + 10);
 
     const client = correction.client_id || {};
-    
+
     // Client name with badge
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(...darkText);
     doc.text(client?.nom || "Client", 25, yPosition + 22);
-    
+
     // Status badge
     doc.setFillColor(...successColor);
     doc.roundedRect(25 + doc.getTextWidth(client?.nom || "Client") + 10, yPosition + 16, 30, 8, 4, 4, "F");
@@ -228,12 +228,12 @@ const DesignerDashboard = () => {
     // Section header
     doc.setFillColor(...accentColor);
     doc.rect(15, yPosition, 4, 20, "F");
-    
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.setTextColor(...accentColor);
     doc.text("POINTS À CORRIGER", 24, yPosition + 14);
-    
+
     // Subtitle
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -254,17 +254,17 @@ const DesignerDashboard = () => {
       doc.setDrawColor(...accentColor);
       doc.setLineWidth(0.5);
       doc.roundedRect(15, yPosition, pageWidth - 30, 35, 5, 5);
-      
+
       doc.setFont("helvetica", "italic");
       doc.setFontSize(10);
       doc.setTextColor(...accentColor);
       doc.text("⚠️ Rejet global", 30, yPosition + 15);
-      
+
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(...mediumText);
       doc.text("Veuillez contacter le client pour plus de détails", 30, yPosition + 25);
-      
+
       yPosition += 45;
     } else {
       commentaires.forEach((cm, index) => {
@@ -277,37 +277,37 @@ const DesignerDashboard = () => {
         // Correction card
         doc.setFillColor(255, 255, 255);
         doc.roundedRect(15, yPosition, pageWidth - 30, 35, 4, 4, "F");
-        
+
         // Left accent bar
         doc.setFillColor(...accentColor);
         doc.rect(15, yPosition, 5, 35, "F");
-        
+
         // Priority badge
         doc.setFillColor(254, 226, 226);
         doc.roundedRect(25, yPosition + 5, 55, 8, 4, 4, "F");
-        
+
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
         doc.setTextColor(...accentColor);
         doc.text(`ÉLÉMENT ${index + 1}`, 30, yPosition + 11);
-        
+
         // Element label
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(...darkText);
         doc.text(cm.label_element || cm.id_element || `Élément ${index + 1}`, 25, yPosition + 22);
-        
+
         // Comment text with wrapping
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
         doc.setTextColor(...mediumText);
-        
+
         const commentText = cm.commentaire_admin || cm.commentaire_client;
         const wrappedText = doc.splitTextToSize(commentText, pageWidth - 55);
-        
+
         // Calculate height needed
         const textHeight = wrappedText.length * 4.5;
-        
+
         // Adjust card height based on content
         if (textHeight > 20) {
           // Redraw card with new height
@@ -316,11 +316,11 @@ const DesignerDashboard = () => {
           doc.setFillColor(...accentColor);
           doc.rect(15, yPosition, 5, textHeight + 20, "F");
         }
-        
+
         doc.text(wrappedText, 25, yPosition + 30);
-        
+
         yPosition += (textHeight + 25);
-        
+
         // Separator line between corrections
         if (index < commentaires.length - 1) {
           doc.setDrawColor(229, 231, 235);
@@ -337,19 +337,19 @@ const DesignerDashboard = () => {
     if (yPosition < pageHeight - 70) {
       doc.setFillColor(239, 246, 255);
       doc.roundedRect(15, yPosition, pageWidth - 30, 45, 5, 5, "F");
-      
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(...primaryColor);
       doc.text("📋 PROCHAINES ÉTAPES", 25, yPosition + 12);
-      
+
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(...mediumText);
       doc.text("1. Appliquez les modifications suggérées avec attention", 25, yPosition + 24);
       doc.text("2. Révisez les détails techniques et visuels", 25, yPosition + 32);
       doc.text("3. Soumettez la version corrigée pour validation", 25, yPosition + 40);
-      
+
       yPosition += 55;
     }
 
@@ -358,19 +358,19 @@ const DesignerDashboard = () => {
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      
+
       // Footer line
       doc.setDrawColor(229, 231, 235);
       doc.setLineWidth(0.5);
       doc.line(15, pageHeight - 15, pageWidth - 15, pageHeight - 15);
-      
+
       // Footer text
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(...lightText);
       doc.text(`Rapport généré le ${today} • Document confidentiel`, 15, pageHeight - 8);
       doc.text(`Page ${i} / ${totalPages}`, pageWidth - 25, pageHeight - 8);
-      
+
       // Company info
       doc.setFont("helvetica", "italic");
       doc.setFontSize(7);
@@ -387,10 +387,10 @@ const DesignerDashboard = () => {
     try {
       // Get project name
       const projectName = correction.version_id?.id_maquette?.id_projet?.nom || "Projet";
-      
+
       // 1️⃣ GÉNÉRER LE PDF (retourne Blob)
       const pdfBlob = generateProfessionalPDFBlob(correction, maquetteName, versionNum, projectName);
-      
+
       // 2️⃣ TÉLÉCHARGER LE FICHIER
       const fileName = `RAPPORT_CORRECTIONS_${maquetteName.replace(/\s+/g, "_")}_V${versionNum}_${new Date().toISOString().split('T')[0]}.pdf`;
       const downloadLink = document.createElement('a');
@@ -399,11 +399,11 @@ const DesignerDashboard = () => {
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
-      
+
       // 3️⃣ AFFICHER LE PDF DANS UNE NOUVELLE FENÊTRE (en même temps)
       const pdfUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfUrl, '_blank');
-      
+
     } catch (e) {
       console.error("Erreur lors du téléchargement :", e);
       alert("Impossible de télécharger le rapport de corrections.");
@@ -475,9 +475,9 @@ const DesignerDashboard = () => {
 
   // ─── Computed stats ───────────────────────────────────────────────────────────
   const affProjets = affectations.map(a => a.id_projet).filter(Boolean);
-  const nonLus     = affectations.filter(a => !a.lu).length;
-  const enCours    = affProjets.filter(p => p?.statut === "En cours").length;
-  const termines   = affProjets.filter(p => p?.statut === "Terminé").length;
+  const nonLus = affectations.filter(a => !a.lu).length;
+  const enCours = affProjets.filter(p => p?.statut === "En cours").length;
+  const termines = affProjets.filter(p => p?.statut === "Terminé").length;
 
   const projetsAcceptes = affectations
     .map(a => a.id_projet)
@@ -485,21 +485,21 @@ const DesignerDashboard = () => {
     .map(p => p._id);
 
   const stats = [
-    { label: "Designs créés",    value: maquettes.length,    color: "#6366F1", bg: "rgba(99,102,241,0.1)",  icon: <Palette size={20} color="#6366F1"/> },
-    { label: "Projets assignés", value: affectations.length, color: "#0EA5E9", bg: "rgba(14,165,233,0.1)",  icon: <LayoutGrid size={20} color="#0EA5E9"/> },
-    { label: "Non lus",          value: nonLus,              color: "#F59E0B", bg: "rgba(245,158,11,0.1)",  icon: <BellRing size={20} color="#F59E0B"/> },
-    { label: "Corrections",      value: corrections.length,  color: "#DC2626", bg: "rgba(220,38,38,0.1)",   icon: <XCircle size={20} color="#DC2626"/> },
-    { label: "En cours",         value: enCours,             color: "#10B981", bg: "rgba(16,185,129,0.1)",  icon: <Clock size={20} color="#10B981"/> },
-    { label: "Terminés",         value: termines,            color: "#8B5CF6", bg: "rgba(139,92,246,0.1)",  icon: <CheckCircle size={20} color="#8B5CF6"/> },
+    { label: "Designs créés", value: maquettes.length, color: "#6366F1", bg: "rgba(99,102,241,0.1)", icon: <Palette size={20} color="#6366F1" /> },
+    { label: "Projets assignés", value: affectations.length, color: "#0EA5E9", bg: "rgba(14,165,233,0.1)", icon: <LayoutGrid size={20} color="#0EA5E9" /> },
+    { label: "Non lus", value: nonLus, color: "#F59E0B", bg: "rgba(245,158,11,0.1)", icon: <BellRing size={20} color="#F59E0B" /> },
+    { label: "Corrections", value: corrections.length, color: "#DC2626", bg: "rgba(220,38,38,0.1)", icon: <XCircle size={20} color="#DC2626" /> },
+    { label: "En cours", value: enCours, color: "#10B981", bg: "rgba(16,185,129,0.1)", icon: <Clock size={20} color="#10B981" /> },
+    { label: "Terminés", value: termines, color: "#8B5CF6", bg: "rgba(139,92,246,0.1)", icon: <CheckCircle size={20} color="#8B5CF6" /> },
   ];
 
   const getStatutBadge = (statut) => {
     const map = {
-      "En cours":    { color: "#2563EB", bg: "rgba(37,99,235,0.1)",  icon: <Clock size={11}/> },
-      "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)",  icon: <Eye size={11}/> },
-      "Validé":      { color: "#059669", bg: "rgba(5,150,105,0.1)",  icon: <CheckCircle size={11}/> },
-      "Refusé":      { color: "#DC2626", bg: "rgba(220,38,38,0.1)",  icon: <XCircle size={11}/> },
-      "Terminé":     { color: "#7C3AED", bg: "rgba(124,58,237,0.1)", icon: <CheckCircle size={11}/> },
+      "En cours": { color: "#2563EB", bg: "rgba(37,99,235,0.1)", icon: <Clock size={11} /> },
+      "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)", icon: <Eye size={11} /> },
+      "Validé": { color: "#059669", bg: "rgba(5,150,105,0.1)", icon: <CheckCircle size={11} /> },
+      "Refusé": { color: "#DC2626", bg: "rgba(220,38,38,0.1)", icon: <XCircle size={11} /> },
+      "Terminé": { color: "#7C3AED", bg: "rgba(124,58,237,0.1)", icon: <CheckCircle size={11} /> },
     };
     return map[statut] || { color: "#64748B", bg: "rgba(100,116,139,0.1)", icon: null };
   };
@@ -516,12 +516,12 @@ const DesignerDashboard = () => {
   const groupCorrectionsByProjectAndVersion = () => {
     const grouped = {};
     corrections.forEach(c => {
-      const projectId   = c.version_id?.id_maquette?.id_projet?._id || "unknown";
-      const projectName = c.version_id?.id_maquette?.id_projet?.nom  || "Projet inconnu";
-      const versionId   = c.version_id?._id || "unknown";
-      const versionNum  = c.version_id?.numéro_version || "N/A";
-      const maquetteName= c.version_id?.id_maquette?.nom || "Maquette";
-      const maquetteId  = c.version_id?.id_maquette?._id || "unknown";
+      const projectId = c.version_id?.id_maquette?.id_projet?._id || "unknown";
+      const projectName = c.version_id?.id_maquette?.id_projet?.nom || "Projet inconnu";
+      const versionId = c.version_id?._id || "unknown";
+      const versionNum = c.version_id?.numéro_version || "N/A";
+      const maquetteName = c.version_id?.id_maquette?.nom || "Maquette";
+      const maquetteId = c.version_id?.id_maquette?._id || "unknown";
 
       if (!grouped[projectId]) grouped[projectId] = { projectName, projectId, versions: {} };
       if (!grouped[projectId].versions[versionId])
@@ -536,9 +536,9 @@ const DesignerDashboard = () => {
   const toggleVersionExpanded = (id) => setExpandedVersions(p => ({ ...p, [id]: !p[id] }));
 
   const tabs = [
-    { id: "overview",    label: "Vue d'ensemble" },
-    { id: "designs",     label: `Mes Designs (${maquettes.length})` },
-    { id: "projets",     label: `Mes Projets (${affectations.length})` },
+    { id: "overview", label: "Vue d'ensemble" },
+    { id: "designs", label: `Mes Designs (${maquettes.length})` },
+    { id: "projets", label: `Mes Projets (${affectations.length})` },
     { id: "corrections", label: `Corrections${corrections.length > 0 ? ` (${corrections.length})` : ""}`, alert: corrections.length > 0 },
   ];
 
@@ -553,14 +553,14 @@ const DesignerDashboard = () => {
           <h1 className="db-name">{user?.nom || "Designer"} 👋</h1>
         </div>
         <button className="btn-create" onClick={() => setIsModalOpen(true)}>
-          <Plus size={18}/> Nouveau Design
+          <Plus size={18} /> Nouveau Design
         </button>
       </div>
 
       {/* ── Notification Banner ── */}
       {nonLus > 0 && (
         <div className="banner-notif">
-          <BellRing size={16} color="#92400E"/>
+          <BellRing size={16} color="#92400E" />
           <span>Vous avez <strong>{nonLus}</strong> nouvelle{nonLus > 1 ? "s" : ""} assignation{nonLus > 1 ? "s" : ""} non lue{nonLus > 1 ? "s" : ""}.</span>
         </div>
       )}
@@ -568,14 +568,14 @@ const DesignerDashboard = () => {
       {/* ── Banner corrections urgentes ── */}
       {corrections.length > 0 && (
         <div className="banner-corrections" onClick={() => setActiveTab("corrections")}>
-          <div className="banner-pulse"/>
-          <AlertTriangle size={16} color="#DC2626"/>
+          <div className="banner-pulse" />
+          <AlertTriangle size={16} color="#DC2626" />
           <div style={{ flex: 1 }}>
             <span className="banner-corrections-text">
               {corrections.length} correction{corrections.length > 1 ? "s" : ""} client{corrections.length > 1 ? "s" : ""} en attente de traitement
             </span>
           </div>
-          <span className="banner-corrections-link">Traiter <ArrowRight size={13} style={{ verticalAlign: "middle" }}/></span>
+          <span className="banner-corrections-link">Traiter <ArrowRight size={13} style={{ verticalAlign: "middle" }} /></span>
         </div>
       )}
 
@@ -601,7 +601,7 @@ const DesignerDashboard = () => {
             onClick={() => setActiveTab(t.id)}
           >
             {t.label}
-            {t.alert && activeTab !== t.id && <span className="tab-dot"/>}
+            {t.alert && activeTab !== t.id && <span className="tab-dot" />}
           </button>
         ))}
       </div>
@@ -614,20 +614,20 @@ const DesignerDashboard = () => {
               <h2>Designs récents</h2>
               <button className="link-btn" onClick={() => setActiveTab("designs")}>Voir tout →</button>
             </div>
-            {loadingMaquettes ? <Spinner/> : maquettes.length === 0
-              ? <Empty icon={<Palette size={28} color="#6366F1"/>} text="Aucun design créé."/>
+            {loadingMaquettes ? <Spinner /> : maquettes.length === 0
+              ? <Empty icon={<Palette size={28} color="#6366F1" />} text="Aucun design créé." />
               : (
                 <div className="recent-list">
                   {maquettes.slice(0, 4).map(maq => (
                     <div key={maq._id} className="recent-item" onClick={() => navigate(`/designer/editeur/${maq._id}`)}>
                       <div className="recent-thumb">
-                        {maq.image_fond ? <img src={maq.image_fond} alt="thumb"/> : <ImageIcon size={20} color="#ccc"/>}
+                        {maq.image_fond ? <img src={maq.image_fond} alt="thumb" /> : <ImageIcon size={20} color="#ccc" />}
                       </div>
                       <div>
                         <div className="recent-title">{maq.nom}</div>
                         <div className="recent-sub">{maq.id_projet?.nom || "Sans projet"}</div>
                       </div>
-                      <Eye size={15} color="#94A3B8" style={{ marginLeft: "auto" }}/>
+                      <Eye size={15} color="#94A3B8" style={{ marginLeft: "auto" }} />
                     </div>
                   ))}
                 </div>
@@ -640,8 +640,8 @@ const DesignerDashboard = () => {
               <h2>Projets récents</h2>
               <button className="link-btn" onClick={() => setActiveTab("projets")}>Voir tout →</button>
             </div>
-            {loadingAff ? <Spinner/> : affectations.length === 0
-              ? <Empty icon={<LayoutGrid size={28} color="#0EA5E9"/>} text="Aucun projet assigné."/>
+            {loadingAff ? <Spinner /> : affectations.length === 0
+              ? <Empty icon={<LayoutGrid size={28} color="#0EA5E9" />} text="Aucun projet assigné." />
               : (
                 <div className="recent-list">
                   {affectations.slice(0, 4).map(a => {
@@ -673,23 +673,23 @@ const DesignerDashboard = () => {
           <div className="section-bar">
             <h2 className="section-title">Mes Designs</h2>
             <div className="view-toggle">
-              <button className={viewMode === "grid" ? "vt-active" : ""} onClick={() => setViewMode("grid")}><LayoutGrid size={16}/></button>
-              <button className={viewMode === "list" ? "vt-active" : ""} onClick={() => setViewMode("list")}><List size={16}/></button>
+              <button className={viewMode === "grid" ? "vt-active" : ""} onClick={() => setViewMode("grid")}><LayoutGrid size={16} /></button>
+              <button className={viewMode === "list" ? "vt-active" : ""} onClick={() => setViewMode("list")}><List size={16} /></button>
             </div>
           </div>
 
-          {loadingMaquettes ? <Spinner/> : maquettes.length === 0
-            ? <Empty icon={<Palette size={40} color="#6366F1"/>} text="Aucun design pour le moment." sub="Créez votre premier design avec le bouton + ci-dessus."/>
+          {loadingMaquettes ? <Spinner /> : maquettes.length === 0
+            ? <Empty icon={<Palette size={40} color="#6366F1" />} text="Aucun design pour le moment." sub="Créez votre premier design avec le bouton + ci-dessus." />
             : viewMode === "grid" ? (
               <div className="maq-grid">
                 {maquettes.map(maq => (
                   <div key={maq._id} className="maq-card">
                     <div className="maq-thumb" onClick={() => navigate(`/designer/editeur/${maq._id}`)}>
                       {maq.image_fond
-                        ? <img src={maq.image_fond} alt="Miniature"/>
-                        : <div className="no-img"><ImageIcon size={36} color="#ccc"/></div>
+                        ? <img src={maq.image_fond} alt="Miniature" />
+                        : <div className="no-img"><ImageIcon size={36} color="#ccc" /></div>
                       }
-                      <div className="maq-overlay"><Eye size={20} color="white"/></div>
+                      <div className="maq-overlay"><Eye size={20} color="white" /></div>
                     </div>
                     <div className="maq-info">
                       <div>
@@ -697,9 +697,9 @@ const DesignerDashboard = () => {
                         <div className="maq-proj">{maq.id_projet?.nom || "Sans projet"}</div>
                       </div>
                       <div className="maq-actions">
-                        <button className="icon-btn eye-c"  onClick={() => navigate(`/designer/editeur/${maq._id}`)} title="Voir"><Eye size={15}/></button>
-                        <button className="icon-btn edit-c" onClick={() => openEditModal(maq)} title="Modifier"><Edit3 size={15}/></button>
-                        <button className="icon-btn del-c"  onClick={() => deleteMaquette(maq._id)} title="Supprimer"><Trash2 size={15}/></button>
+                        <button className="icon-btn eye-c" onClick={() => navigate(`/designer/editeur/${maq._id}`)} title="Voir"><Eye size={15} /></button>
+                        <button className="icon-btn edit-c" onClick={() => openEditModal(maq)} title="Modifier"><Edit3 size={15} /></button>
+                        <button className="icon-btn del-c" onClick={() => deleteMaquette(maq._id)} title="Supprimer"><Trash2 size={15} /></button>
                       </div>
                     </div>
                   </div>
@@ -716,8 +716,8 @@ const DesignerDashboard = () => {
                           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", background: "#f0f2f5", flexShrink: 0 }}>
                               {maq.image_fond
-                                ? <img src={maq.image_fond} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
-                                : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}><ImageIcon size={18} color="#ccc"/></div>
+                                ? <img src={maq.image_fond} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}><ImageIcon size={18} color="#ccc" /></div>
                               }
                             </div>
                             <span style={{ fontWeight: 600 }}>{maq.nom}</span>
@@ -726,9 +726,9 @@ const DesignerDashboard = () => {
                         <td><span className="badge" style={{ color: "#6366F1", background: "rgba(99,102,241,0.1)" }}>{maq.id_projet?.nom || "Sans projet"}</span></td>
                         <td>
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button className="icon-btn eye-c"  onClick={() => navigate(`/designer/editeur/${maq._id}`)}><Eye size={15}/></button>
-                            <button className="icon-btn edit-c" onClick={() => openEditModal(maq)}><Edit3 size={15}/></button>
-                            <button className="icon-btn del-c"  onClick={() => deleteMaquette(maq._id)}><Trash2 size={15}/></button>
+                            <button className="icon-btn eye-c" onClick={() => navigate(`/designer/editeur/${maq._id}`)}><Eye size={15} /></button>
+                            <button className="icon-btn edit-c" onClick={() => openEditModal(maq)}><Edit3 size={15} /></button>
+                            <button className="icon-btn del-c" onClick={() => deleteMaquette(maq._id)}><Trash2 size={15} /></button>
                           </div>
                         </td>
                       </tr>
@@ -741,7 +741,7 @@ const DesignerDashboard = () => {
 
           {maquettes.length > 0 && (
             <div className="journal-cta" onClick={() => navigate("/rapport")}>
-              <div className="journal-icon"><Notebook size={22} color="#6366F1"/></div>
+              <div className="journal-icon"><Notebook size={22} color="#6366F1" /></div>
               <div>
                 <div className="journal-title">Journal quotidien</div>
                 <div className="journal-sub">Créer un journal quotidien de vos activités</div>
@@ -755,8 +755,8 @@ const DesignerDashboard = () => {
       {/* ══════════════ TAB: PROJETS ══════════════ */}
       {activeTab === "projets" && (
         <div className="panel">
-          {loadingAff ? <Spinner/> : affectations.length === 0
-            ? <Empty icon={<LayoutGrid size={40} color="#0EA5E9"/>} text="Aucun projet assigné." sub="L'administrateur vous assignera bientôt à un projet."/>
+          {loadingAff ? <Spinner /> : affectations.length === 0
+            ? <Empty icon={<LayoutGrid size={40} color="#0EA5E9" />} text="Aucun projet assigné." sub="L'administrateur vous assignera bientôt à un projet." />
             : (
               <div className="table-wrap">
                 <table className="data-table">
@@ -768,7 +768,7 @@ const DesignerDashboard = () => {
                   </thead>
                   <tbody>
                     {affectations.map(a => {
-                      const p  = a.id_projet;
+                      const p = a.id_projet;
                       const sc = getStatutBadge(p?.statut);
                       const uc = getUrgencyColor(p?.date_fin);
                       const isNew = !a.lu;
@@ -776,7 +776,7 @@ const DesignerDashboard = () => {
                         <tr key={a._id} style={{ background: isNew ? "rgba(245,158,11,0.04)" : "" }}>
                           <td>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              {isNew && <div className="dot-notif"/>}
+                              {isNew && <div className="dot-notif" />}
                               <div>
                                 <div style={{ fontWeight: 700, fontSize: 14 }}>{p?.nom || "—"}</div>
                                 {p?.description && <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>{p.description.slice(0, 55)}…</div>}
@@ -795,8 +795,8 @@ const DesignerDashboard = () => {
                           <td>
                             {p?.date_fin
                               ? <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: uc }}>
-                                  <Calendar size={12}/>{new Date(p.date_fin).toLocaleDateString("fr-FR")}
-                                </span>
+                                <Calendar size={12} />{new Date(p.date_fin).toLocaleDateString("fr-FR")}
+                              </span>
                               : "—"}
                           </td>
                           <td>
@@ -806,12 +806,12 @@ const DesignerDashboard = () => {
                           </td>
                           <td style={{ fontSize: 12, color: "#64748B" }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <Calendar size={11}/>{new Date(a.date_affectation).toLocaleDateString("fr-FR")}
+                              <Calendar size={11} />{new Date(a.date_affectation).toLocaleDateString("fr-FR")}
                             </span>
                           </td>
                           <td style={{ textAlign: "center" }}>
                             {a.lu
-                              ? <span className="badge" style={{ color: "#059669", background: "rgba(5,150,105,0.1)" }}><CheckCircle size={11}/> Lu</span>
+                              ? <span className="badge" style={{ color: "#059669", background: "rgba(5,150,105,0.1)" }}><CheckCircle size={11} /> Lu</span>
                               : (
                                 <button
                                   className="btn-mark-lu"
@@ -819,7 +819,7 @@ const DesignerDashboard = () => {
                                   disabled={marking === a._id}
                                   style={{ opacity: marking === a._id ? 0.7 : 1 }}
                                 >
-                                  <BellRing size={12}/> {marking === a._id ? "…" : "Marquer lu"}
+                                  <BellRing size={12} /> {marking === a._id ? "…" : "Marquer lu"}
                                 </button>
                               )
                             }
@@ -842,7 +842,7 @@ const DesignerDashboard = () => {
           <div className="corrections-header">
             <div className="corrections-header-left">
               <div className="corrections-icon-wrap">
-                <Wrench size={20} color="#DC2626"/>
+                <Wrench size={20} color="#DC2626" />
               </div>
               <div>
                 <h2 className="corrections-title">Corrections clients</h2>
@@ -856,10 +856,10 @@ const DesignerDashboard = () => {
             </div>
           </div>
 
-          {loadingCorrections ? <Spinner/> : corrections.length === 0 ? (
+          {loadingCorrections ? <Spinner /> : corrections.length === 0 ? (
             <div className="corrections-empty">
               <div className="corrections-empty-icon">
-                <CheckCircle size={40} color="#10B981"/>
+                <CheckCircle size={40} color="#10B981" />
               </div>
               <p className="corrections-empty-title">Tout est à jour !</p>
               <p className="corrections-empty-sub">Aucune correction client en attente de traitement.</p>
@@ -879,7 +879,7 @@ const DesignerDashboard = () => {
                     >
                       <div className="project-header-left">
                         <div className="project-folder-icon">
-                          {isProjectExpanded ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
+                          {isProjectExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         </div>
                         <div>
                           <div className="project-name">{projectData.projectName}</div>
@@ -911,7 +911,7 @@ const DesignerDashboard = () => {
                                 onClick={() => toggleVersionExpanded(versionId)}
                               >
                                 <div className="version-header-left">
-                                  <FileText size={15} color="#F59E0B"/>
+                                  <FileText size={15} color="#F59E0B" />
                                   <div>
                                     <div className="version-name">{versionData.maquetteName}</div>
                                     <div className="version-meta">{versionData.corrections.length} correction{versionData.corrections.length > 1 ? "s" : ""}</div>
@@ -931,13 +931,13 @@ const DesignerDashboard = () => {
                                     title="Télécharger et afficher le rapport de corrections (PDF)"
                                   >
                                     {downloading === versionData.corrections[0]?._id ? (
-                                      <><Loader size={14} className="spin"/> Génération...</>
+                                      <><Loader size={14} className="spin" /> Génération...</>
                                     ) : (
-                                      <><Download size={14}/> Exporter PDF</>
+                                      <><Download size={14} /> Exporter PDF</>
                                     )}
                                   </button>
                                   <div className="version-chevron">
-                                    {isVersionExpanded ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}
+                                    {isVersionExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                                   </div>
                                 </div>
                               </div>
@@ -955,7 +955,7 @@ const DesignerDashboard = () => {
                                     return (
                                       <div key={c._id} className="correction-card">
                                         {/* Top bar colorée */}
-                                        <div className="correction-card-topbar"/>
+                                        <div className="correction-card-topbar" />
 
                                         {/* Infos client + date */}
                                         <div className="correction-card-meta">
@@ -965,7 +965,7 @@ const DesignerDashboard = () => {
                                             </div>
                                             <div>
                                               <div className="correction-client-name">
-                                                <User size={11}/> {client?.nom || "Client"}
+                                                <User size={11} /> {client?.nom || "Client"}
                                               </div>
                                               {client?.email && (
                                                 <div className="correction-client-email">{client.email}</div>
@@ -973,7 +973,7 @@ const DesignerDashboard = () => {
                                             </div>
                                           </div>
                                           <div className="correction-date">
-                                            <Calendar size={11}/>
+                                            <Calendar size={11} />
                                             {new Date(c.date_validation).toLocaleDateString("fr-FR", {
                                               day: "2-digit", month: "short", year: "numeric"
                                             })}
@@ -981,18 +981,18 @@ const DesignerDashboard = () => {
                                         </div>
 
                                         {/* Séparateur */}
-                                        <div className="correction-divider"/>
+                                        <div className="correction-divider" />
 
                                         {/* Contenu des remarques */}
                                         {commentairesAvecContenu.length === 0 ? (
                                           <div className="correction-no-remarks">
-                                            <MessageSquare size={14} color="#94A3B8"/>
+                                            <MessageSquare size={14} color="#94A3B8" />
                                             <span>Rejet global — contacter le client pour plus de détails</span>
                                           </div>
                                         ) : (
                                           <div className="correction-remarks">
                                             <div className="correction-remarks-label">
-                                              <MessageSquare size={12}/>
+                                              <MessageSquare size={12} />
                                               {commentairesAvecContenu.length} remarque{commentairesAvecContenu.length > 1 ? "s" : ""}
                                             </div>
                                             <div className="correction-remarks-list">
@@ -1016,7 +1016,7 @@ const DesignerDashboard = () => {
                                             className="btn-corriger"
                                             onClick={() => navigate(`/designer/editeur/${c.version_id?.id_maquette?._id}`)}
                                           >
-                                            <Eye size={13}/> Ouvrir l'éditeur
+                                            <Eye size={13} /> Ouvrir l'éditeur
                                           </button>
                                           <button
                                             className="btn-traite"
@@ -1024,8 +1024,8 @@ const DesignerDashboard = () => {
                                             disabled={isMarkingThis}
                                           >
                                             {isMarkingThis
-                                              ? <><Loader size={13} className="spin"/> Envoi…</>
-                                              : <><CheckCircle size={13}/> Marquer traité</>
+                                              ? <><Loader size={13} className="spin" /> Envoi…</>
+                                              : <><CheckCircle size={13} /> Marquer traité</>
                                             }
                                           </button>
                                         </div>
@@ -1053,10 +1053,10 @@ const DesignerDashboard = () => {
           <div className="modal">
             <div className="modal-head">
               <h3>Nouveau Design</h3>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)}><X size={18}/></button>
+              <button className="modal-close" onClick={() => setIsModalOpen(false)}><X size={18} /></button>
             </div>
             <form onSubmit={startDesign} className="modal-form">
-              <input type="text" placeholder="Nom du design *" required className="inp" onChange={e => setFormData({ ...formData, nom: e.target.value })}/>
+              <input type="text" placeholder="Nom du design *" required className="inp" onChange={e => setFormData({ ...formData, nom: e.target.value })} />
               <select required className="inp" onChange={e => setFormData({ ...formData, id_projet: e.target.value })}>
                 <option value="">— Assigner à un projet accepté —</option>
                 {projets.filter(p => projetsAcceptes.includes(p._id)).map(p => (
@@ -1069,12 +1069,12 @@ const DesignerDashboard = () => {
                 </p>
               )}
               <label className="upload-zone">
-                <Upload size={22} color="#6366F1"/>
+                <Upload size={22} color="#6366F1" />
                 <span>{formData.image_fond ? "Image prête ✅" : "Importer une image de fond"}</span>
-                <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }}/>
+                <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
               </label>
               <button type="submit" className="btn-submit" disabled={isCreating}>
-                {isCreating ? <><Loader size={16} className="spin"/> Chargement…</> : "Commencer 🚀"}
+                {isCreating ? <><Loader size={16} className="spin" /> Chargement…</> : "Commencer 🚀"}
               </button>
             </form>
           </div>
@@ -1087,11 +1087,11 @@ const DesignerDashboard = () => {
           <div className="modal">
             <div className="modal-head">
               <h3>Modifier les informations</h3>
-              <button className="modal-close" onClick={() => setIsEditModalOpen(false)}><X size={18}/></button>
+              <button className="modal-close" onClick={() => setIsEditModalOpen(false)}><X size={18} /></button>
             </div>
             <form onSubmit={updateInfo} className="modal-form">
-              <input type="text" value={editData.nom} required className="inp" onChange={e => setEditData({ ...editData, nom: e.target.value })}/>
-              <textarea value={editData.description} placeholder="Description" className="inp" rows={3} onChange={e => setEditData({ ...editData, description: e.target.value })}/>
+              <input type="text" value={editData.nom} required className="inp" onChange={e => setEditData({ ...editData, nom: e.target.value })} />
+              <textarea value={editData.description} placeholder="Description" className="inp" rows={3} onChange={e => setEditData({ ...editData, description: e.target.value })} />
               <select value={editData.id_projet} required className="inp" onChange={e => setEditData({ ...editData, id_projet: e.target.value })}>
                 <option value="">— Assigner à un projet accepté —</option>
                 {projets.filter(p => projetsAcceptes.includes(p._id)).map(p => (
@@ -1099,7 +1099,7 @@ const DesignerDashboard = () => {
                 ))}
               </select>
               <button type="submit" className="btn-submit" disabled={isUpdating}>
-                {isUpdating ? <><Loader size={16} className="spin"/> Sauvegarde…</> : "Enregistrer les modifications"}
+                {isUpdating ? <><Loader size={16} className="spin" /> Sauvegarde…</> : "Enregistrer les modifications"}
               </button>
             </form>
           </div>
@@ -1291,7 +1291,7 @@ const DesignerDashboard = () => {
 
 const Spinner = () => (
   <div style={{ textAlign: "center", padding: "40px 0" }}>
-    <Loader className="spin" size={28} color="#6366F1"/>
+    <Loader className="spin" size={28} color="#6366F1" />
   </div>
 );
 
