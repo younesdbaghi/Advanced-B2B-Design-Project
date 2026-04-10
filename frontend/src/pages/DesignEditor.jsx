@@ -14,7 +14,8 @@ import {
   MoveDiagonal, Video, Map, Frame,
   CheckSquare, ToggleLeft, SlidersHorizontal, AppWindow, DollarSign,
   Users, Play, GitBranch, Plus, Check, Clock, RotateCcw, Settings, Edit2, Save, X, AlertCircle, Volume2,
-  RefreshCw, Images, MousePointer2, PenTool, Eraser, Highlighter, PanelLeftClose, PanelLeft, PaintBucket, Smile, Table
+  RefreshCw, Images, MousePointer2, PenTool, Eraser, Highlighter, PanelLeftClose, PanelLeft, PaintBucket, Smile, Table,
+  PieChart, LineChart, Activity, BarChartHorizontal
 } from "lucide-react";
 
 const GRID_SIZE = 20;
@@ -75,13 +76,18 @@ const SIDEBAR_MENU = [
       { id: "media_img", label: "Image (Upload)", icon: <ImageIcon size={15} />, type: "action_image" },
       { id: "media_video", label: "Lecteur Vidéo", icon: <Video size={15} />, type: "complex", variant: "video" },
       { id: "media_map", label: "Carte (Map)", icon: <Map size={15} />, type: "complex", variant: "map" },
-      { id: "cont_frame", label: "Frame / Section", icon: <Frame size={15} />, type: "shape", variant: "frame" },
     ]
   },
   {
-    id: "charts", label: "Graphiques", icon: <BarChart3 size={16} />, layout: "list",
+    id: "charts", label: "Graphiques", icon: <BarChart3 size={16} />, layout: "grid",
     items: [
-      { id: "chart_bar", label: "Graphique Barres", icon: <BarChart3 size={15} />, type: "complex", variant: "chart_bar" },
+      { id: "chart_bar", label: "Barres", icon: <BarChart3 size={22} />, type: "complex", variant: "chart_bar" },
+      { id: "chart_bar_horiz", label: "Horizontales", icon: <BarChartHorizontal size={22} />, type: "complex", variant: "chart_bar_horiz" },
+      { id: "chart_bar_stacked", label: "Empilées", icon: <Layers size={22} />, type: "complex", variant: "chart_bar_stacked" },
+      { id: "chart_pie", label: "Circulaire", icon: <PieChart size={22} />, type: "complex", variant: "chart_pie" },
+      { id: "chart_donut", label: "Anneau", icon: <Circle size={22} strokeWidth={4} />, type: "complex", variant: "chart_donut" },
+      { id: "chart_line", label: "Courbes", icon: <LineChart size={22} />, type: "complex", variant: "chart_line" },
+      { id: "chart_area", label: "Aires", icon: <Activity size={22} />, type: "complex", variant: "chart_area" },
     ]
   },
   {
@@ -120,7 +126,144 @@ const SIDEBAR_MENU = [
 
 const snapToGrid = (value, gridSize) => Math.round(value / gridSize) * gridSize;
 
-const reviveVideos = (canvas) => {
+const getCanvasPointer = (canvas, evt) => {
+  if (!canvas || !evt) return null;
+  const nativeEvent = evt.e || evt;
+
+  if (typeof canvas.getScenePoint === "function") {
+    return canvas.getScenePoint(nativeEvent);
+  }
+  if (typeof canvas.getPointer === "function") {
+    return canvas.getPointer(nativeEvent);
+  }
+
+  return null;
+};
+
+const LOCAL_VIDEO_DB_NAME = "design-editor-local-media";
+const LOCAL_VIDEO_STORE_NAME = "videos";
+const LOCAL_VIDEO_SOURCE_PREFIX = "localvideo:";
+
+const openLocalVideoDb = () => new Promise((resolve, reject) => {
+  try {
+    const request = window.indexedDB.open(LOCAL_VIDEO_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(LOCAL_VIDEO_STORE_NAME)) {
+        db.createObjectStore(LOCAL_VIDEO_STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("IndexedDB open failed"));
+  } catch (error) {
+    reject(error);
+  }
+});
+
+const saveLocalVideoAsset = async (assetId, file) => {
+  const db = await openLocalVideoDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(LOCAL_VIDEO_STORE_NAME, "readwrite");
+    tx.objectStore(LOCAL_VIDEO_STORE_NAME).put(file, assetId);
+    tx.oncomplete = () => {
+      db.close();
+      resolve(assetId);
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error || new Error("IndexedDB write failed"));
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(tx.error || new Error("IndexedDB transaction aborted"));
+    };
+  });
+};
+
+const loadLocalVideoAsset = async (assetId) => {
+  const db = await openLocalVideoDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(LOCAL_VIDEO_STORE_NAME, "readonly");
+    const request = tx.objectStore(LOCAL_VIDEO_STORE_NAME).get(assetId);
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result || null);
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error || new Error("IndexedDB read failed"));
+    };
+  });
+};
+
+const createLocalVideoAssetId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `video-${crypto.randomUUID()}`;
+  }
+  return `video-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const makeLocalVideoSource = (assetId) => `${LOCAL_VIDEO_SOURCE_PREFIX}${assetId}`;
+const getLocalVideoAssetId = (source) => {
+  const value = typeof source === "string" ? source.trim() : "";
+  return value.startsWith(LOCAL_VIDEO_SOURCE_PREFIX) ? value.slice(LOCAL_VIDEO_SOURCE_PREFIX.length) : "";
+};
+
+const parseYouTubeVideoId = (source) => {
+  const value = typeof source === "string" ? source.trim() : "";
+  if (!value) return "";
+
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./i, "").toLowerCase();
+
+    if (host === "youtu.be") {
+      return (url.pathname.split("/").filter(Boolean)[0] || "").trim();
+    }
+
+    if (host.includes("youtube.com") || host.includes("youtube-nocookie.com")) {
+      const watchId = url.searchParams.get("v");
+      if (watchId) return watchId.trim();
+
+      const segments = url.pathname.split("/").filter(Boolean);
+      const markerIndex = segments.findIndex((segment) =>
+        ["embed", "shorts", "live", "v"].includes(segment.toLowerCase())
+      );
+      if (markerIndex !== -1 && segments[markerIndex + 1]) {
+        return segments[markerIndex + 1].trim();
+      }
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+};
+
+const getYouTubeEmbedUrl = (source) => {
+  const videoId = parseYouTubeVideoId(source);
+  if (!videoId) return "";
+  return `https://www.youtube.com/embed/${videoId}?controls=1&rel=0&modestbranding=1&playsinline=1&autoplay=0&mute=0`;
+};
+
+const getVideoSourceKind = (source) => {
+  const value = typeof source === "string" ? source.trim() : "";
+  if (!value) return "empty";
+  if (getLocalVideoAssetId(value)) return "direct";
+  if (value.startsWith("blob:")) return "direct";
+  if (value.startsWith("data:")) return value.startsWith("data:video/") ? "direct" : "unsupported";
+  if (parseYouTubeVideoId(value)) return "youtube";
+  if (/^https?:\/\//i.test(value) && /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(value)) return "direct";
+  return "unsupported";
+};
+
+const getVideoSourceIssue = (source) => {
+  const sourceKind = getVideoSourceKind(source);
+  if (sourceKind === "empty" || sourceKind === "direct" || sourceKind === "youtube") return "";
+  return "Utilisez un lien YouTube/Shorts ou une URL directe vers un fichier vidéo (.mp4, .webm, .ogg, .mov).";
+};
+
+let reviveVideos = (canvas) => {
   if (!canvas) return;
   canvas.getObjects().forEach(o => {
     if (o.customName === "Lecteur Vidéo" && o.videoSrc) {
@@ -138,6 +281,7 @@ const reviveVideos = (canvas) => {
       }
       videoEl.loop = true;
       videoEl.muted = true;
+      videoEl.playsInline = true;
       videoEl.src = o.videoSrc;
 
       // Add timeout for video loading
@@ -158,7 +302,8 @@ const reviveVideos = (canvas) => {
             originX: o.originX || "left", originY: o.originY || "top",
             width: videoEl.videoWidth || o.width || 320,
             height: videoEl.videoHeight || o.height || 180,
-            angle: o.angle || 0
+            angle: o.angle || 0,
+            objectCaching: false
           });
 
           if (videoEl.videoWidth) {
@@ -168,10 +313,16 @@ const reviveVideos = (canvas) => {
           }
 
           vImg.customName = "Lecteur Vidéo";
+          vImg.customVariant = "video"; // Ensure interactivity works
+          if (o.componentData) vImg.componentData = JSON.parse(JSON.stringify(o.componentData)); // Preserve component data
           vImg.videoSrc = videoEl.src;
           const idx = canvas.getObjects().indexOf(o);
           try {
             canvas.remove(o);
+            // Restore interactivity on the new image element
+            if (window.restoreInteractivityRef) {
+               window.restoreInteractivityRef(vImg);
+            }
             canvas.add(vImg);
             if (idx !== -1 && typeof vImg.moveTo === "function") {
               vImg.moveTo(idx);
@@ -191,6 +342,7 @@ const reviveVideos = (canvas) => {
           fabric.util.requestAnimFrame(render);
         } else {
           o.setElement(videoEl);
+          o.set('objectCaching', false);
           videoEl.play().catch(() => { });
           const render = () => {
             if (canvas.getObjects().includes(o)) { canvas.renderAll(); fabric.util.requestAnimFrame(render); }
@@ -202,7 +354,7 @@ const reviveVideos = (canvas) => {
       videoEl.addEventListener('loadedmetadata', onReady);
       videoEl.addEventListener('loadeddata', onReady);
       videoEl.addEventListener('canplay', onReady);
-      videoEl.addEventListener('error', (e) => {
+      videoEl.addEventListener('error', () => {
         clearTimeout(timeout);
         console.error("Video loading failed:", {
           src: o.videoSrc,
@@ -210,10 +362,378 @@ const reviveVideos = (canvas) => {
           networkState: videoEl.networkState,
           readyState: videoEl.readyState
         });
+        
+        // Restore placeholder since video failed (e.g. dead blob URL on refresh)
+        const bg = new fabric.Rect({ width: o.width || 320, height: o.height || 200, fill: "#0f172a", rx: 12, ry: 12, originX: "center", originY: "center" });
+        const playCircle = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" });
+        const playBtn = new fabric.IText("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
+        const label = new fabric.IText("Vidéo (Introuvable)", { fontSize: 12, fill: "#ef4444", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
+        
+        const group = new fabric.Group([bg, playCircle, playBtn, label], {
+          left: o.left,
+          top: o.top,
+          originX: o.originX || "left",
+          originY: o.originY || "top",
+          scaleX: o.scaleX || 1,
+          scaleY: o.scaleY || 1,
+          angle: o.angle || 0,
+          customName: "Lecteur Vidéo",
+          customVariant: "video",
+          componentData: o.componentData ? JSON.parse(JSON.stringify(o.componentData)) : { variant: "video" }
+        });
+        
+        const idx = canvas.getObjects().indexOf(o);
+        if (idx !== -1) {
+          canvas.remove(o);
+          if (window.restoreInteractivityRef) window.restoreInteractivityRef(group);
+          canvas.add(group);
+          if (typeof group.moveTo === "function") group.moveTo(idx);
+          if (canvas.getActiveObject() === o) canvas.setActiveObject(group);
+          canvas.renderAll();
+        }
       });
     }
   });
 };
+
+const syncCanvasSelection = (canvas, previousObject, nextObject) => {
+  if (!canvas || !nextObject) return;
+  const activeObject = canvas.getActiveObject();
+  const shouldSelect = activeObject === previousObject || activeObject === nextObject;
+  if (!shouldSelect) return;
+
+  canvas.discardActiveObject();
+  canvas.setActiveObject(nextObject);
+  canvas.fire("selection:updated", {
+    selected: [nextObject],
+    deselected: previousObject ? [previousObject] : [],
+    target: nextObject
+  });
+  canvas.requestRenderAll();
+};
+
+const createMissingVideoPlaceholder = (
+  sourceObject,
+  labelText = "Vidéo (Introuvable)",
+  labelColor = "#ef4444"
+) => {
+  const bg = new fabric.Rect({
+    width: sourceObject.width || 320,
+    height: sourceObject.height || 200,
+    fill: "#0f172a",
+    rx: 12,
+    ry: 12,
+    originX: "center",
+    originY: "center"
+  });
+  const playCircle = new fabric.Circle({
+    radius: 30,
+    fill: "rgba(255,255,255,0.2)",
+    originX: "center",
+    originY: "center"
+  });
+  const playBtn = new fabric.IText("▶", {
+    fontSize: 22,
+    fill: "#ffffff",
+    fontFamily: "Inter",
+    originX: "center",
+    originY: "center"
+  });
+  const label = new fabric.IText(labelText, {
+    fontSize: 12,
+    fill: labelColor,
+    fontFamily: "Inter",
+    originX: "center",
+    originY: "center",
+    top: 70
+  });
+
+  const group = new fabric.Group([bg, playCircle, playBtn, label], {
+    left: sourceObject.left,
+    top: sourceObject.top,
+    originX: sourceObject.originX || "left",
+    originY: sourceObject.originY || "top",
+    scaleX: sourceObject.scaleX || 1,
+    scaleY: sourceObject.scaleY || 1,
+    angle: sourceObject.angle || 0,
+    opacity: sourceObject.opacity ?? 1,
+    visible: sourceObject.visible !== false,
+    customName: "Lecteur Vidéo",
+    customVariant: "video",
+    componentData: sourceObject.componentData
+      ? JSON.parse(JSON.stringify(sourceObject.componentData))
+      : { variant: "video" }
+  });
+
+  group.videoSrc = sourceObject.videoSrc || "";
+  return group;
+};
+
+const ensureVideoPlaceholder = (canvas, sourceObject, labelText = "Vidéo", labelColor = "#38bdf8") => {
+  if (!canvas || !sourceObject) return sourceObject;
+
+  if (sourceObject.type === "group") {
+    const objects = sourceObject.getObjects?.() || [];
+    const labelObject = objects.find((obj) => (obj.type === "text" || obj.type === "i-text") && obj.text);
+    if (labelObject && labelObject.text !== labelText) {
+      labelObject.set({ text: labelText, fill: labelColor });
+      sourceObject.dirty = true;
+    }
+    sourceObject.videoSrc = sourceObject.videoSrc || "";
+    return sourceObject;
+  }
+
+  const placeholder = createMissingVideoPlaceholder(sourceObject, labelText, labelColor);
+  return replaceCanvasObject(canvas, sourceObject, placeholder);
+};
+
+const replaceCanvasObject = (canvas, previousObject, nextObject) => {
+  if (!canvas || !previousObject || !nextObject) return nextObject;
+
+  const index = canvas.getObjects().indexOf(previousObject);
+  canvas.remove(previousObject);
+  if (window.restoreInteractivityRef) window.restoreInteractivityRef(nextObject);
+  canvas.add(nextObject);
+
+  if (index !== -1 && typeof nextObject.moveTo === "function") {
+    nextObject.moveTo(index);
+  } else if (index !== -1 && typeof canvas.moveTo === "function") {
+    canvas.moveTo(nextObject, index);
+  }
+
+  syncCanvasSelection(canvas, previousObject, nextObject);
+  return nextObject;
+};
+
+const startVideoRenderLoop = (canvas, videoObject) => {
+  if (videoObject.__videoRenderLoopActive) return;
+  videoObject.__videoRenderLoopActive = true;
+
+  const render = () => {
+    if (!canvas || !videoObject || !canvas.getObjects().includes(videoObject)) {
+      if (videoObject) videoObject.__videoRenderLoopActive = false;
+      return;
+    }
+
+    const liveVideo = videoObject.liveVideoElement;
+    const liveSurface = videoObject.liveVideoCanvas;
+    const liveCtx = videoObject.liveVideoCtx;
+    if (liveVideo && liveSurface && liveCtx && liveVideo.readyState >= 2) {
+      try {
+        liveCtx.clearRect(0, 0, liveSurface.width, liveSurface.height);
+        liveCtx.drawImage(liveVideo, 0, 0, liveSurface.width, liveSurface.height);
+        videoObject.dirty = true;
+      } catch {
+        // Ignore transient draw errors while the browser is still decoding frames.
+      }
+    }
+
+    canvas.renderAll();
+    fabric.util.requestAnimFrame(render);
+  };
+
+  fabric.util.requestAnimFrame(render);
+};
+
+const hydrateVideoObject = (canvas, sourceObject) => {
+  if (!canvas || !sourceObject || sourceObject.customName !== "Lecteur Vidéo") {
+    return Promise.resolve(null);
+  }
+
+  const source = typeof sourceObject.videoSrc === "string" ? sourceObject.videoSrc.trim() : "";
+  if (!source) {
+    console.error("Invalid video source:", sourceObject.videoSrc);
+    return Promise.resolve(null);
+  }
+
+  const sourceKind = getVideoSourceKind(source);
+  if (sourceKind === "youtube") {
+    const nextObject = ensureVideoPlaceholder(canvas, sourceObject, "YouTube", "#f97316");
+    canvas.requestRenderAll();
+    return Promise.resolve(nextObject);
+  }
+
+  if (sourceKind === "direct") {
+    const nextObject = ensureVideoPlaceholder(canvas, sourceObject, "Vidéo", "#38bdf8");
+    canvas.requestRenderAll();
+    return Promise.resolve(nextObject);
+  }
+
+  const sourceIssue = getVideoSourceIssue(source);
+  if (sourceIssue) {
+    const nextObject = ensureVideoPlaceholder(canvas, sourceObject, "Lien vidéo non supporté", "#f59e0b");
+    console.warn("Unsupported video source:", { src: source, issue: sourceIssue });
+    canvas.requestRenderAll();
+    return Promise.resolve(nextObject);
+  }
+
+  const currentLiveVideo = sourceObject.liveVideoElement;
+  if (currentLiveVideo?.src === source) {
+    currentLiveVideo.play?.().catch(() => {});
+    startVideoRenderLoop(canvas, sourceObject);
+    return Promise.resolve(sourceObject);
+  }
+
+  return new Promise((resolve) => {
+    const videoEl = document.createElement("video");
+    if (!source.startsWith("data:") && !source.startsWith("blob:")) {
+      videoEl.crossOrigin = "anonymous";
+    }
+
+    videoEl.loop = true;
+    videoEl.muted = true;
+    videoEl.playsInline = true;
+    videoEl.preload = "auto";
+
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timeout);
+      videoEl.removeEventListener("loadedmetadata", onReady);
+      videoEl.removeEventListener("loadeddata", onReady);
+      videoEl.removeEventListener("canplay", onReady);
+      videoEl.removeEventListener("error", onError);
+    };
+
+    const finalize = (resultObject) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(resultObject);
+    };
+
+    const onReady = () => {
+      if (settled) return;
+
+      const baseWidth = videoEl.videoWidth || sourceObject.width || 320;
+      const baseHeight = videoEl.videoHeight || sourceObject.height || 180;
+      const displayedWidth = typeof sourceObject.getScaledWidth === "function"
+        ? sourceObject.getScaledWidth()
+        : (sourceObject.width || 320) * (sourceObject.scaleX || 1);
+      const displayedHeight = typeof sourceObject.getScaledHeight === "function"
+        ? sourceObject.getScaledHeight()
+        : (sourceObject.height || 180) * (sourceObject.scaleY || 1);
+      const frameCanvas = document.createElement("canvas");
+      frameCanvas.width = Math.max(1, Math.round(baseWidth));
+      frameCanvas.height = Math.max(1, Math.round(baseHeight));
+      const frameCtx = frameCanvas.getContext("2d");
+
+      if (!frameCtx) {
+        onError();
+        return;
+      }
+
+      try {
+        frameCtx.drawImage(videoEl, 0, 0, frameCanvas.width, frameCanvas.height);
+      } catch {
+        // First frame may not be drawable yet on some browsers; the render loop will retry.
+      }
+
+      let liveObject = sourceObject;
+
+      if (sourceObject.type === "group" || typeof sourceObject.setElement !== "function") {
+        liveObject = new fabric.Image(frameCanvas, {
+          left: sourceObject.left,
+          top: sourceObject.top,
+          originX: sourceObject.originX || "left",
+          originY: sourceObject.originY || "top",
+          width: frameCanvas.width,
+          height: frameCanvas.height,
+          angle: sourceObject.angle || 0,
+          opacity: sourceObject.opacity ?? 1,
+          visible: sourceObject.visible !== false,
+          objectCaching: false
+        });
+
+        liveObject.set({
+          scaleX: baseWidth ? displayedWidth / baseWidth : sourceObject.scaleX || 1,
+          scaleY: baseHeight ? displayedHeight / baseHeight : sourceObject.scaleY || 1,
+          flipX: sourceObject.flipX || false,
+          flipY: sourceObject.flipY || false,
+          shadow: sourceObject.shadow || null,
+          selectable: sourceObject.selectable !== false,
+          evented: sourceObject.evented !== false,
+          lockMovementX: sourceObject.lockMovementX || false,
+          lockMovementY: sourceObject.lockMovementY || false,
+          lockScalingX: sourceObject.lockScalingX || false,
+          lockScalingY: sourceObject.lockScalingY || false,
+          lockRotation: sourceObject.lockRotation || false
+        });
+
+        liveObject.customName = "Lecteur Vidéo";
+        liveObject.customVariant = "video";
+        liveObject.videoSrc = source;
+        liveObject.excludeFromExport = sourceObject.excludeFromExport;
+        if (sourceObject.componentData) {
+          liveObject.componentData = JSON.parse(JSON.stringify(sourceObject.componentData));
+        }
+
+        liveObject = replaceCanvasObject(canvas, sourceObject, liveObject);
+      } else {
+        sourceObject.setElement(frameCanvas);
+        sourceObject.set({
+          width: frameCanvas.width,
+          height: frameCanvas.height,
+          objectCaching: false,
+          dirty: true
+        });
+        sourceObject.videoSrc = source;
+      }
+
+      liveObject.liveVideoElement = videoEl;
+      liveObject.liveVideoCanvas = frameCanvas;
+      liveObject.liveVideoCtx = frameCtx;
+      liveObject.liveVideoSource = source;
+
+      videoEl.play().catch(() => {});
+      startVideoRenderLoop(canvas, liveObject);
+      canvas.requestRenderAll();
+      finalize(liveObject);
+    };
+
+    const onError = () => {
+      console.error("Video loading failed:", {
+        src: source,
+        error: videoEl.error,
+        networkState: videoEl.networkState,
+        readyState: videoEl.readyState
+      });
+
+      const placeholder = createMissingVideoPlaceholder(sourceObject);
+      const nextObject = sourceObject.type === "group"
+        ? sourceObject
+        : replaceCanvasObject(canvas, sourceObject, placeholder);
+
+      canvas.requestRenderAll();
+      finalize(nextObject);
+    };
+
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        console.error("Video loading timeout:", source);
+        onError();
+      }
+    }, 10000);
+
+    videoEl.addEventListener("loadedmetadata", onReady);
+    videoEl.addEventListener("loadeddata", onReady);
+    videoEl.addEventListener("canplay", onReady);
+    videoEl.addEventListener("error", onError);
+    videoEl.src = source;
+    videoEl.load();
+  });
+};
+
+const reviveVideosSafe = (canvas) => {
+  if (!canvas) return Promise.resolve([]);
+  return Promise.all(
+    canvas
+      .getObjects()
+      .filter((obj) => obj.customName === "Lecteur Vidéo" && obj.videoSrc)
+      .map((obj) => hydrateVideoObject(canvas, obj))
+  );
+};
+
+reviveVideos = reviveVideosSafe;
 
 const DEFAULT_MAP_LAT = 48.8566;
 const DEFAULT_MAP_LNG = 2.3522;
@@ -238,7 +758,8 @@ const loadOsmMapIntoGroup = (group, canvas) => {
   
   const w = Math.max(1, Math.round(mapRect.width || 1));
   const h = Math.max(1, Math.round(mapRect.height || 1));
-  const url = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=${w}x${h}&maptype=mapnik`;
+  const baseUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=${w}x${h}&maptype=mapnik`;
+  const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`;
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = () => {
@@ -309,6 +830,10 @@ const getObjectLabel = (obj) => {
   }
   return obj.type || "Objet";
 };
+
+
+
+
 
 // ─── MODERN MODAL ─────────────────────────────────────────────────────────────
 const ModernModal = ({ isOpen, onClose, title, content, onAction = null }) => {
@@ -1015,15 +1540,270 @@ const TableEditorModal = ({ isOpen, onClose, component, onSave }) => {
 };
 
 
+// ─── CHART EDITOR ───────────────────────────────────────────────────────────
+const ChartEditorModal = ({ isOpen, onClose, component, onSave }) => {
+  const [chartTitle, setChartTitle] = useState("Analyse");
+  const [chartColor, setChartColor] = useState("#6366f1");
+  const [secondColor, setSecondColor] = useState("#8b5cf6");
+  const [labels, setLabels] = useState("Lun,Mar,Mer,Jeu,Ven");
+  const [values, setValues] = useState("30,80,50,100,60");
+
+  useEffect(() => {
+    if (isOpen && component) {
+      setChartTitle(component.chartTitle || "Analyse");
+      setChartColor(component.chartColor || "#6366f1");
+      setSecondColor(component.secondColor || "#8b5cf6");
+      if (component.chartLabels) setLabels(component.chartLabels.join(","));
+      if (component.chartValues) setValues(component.chartValues.join(","));
+    }
+  }, [isOpen, component]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="component-editor-overlay" onClick={onClose}>
+      <div className="component-editor-modal" onClick={e => e.stopPropagation()}>
+        <div className="component-editor-header"><h3>✏️ Éditer le Graphique</h3><button onClick={onClose}><X size={18} /></button></div>
+        <div className="component-editor-body">
+          <div className="editor-field"><label>Titre</label><input type="text" value={chartTitle} onChange={e => setChartTitle(e.target.value)} /></div>
+          <div className="editor-row-2">
+            <div className="editor-field"><label>Couleur principale</label><div className="color-picker-wrap"><input type="color" value={chartColor} onChange={e => setChartColor(e.target.value)} /><span>{chartColor}</span></div></div>
+            <div className="editor-field"><label>Couleur secondaire</label><div className="color-picker-wrap"><input type="color" value={secondColor} onChange={e => setSecondColor(e.target.value)} /><span>{secondColor}</span></div></div>
+          </div>
+          <div className="editor-field"><label>Labels (séparés par des virgules)</label><input type="text" value={labels} onChange={e => setLabels(e.target.value)} /></div>
+          <div className="editor-field"><label>Valeurs (séparées par des virgules)</label><input type="text" value={values} onChange={e => setValues(e.target.value)} /></div>
+        </div>
+        <div className="component-editor-footer">
+          <button className="btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="btn-save" onClick={() => { 
+            const arrLabels = labels.split(",").map(s => s.trim());
+            const arrValues = values.split(",").map(v => parseFloat(v.trim()) || 0);
+            onSave({ chartTitle, chartColor, secondColor, chartLabels: arrLabels, chartValues: arrValues }); 
+            onClose(); 
+          }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+const updateButtonOnCanvas = (group, data) => {
+  const sizeMap = { small: { w: 110, h: 38, f: 12 }, medium: { w: 150, h: 46, f: 15 }, large: { w: 190, h: 56, f: 18 } };
+  const dims = sizeMap[data.buttonSize] || sizeMap.medium;
+  if (group._objects[0]) group._objects[0].set({ width: dims.w, height: dims.h, fill: data.buttonColor, rx: data.borderRadius, ry: data.borderRadius });
+  if (group._objects[1]) group._objects[1].set({ text: data.buttonText, fontSize: dims.f, fill: data.buttonTextColor });
+};
+
+const updateInputOnCanvas = (group, data) => {
+  if (group._objects[0]) group._objects[0].set({ width: data.inputWidth, height: data.inputHeight, fill: data.bgColor, stroke: data.borderColor });
+  if (group._objects[2]) group._objects[2].set({ text: data.placeholder });
+};
+
+const updateProfileOnCanvas = (group, data) => {
+  const avatar = group._objects.find(o => o.type === "circle");
+  const texts = group._objects.filter(o => o.type === "i-text" || o.type === "text");
+  if (avatar) avatar.set({ fill: data.avatarColor });
+  if (texts[0]) texts[0].set({ text: data.profileName });
+  if (texts[1]) texts[1].set({ text: data.profileRole });
+};
+
+const updatePricingOnCanvas = (group, data) => {
+  if (!data.pricingRows) return;
+  const toRemove = group._objects.slice(1);
+  toRemove.forEach(o => group.remove(o));
+  const startX = -175;
+  data.pricingRows.forEach((row, idx) => {
+    const x = startX + idx * 200;
+    group.add(new fabric.Rect({ width: 185, height: 295, fill: row.color + "12", stroke: row.color, strokeWidth: 2, rx: 14, ry: 14, left: x, top: 0, originX: "center", originY: "center" }));
+    group.add(new fabric.IText(row.name, { fontSize: 16, fontWeight: "800", fill: row.color, left: x, top: -130, originX: "center" }));
+    group.add(new fabric.IText(row.price, { fontSize: 28, fontWeight: "900", fill: row.color, left: x, top: -102, originX: "center" }));
+  });
+};
+
+const updateSliderOnCanvas = (group, data) => {
+  const pct = (data.sliderValue - data.min) / (data.max - data.min);
+  const newX = -75 + pct * 150;
+  if (group._objects[1]) group._objects[1].set({ x2: newX, stroke: data.sliderColor });
+  if (group._objects[2]) group._objects[2].set({ left: newX, stroke: data.sliderColor });
+  if (group._objects[3]) group._objects[3].set({ text: `${data.sliderValue}${data.unit}`, fill: data.sliderColor });
+};
+
+const updateCardOnCanvas = (group, data) => {
+  if (group._objects[3]) group._objects[3].set({ text: data.productTitle });
+  if (group._objects[6]) group._objects[6].set({ text: data.productPrice, fill: data.productColor });
+  if (group._objects[7]) group._objects[7].set({ fill: data.productColor });
+};
+
+const updateNavMenuOnCanvas = (group, data) => {
+  if (group._objects[1]) group._objects[1].set({ text: data.navLogo, fill: data.navColor });
+  if (group._objects[6]) group._objects[6].set({ fill: data.navColor });
+};
+
+const updateHeroOnCanvas = (group, data) => {
+  if (group._objects[0]) group._objects[0].set({ fill: data.heroBg });
+  if (group._objects[5]) group._objects[5].set({ text: data.heroTitle });
+};
+
+const updateTabsOnCanvas = (group, data) => {
+  if (group._objects[2]) group._objects[2].set({ text: data.tab1 });
+  if (group._objects[3]) group._objects[3].set({ text: data.tab2 });
+};
+
+const updateTableOnCanvas = (group, data) => {
+  if (!data.tableData) return;
+  const oldObjs = [...group._objects];
+  oldObjs.forEach(o => group.remove(o));
+  const cellW = 120, cellH = 50;
+  for (let i = 0; i < data.rows; i++) {
+    for (let j = 0; j < data.cols; j++) {
+      const x = - (data.cols * cellW) / 2 + j * cellW;
+      const y = - (data.rows * cellH) / 2 + i * cellH;
+      group.add(new fabric.Rect({ left: x, top: y, width: cellW, height: cellH, fill: i === 0 ? data.headerBg : data.rowBg, stroke: data.strokeColor }));
+      group.add(new fabric.IText(data.tableData[i]?.[j] || "", { left: x + 10, top: y + 15, fontSize: 14, fontFamily: "Inter" }));
+    }
+  }
+};
+
+
+
+const updateModalOnCanvas = (group, data) => {
+  const titleText = group._objects?.find((o) => (o.type === "text" || o.type === "i-text") && /fenêtre modale|modal/i.test(o.text || ""));
+  const bodyText = group._objects?.find((o) => (o.type === "text" || o.type === "i-text") && (o.text || "") !== titleText?.text);
+  if (titleText) titleText.set({ text: data.modalTitle || "Fenêtre modale" });
+  if (bodyText) bodyText.set({ text: data.modalContent || "Contenu de la modal." });
+};
+
+
+
+// --- CHART GENERATION HELPER ---
+const generateChartObjects = (variant, data) => {
+  const bg = new fabric.Rect({ width: 300, height: 200, fill: "#ffffff", rx: 12, ry: 12, stroke: "#f1f5f9", strokeWidth: 1, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }) });
+  const title = new fabric.IText(data.chartTitle || "Analyse", { fontSize: 13, fontWeight: "700", fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: -80 });
+  const objs = [bg, title];
+  
+  const labels = data.chartLabels || ["Lun", "Mar", "Mer", "Jeu", "Ven"];
+  const values = data.chartValues || [30, 80, 50, 100, 60];
+  const color1 = data.chartColor || "#6366f1";
+  const color2 = data.secondColor || "#8b5cf6";
+  const color3 = "#f59e0b"; // third color
+  const colors = [color1, color2, color3, "#ec4899", "#10b981", "#3b82f6"];
+  
+  const maxVal = Math.max(...values, 1);
+  const chartW = 240;
+  const chartH = 120;
+  const startX = -chartW/2;
+  const startY = chartH/2;
+  
+  if (variant === "chart_bar") {
+    const barW = Math.min(30, (chartW / values.length) * 0.6);
+    const spacing = chartW / values.length;
+    values.forEach((v, i) => {
+      const h = Math.max(2, (v / maxVal) * chartH);
+      const x = startX + i * spacing + spacing/2;
+      objs.push(new fabric.Rect({ width: barW, height: h, fill: colors[i%colors.length], rx: 4, ry: 4, left: x, top: startY + 15, originX: "center", originY: "bottom" }));
+      objs.push(new fabric.IText(labels[i]||"", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
+    });
+  } else if (variant === "chart_bar_horiz") {
+    const barH = Math.min(15, (chartH / values.length) * 0.6);
+    const spacing = chartH / values.length;
+    values.forEach((v, i) => {
+      const w = Math.max(2, (v / maxVal) * chartW);
+      const y = -chartH/2 + i * spacing + spacing/2 + 10;
+      objs.push(new fabric.Rect({ width: w, height: barH, fill: colors[i%colors.length], rx: 4, ry: 4, left: startX + 20, top: y, originX: "left", originY: "center" }));
+      objs.push(new fabric.IText(labels[i]||"", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: startX + 15, top: y, originX: "right", originY: "center" }));
+    });
+  } else if (variant === "chart_bar_stacked") {
+    const barW = Math.min(30, (chartW / values.length) * 0.6);
+    const spacing = chartW / values.length;
+    values.forEach((v, i) => {
+      const h = Math.max(2, (v / maxVal) * chartH);
+      const h1 = h * 0.6;
+      const h2 = h * 0.4;
+      const x = startX + i * spacing + spacing/2;
+      objs.push(new fabric.Rect({ width: barW, height: h2, fill: color2, rx: 4, ry: 4, left: x, top: startY + 15 - h1 + 4, originX: "center", originY: "bottom" }));
+      objs.push(new fabric.Rect({ width: barW, height: h1, fill: color1, rx: 4, ry: 4, left: x, top: startY + 15, originX: "center", originY: "bottom" }));
+      objs.push(new fabric.IText(labels[i]||"", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
+    });
+  } else if (variant === "chart_pie" || variant === "chart_donut") {
+    const total = values.reduce((a,b)=>a+b, 0) || 1;
+    let currentAngle = -90;
+    const isPie = variant === "chart_pie";
+    const r = isPie ? 40 : 50;
+    const strokeW = isPie ? 80 : 35;
+    const circ = 2 * Math.PI * r;
+    
+    values.forEach((v, i) => {
+      const slicePct = v / total;
+      const drawLen = slicePct * circ;
+      objs.push(new fabric.Circle({
+        radius: r, fill: "transparent", stroke: colors[i%colors.length],
+        strokeWidth: strokeW, strokeDashArray: [drawLen + 1, circ - drawLen],
+        originX: "center", originY: "center", left: 0, top: 15, angle: currentAngle,
+      }));
+      currentAngle += slicePct * 360;
+    });
+    
+    const legendStartX = -90;
+    const legSpacing = 180 / Math.max(1, values.length);
+    values.forEach((v, i) => {
+      objs.push(new fabric.Circle({ radius: 4, fill: colors[i%colors.length], left: legendStartX + i * legSpacing, top: startY+20, originX: "center", originY: "center" }));
+      objs.push(new fabric.IText(labels[i]||"", { fontSize: 9, fill: "#64748b", fontFamily: "Inter", left: legendStartX + i * legSpacing + 8, top: startY+20, originX: "left", originY: "center" }));
+    });
+  } else if (variant === "chart_line" || variant === "chart_area") {
+    const spacing = chartW / Math.max(1, values.length - 1);
+    
+    if (variant === "chart_area") {
+       const areaSteps = values.length * 4;
+       const stepSpacing = chartW / (areaSteps - 1);
+       for(let i=0; i<areaSteps; i++) {
+         const t = i / (areaSteps - 1);
+         const idx = t * (values.length - 1);
+         const idx0 = Math.floor(idx);
+         const idx1 = Math.min(idx0 + 1, values.length - 1);
+         const v = values[idx0] + (values[idx1] - values[idx0]) * (idx - idx0);
+         const h = (v / maxVal) * chartH;
+         objs.push(new fabric.Rect({ width: stepSpacing*1.5, height: h, fill: color1, opacity: 0.3, left: startX + i * stepSpacing, top: startY + 15, originX: "center", originY: "bottom" }));
+       }
+    }
+    
+    values.forEach((v, i) => {
+      const x = startX + i * spacing;
+      const y = startY + 15 - ((v / maxVal) * chartH);
+      if (i > 0) {
+        const prevH = (values[i-1] / maxVal) * chartH;
+        objs.push(new fabric.Line([startX + (i-1)*spacing, startY + 15 - prevH, x, y], { stroke: color1, strokeWidth: 3, originX: "center", originY: "center" }));
+      }
+    });
+
+    values.forEach((v, i) => {
+      const x = startX + i * spacing;
+      const y = startY + 15 - ((v / maxVal) * chartH);
+      objs.push(new fabric.Circle({ radius: 4, fill: color2, left: x, top: y, originX: "center", originY: "center" }));
+      objs.push(new fabric.IText(labels[i]||"", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
+    });
+  }
+
+  return objs;
+};
+
+const updateChartOnCanvas = (group, data) => {
+  const oldObjs = [...group._objects];
+  oldObjs.forEach(o => group.remove(o));
+  const newObjs = generateChartObjects(group.customVariant, data);
+  newObjs.forEach(o => group.add(o));
+  group.setCoords();
+};
+
+
+
 // ─── PROPERTIES PANEL ────────────────────────────────────────────────────────
 const PropertiesPanel = ({
   selectedObject, canvas, onUpdate,
-  imageHistory, onReplaceImage, onSelectImageFromHistory, refreshKey
+  imageHistory, onReplaceImage, onSelectImageFromHistory, refreshKey, restoreInteractivity,
+  setShowComponentEditor, setEditorVariant, setEditorData
 }) => {
   const [props, setProps] = useState({});
-  const [showComponentEditor, setShowComponentEditor] = useState(false);
-  const [editorVariant, setEditorVariant] = useState(null);
-  const [editorData, setEditorData] = useState(null);
 
   useEffect(() => {
     if (!selectedObject) { setProps({}); setEditorVariant(null); setEditorData(null); return; }
@@ -1070,6 +1850,9 @@ const PropertiesPanel = ({
         mapLat: o.mapLat != null ? Number(o.mapLat) : DEFAULT_MAP_LAT,
         mapLng: o.mapLng != null ? Number(o.mapLng) : DEFAULT_MAP_LNG,
         mapZoom: o.mapZoom != null ? Number(o.mapZoom) : DEFAULT_MAP_ZOOM,
+        mapAddress: o.mapAddress || "",
+        mapType: o.mapType || "m",
+        showMarker: o.showMarker !== false
       };
     }
 
@@ -1169,31 +1952,6 @@ const PropertiesPanel = ({
 
 // --- LOGIQUE DE SAUVEGARDE ET MISE À JOUR DES COMPOSANTS (FUSIONNÉE) ---
 
-const handleComponentSave = (updatedData) => {
-  if (!selectedObject || !canvas) return;
-
-  // Fusion des données dans l'objet canvas
-  selectedObject.componentData = { ...(selectedObject.componentData || {}), ...updatedData };
-
-  const variant = selectedObject.customVariant;
-  if (variant === "button") updateButtonOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "input") updateInputOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "profile") updateProfileOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "pricing") updatePricingOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "slider") updateSliderOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "card") updateCardOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "modal") updateModalOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "nav_menu") updateNavMenuOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "hero") updateHeroOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "tabs") updateTabsOnCanvas(selectedObject, selectedObject.componentData);
-  else if (variant === "table") updateTableOnCanvas(selectedObject, selectedObject.componentData);
-
-  canvas.renderAll();
-  onUpdate?.();
-
-  setEditorData({ ...selectedObject.componentData, variant });
-  setShowComponentEditor(false);
-};
 
 const handleUngroup = () => {
   if (!selectedObject || !canvas || selectedObject.type !== "group") return;
@@ -1207,10 +1965,14 @@ const handleUngroup = () => {
           left: opt.translateX, top: opt.translateY,
           scaleX: opt.scaleX, scaleY: opt.scaleY,
           angle: opt.angle, skewX: opt.skewX, skewY: opt.skewY,
-          group: null
+          group: null,
+          editable: true,
+          selectable: true,
+          evented: true,
       });
       child.setCoords();
       canvas.add(child);
+      restoreInteractivity?.(child);
   });
   canvas.discardActiveObject();
   canvas.requestRenderAll();
@@ -1244,16 +2006,36 @@ const applyGroupBgFill = (index, key, value) => {
 
 const applyMapField = (key, raw) => {
   if (!selectedObject || !canvas || selectedObject.customName !== "Carte (Map)") return;
-  let num = key === "mapZoom" ? Math.min(18, Math.max(1, parseInt(raw, 10))) : parseFloat(String(raw).replace(",", "."));
+  if (key === "mapAddress" || key === "mapType") {
+    selectedObject[key] = raw;
+    setProps((p) => ({ ...p, [key]: raw }));
+    canvas.fire("object:modified", { target: selectedObject });
+    canvas.requestRenderAll();
+    onUpdate?.();
+    return;
+  }
+  if (key === "showMarker") {
+    selectedObject[key] = !!raw;
+    setProps((p) => ({ ...p, [key]: !!raw }));
+    canvas.fire("object:modified", { target: selectedObject });
+    canvas.requestRenderAll();
+    onUpdate?.();
+    return;
+  }
+  let num = key === "mapZoom" ? Math.min(20, Math.max(1, parseInt(raw, 10))) : parseFloat(String(raw).replace(",", "."));
   if (Number.isNaN(num)) return;
   selectedObject[key] = num;
   setProps((p) => ({ ...p, [key]: num }));
+  canvas.fire("object:modified", { target: selectedObject });
+  canvas.requestRenderAll();
   onUpdate?.();
 };
 
 const refreshMapPreview = () => {
   if (!selectedObject || !canvas || selectedObject.customName !== "Carte (Map)") return;
   loadOsmMapIntoGroup(selectedObject, canvas);
+  canvas.fire("object:modified", { target: selectedObject });
+  canvas.requestRenderAll();
   onUpdate?.();
 };
 
@@ -1306,104 +2088,54 @@ const handleProfileImageUpload = (e) => {
 const handleVideoUpload = (e) => {
   const file = e.target.files[0];
   if (!file || !selectedObject || !canvas || selectedObject.customName !== "Lecteur Vidéo") return;
-  const blobUrl = URL.createObjectURL(file);
-  selectedObject.videoSrc = blobUrl;
-  setProps(p => ({ ...p, videoSrc: blobUrl }));
-  onUpdate?.();
-  reviveVideos(canvas);
+  const targetVideoObject = selectedObject;
+  const assetId = targetVideoObject.videoAssetId || createLocalVideoAssetId();
+  saveLocalVideoAsset(assetId, file)
+    .then(() => {
+      const localSource = makeLocalVideoSource(assetId);
+      targetVideoObject.videoAssetId = assetId;
+      targetVideoObject.videoSrc = localSource;
+      setResolvedVideoSources((prev) => {
+        const previousUrl = prev[localSource];
+        if (previousUrl) {
+          try { URL.revokeObjectURL(previousUrl); } catch {}
+        }
+        const objectUrl = URL.createObjectURL(file);
+        localVideoUrlCacheRef.current[localSource] = objectUrl;
+        return { ...prev, [localSource]: objectUrl };
+      });
+      setProps(p => ({ ...p, videoSrc: localSource }));
+      onUpdate?.();
+      reviveVideos(canvas);
+      e.target.value = "";
+    })
+    .catch(() => {
+      showToast("Impossible de sauvegarder cette vidÃ©o locale dans le navigateur.", "error");
+      e.target.value = "";
+    });
+  return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = typeof ev.target?.result === "string" ? ev.target.result : "";
+    if (!dataUrl || targetVideoObject.customName !== "Lecteur Vidéo") return;
+    targetVideoObject.videoSrc = dataUrl;
+    setProps(p => ({ ...p, videoSrc: dataUrl }));
+    onUpdate?.();
+    reviveVideos(canvas);
+    e.target.value = "";
+  };
+  reader.readAsDataURL(file);
 };
 const applyVideoSrc = (val) => {
   if (!selectedObject || !canvas || selectedObject.customName !== "Lecteur Vidéo") return;
-  selectedObject.videoSrc = val;
   setProps(p => ({ ...p, videoSrc: val }));
+  const sourceIssue = getVideoSourceIssue(val);
+  if (sourceIssue) return;
+  selectedObject.videoSrc = val;
   onUpdate?.();
   reviveVideos(canvas);
 };
 // --- HELPERS DE MISE À JOUR VISUELLE (HEAD) ---
-
-const updateButtonOnCanvas = (group, data) => {
-  const sizeMap = { small: { w: 110, h: 38, f: 12 }, medium: { w: 150, h: 46, f: 15 }, large: { w: 190, h: 56, f: 18 } };
-  const dims = sizeMap[data.buttonSize] || sizeMap.medium;
-  if (group._objects[0]) group._objects[0].set({ width: dims.w, height: dims.h, fill: data.buttonColor, rx: data.borderRadius, ry: data.borderRadius });
-  if (group._objects[1]) group._objects[1].set({ text: data.buttonText, fontSize: dims.f, fill: data.buttonTextColor });
-};
-
-const updateInputOnCanvas = (group, data) => {
-  if (group._objects[0]) group._objects[0].set({ width: data.inputWidth, height: data.inputHeight, fill: data.bgColor, stroke: data.borderColor });
-  if (group._objects[2]) group._objects[2].set({ text: data.placeholder });
-};
-
-const updateProfileOnCanvas = (group, data) => {
-  const avatar = group._objects.find(o => o.type === "circle");
-  const texts = group._objects.filter(o => o.type === "i-text" || o.type === "text");
-  if (avatar) avatar.set({ fill: data.avatarColor });
-  if (texts[0]) texts[0].set({ text: data.profileName });
-  if (texts[1]) texts[1].set({ text: data.profileRole });
-};
-
-const updatePricingOnCanvas = (group, data) => {
-  if (!data.pricingRows) return;
-  const toRemove = group._objects.slice(1);
-  toRemove.forEach(o => group.remove(o));
-  const startX = -175;
-  data.pricingRows.forEach((row, idx) => {
-    const x = startX + idx * 200;
-    group.add(new fabric.Rect({ width: 185, height: 295, fill: row.color + "12", stroke: row.color, strokeWidth: 2, rx: 14, ry: 14, left: x, top: 0, originX: "center", originY: "center" }));
-    group.add(new fabric.Text(row.name, { fontSize: 16, fontWeight: "800", fill: row.color, left: x, top: -130, originX: "center" }));
-    group.add(new fabric.Text(row.price, { fontSize: 28, fontWeight: "900", fill: row.color, left: x, top: -102, originX: "center" }));
-  });
-};
-
-const updateSliderOnCanvas = (group, data) => {
-  const pct = (data.sliderValue - data.min) / (data.max - data.min);
-  const newX = -75 + pct * 150;
-  if (group._objects[1]) group._objects[1].set({ x2: newX, stroke: data.sliderColor });
-  if (group._objects[2]) group._objects[2].set({ left: newX, stroke: data.sliderColor });
-  if (group._objects[3]) group._objects[3].set({ text: `${data.sliderValue}${data.unit}`, fill: data.sliderColor });
-};
-
-const updateCardOnCanvas = (group, data) => {
-  if (group._objects[3]) group._objects[3].set({ text: data.productTitle });
-  if (group._objects[6]) group._objects[6].set({ text: data.productPrice, fill: data.productColor });
-  if (group._objects[7]) group._objects[7].set({ fill: data.productColor });
-};
-
-const updateNavMenuOnCanvas = (group, data) => {
-  if (group._objects[1]) group._objects[1].set({ text: data.navLogo, fill: data.navColor });
-  if (group._objects[6]) group._objects[6].set({ fill: data.navColor });
-};
-
-const updateHeroOnCanvas = (group, data) => {
-  if (group._objects[0]) group._objects[0].set({ fill: data.heroBg });
-  if (group._objects[5]) group._objects[5].set({ text: data.heroTitle });
-};
-
-const updateTabsOnCanvas = (group, data) => {
-  if (group._objects[2]) group._objects[2].set({ text: data.tab1 });
-  if (group._objects[3]) group._objects[3].set({ text: data.tab2 });
-};
-
-const updateTableOnCanvas = (group, data) => {
-  if (!data.tableData) return;
-  const oldObjs = [...group._objects];
-  oldObjs.forEach(o => group.remove(o));
-  const cellW = 120, cellH = 50;
-  for (let i = 0; i < data.rows; i++) {
-    for (let j = 0; j < data.cols; j++) {
-      const x = - (data.cols * cellW) / 2 + j * cellW;
-      const y = - (data.rows * cellH) / 2 + i * cellH;
-      group.add(new fabric.Rect({ left: x, top: y, width: cellW, height: cellH, fill: i === 0 ? data.headerBg : data.rowBg, stroke: data.strokeColor }));
-      group.add(new fabric.Text(data.tableData[i]?.[j] || "", { left: x + 10, top: y + 15, fontSize: 14, fontFamily: "Inter" }));
-    }
-  }
-};
-
-const updateModalOnCanvas = (group, data) => {
-  const titleText = group._objects?.find((o) => (o.type === "text" || o.type === "i-text") && /fenêtre modale|modal/i.test(o.text || ""));
-  const bodyText = group._objects?.find((o) => (o.type === "text" || o.type === "i-text") && (o.text || "") !== titleText?.text);
-  if (titleText) titleText.set({ text: data.modalTitle || "Fenêtre modale" });
-  if (bodyText) bodyText.set({ text: data.modalContent || "Contenu de la modal." });
-};
 
   if (!selectedObject) return (
     <div className="props-empty">
@@ -1415,7 +2147,7 @@ const updateModalOnCanvas = (group, data) => {
   const isText = ["i-text", "textbox"].includes(selectedObject.type);
   const isLine = selectedObject.type === "line";
   const isGroup = selectedObject.type === "group";
-  const isInteractiveComponent = isGroup && editorVariant && ["button", "slider", "modal", "input", "nav_menu", "hero", "tabs", "table", "profile", "pricing", "card"].includes(editorVariant);
+  const isInteractiveComponent = isGroup && selectedObject.customVariant && (["button", "slider", "modal", "input", "nav_menu", "hero", "tabs", "table", "profile", "pricing", "card"].includes(selectedObject.customVariant) || selectedObject.customVariant.startsWith("chart_"));
 
   const v = {
     left: props.left ?? 0, top: props.top ?? 0, width: props.width ?? 0, height: props.height ?? 0,
@@ -1441,6 +2173,9 @@ const updateModalOnCanvas = (group, data) => {
     mapLat: props.mapLat ?? DEFAULT_MAP_LAT,
     mapLng: props.mapLng ?? DEFAULT_MAP_LNG,
     mapZoom: props.mapZoom ?? DEFAULT_MAP_ZOOM,
+    mapAddress: props.mapAddress ?? "",
+    mapType: props.mapType ?? "m",
+    showMarker: props.showMarker ?? true,
     pricingTitle: props.pricingTitle ?? "", pricingPrice: props.pricingPrice ?? "", pricingButton: props.pricingButton ?? "",
     videoSrc: props.videoSrc ?? "",
   };
@@ -1514,16 +2249,29 @@ const updateModalOnCanvas = (group, data) => {
 
       {isGroup && selectedObject.customName === "Carte (Map)" && (
         <section className="props-section">
-          <h4 className="props-section-title">Carte (OpenStreetMap)</h4>
+          <h4 className="props-section-title">Carte Interactive</h4>
           <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <PropField label="Latitude" type="number" value={v.mapLat} onChange={val => applyMapField("mapLat", val)} />
-            <PropField label="Longitude" type="number" value={v.mapLng} onChange={val => applyMapField("mapLng", val)} />
-            <PropField label="Zoom (1–18)" type="number" value={v.mapZoom} onChange={val => applyMapField("mapZoom", val)} min="1" max="18" />
-            <button type="button" className="version-btn" style={{ width: "100%", justifyContent: "center" }} onClick={refreshMapPreview}>
-              Actualiser la carte
-            </button>
-            <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4, margin: 0 }}>
-              Aperçu statique (OpenStreetMap). Cliquez sur « Actualiser » après modification des coordonnées.
+            <PropField label="Rechercher lieu/adresse" value={v.mapAddress} onChange={val => applyMapField("mapAddress", val)} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+              <PropField label="Latitude" type="number" value={v.mapLat} onChange={val => applyMapField("mapLat", val)} />
+              <PropField label="Longitude" type="number" value={v.mapLng} onChange={val => applyMapField("mapLng", val)} />
+            </div>
+            <PropField label="Zoom (1–20)" type="number" value={v.mapZoom} onChange={val => applyMapField("mapZoom", val)} min="1" max="20" />
+            
+            <div className="props-row" style={{ marginTop: 4, marginBottom: 0 }}>
+              <label className="props-label">Vue par défaut</label>
+              <select value={v.mapType || "m"} onChange={e => applyMapField("mapType", e.target.value)} className="props-select" style={{ width: 120 }}>
+                <option value="m">Plan</option>
+                <option value="k">Satellite</option>
+              </select>
+            </div>
+            
+            <div className="props-row" style={{ marginTop: 0, marginBottom: 0 }}>
+              <label className="props-label" style={{ fontSize: 11 }}>Afficher le marqueur</label>
+              <input type="checkbox" checked={v.showMarker ?? true} onChange={e => applyMapField("showMarker", e.target.checked)} className="custom-checkbox" />
+            </div>
+            <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4, margin: 0, marginTop: 4 }}>
+               Cliquez une fois sur la carte pour la sélectionner, puis interagissez avec pour vous déplacer ou zoomer.
             </p>
           </div>
         </section>
@@ -1532,13 +2280,21 @@ const updateModalOnCanvas = (group, data) => {
       {selectedObject.customName === "Lecteur Vidéo" && (
         <section className="props-section">
           <h4 className="props-section-title">Vidéo</h4>
-          <PropField label="Lien externe (YouTube, MP4)" value={v.videoSrc && !v.videoSrc.startsWith("blob:") ? v.videoSrc : ""} onChange={val => applyVideoSrc(val)} />
+          <PropField label="Lien vidéo (YouTube, MP4, WebM)" value={v.videoSrc && !v.videoSrc.startsWith("blob:") && !v.videoSrc.startsWith("data:video/") && !v.videoSrc.startsWith("localvideo:") ? v.videoSrc : ""} onChange={val => applyVideoSrc(val)} />
           <div style={{ marginTop: 8 }}>
             <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
               Tester une vidéo locale
               <input type="file" accept="video/mp4,video/webm" style={{ display: "none" }} onChange={handleVideoUpload} />
             </label>
-            {v.videoSrc && v.videoSrc.startsWith("blob:") && <div style={{ marginTop: 8, fontSize: 11, color: "var(--warning)", lineHeight: "1.2" }}>⚠️ Vidéo locale active.<br />(Visualisation temporaire, utilisez un lien externe pour la sauvegarde complète).</div>}
+            <div style={{ marginTop: 8, fontSize: 11, color: "var(--muted)", lineHeight: "1.35" }}>
+              Cliquez une fois sur le bloc vidéo pour le sélectionner, puis utilisez les contrôles lecture, pause et volume.
+            </div>
+            {getVideoSourceIssue(v.videoSrc) && !v.videoSrc.startsWith("blob:") && (
+              <div style={{ marginTop: 8, fontSize: 11, color: "#b45309", lineHeight: "1.35" }}>
+                {getVideoSourceIssue(v.videoSrc)}
+              </div>
+            )}
+            {v.videoSrc && v.videoSrc.startsWith("localvideo:") && <div style={{ marginTop: 8, fontSize: 11, color: "#0f766e", lineHeight: "1.2" }}>Vidéo locale enregistrée dans ce navigateur.<br />(Elle reste disponible après actualisation de la page.)</div>}
           </div>
         </section>
       )}
@@ -1660,40 +2416,6 @@ const updateModalOnCanvas = (group, data) => {
         )}
       </div>
 
-      {/* FIX: Component editors now use editorVariant + editorData for reliable rendering */}
-      {editorVariant === "button" && (
-        <ButtonEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "input" && (
-        <InputEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "profile" && (
-        <ProfileEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "pricing" && (
-        <PricingEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "slider" && (
-        <SliderEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "modal" && (
-        <ModalEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "card" && (
-        <CardEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "nav_menu" && (
-        <NavMenuEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "hero" && (
-        <HeroEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "tabs" && (
-        <TabsEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
-      {editorVariant === "table" && (
-        <TableEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
-      )}
     </>
   );
 };
@@ -1749,9 +2471,17 @@ const LayersPanel = ({ canvas, selectedObject, onSelectObject, refreshKey }) => 
 };
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+
+const FABRIC_CUSTOM_PROPS = [
+  "excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", 
+  "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", 
+  "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", 
+  "imageHistoryId", "videoSrc", "videoAssetId", "mapLat", "mapLng", "mapZoom",
+  "editable", "customType", "templateType"
+];
+
 const customFabricReviver = (o, object) => {
-  const customProps = ["excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", "imageHistoryId"];
-  customProps.forEach(key => {
+  FABRIC_CUSTOM_PROPS.forEach(key => {
     if (o[key] !== undefined) object[key] = o[key];
   });
 };
@@ -1760,8 +2490,13 @@ const DesignEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const wrapperRef = useRef(null);
+  const canvasHostRef = useRef(null);
   const canvasRef = useRef(null);
   const gridLinesRef = useRef([]);
+  const videoOverlayRafRef = useRef(null);
+  const videoOverlaySignatureRef = useRef("");
+  const mapOverlayRafRef = useRef(null);
+  const mapOverlaySignatureRef = useRef("");
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = (user?.rôle || user?.role || "").toLowerCase();
@@ -1773,6 +2508,9 @@ const DesignEditor = () => {
   const [saveStatus, setSaveStatus] = useState("Chargement...");
   const [selectedObj, setSelectedObj] = useState(null);
   const [selectedObjects, setSelectedObjects] = useState([]); // Multiple selection
+  const [showComponentEditor, setShowComponentEditor] = useState(false);
+  const [editorVariant, setEditorVariant] = useState(null);
+  const [editorData, setEditorData] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [gridEnabled, setGridEnabled] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(false);
@@ -1819,26 +2557,415 @@ const DesignEditor = () => {
   // FIX: Map from imageId -> fabricCanvas image object reference
   const imageObjMapRef = useRef({});
 
-  // Double-click-to-drag state
-  const [draggableId, setDraggableId] = useState(null);
+
 
   // Tools & Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Collapsed by default
   const [activeDrawingTool, setActiveDrawingTool] = useState(null); // 'pen', 'marker', 'highlighter', 'eraser'\n  const [activeBottomTool, setActiveBottomTool] = useState(null); // 'pen', 'marker', 'highlighter', 'eraser'
   const [drawingColor, setDrawingColor] = useState("#ef4444");
   const [drawingWidth, setDrawingWidth] = useState(3);
+  const [videoOverlayItems, setVideoOverlayItems] = useState([]);
+  const [mapOverlayItems, setMapOverlayItems] = useState([]);
+  const [resolvedVideoSources, setResolvedVideoSources] = useState({});
+  const [selectedVideoUi, setSelectedVideoUi] = useState({ playing: true, muted: true, volume: 100 });
 
   const dropdownRef = useRef(null);
   const maquetteIdRef = useRef(null);
   const currentVersionIdRef = useRef(null);
   const isSwitchingVersion = useRef(false);
   const fabricCanvasRef = useRef(null);
+  const htmlVideoRefs = useRef({});
+  const localVideoUrlCacheRef = useRef({});
 
   const showToast = (message, type = "success") => setToast({ message, type });
   const showModal = (title, content) => setActiveModal({ title, content });
+  const activeCanvasObject = fabricCanvas?.getActiveObject?.() || null;
+  const selectVideoObject = useCallback((targetObject) => {
+    if (!fabricCanvas || !targetObject) return;
+    setSelectedObj(targetObject);
+    setSelectedVideoUi((prev) => ({
+      playing: true,
+      muted: false,
+      volume: prev.volume > 0 ? prev.volume : 100
+    }));
+    fabricCanvas.discardActiveObject();
+    fabricCanvas.setActiveObject(targetObject);
+    fabricCanvas.fire("selection:updated", {
+      selected: [targetObject],
+      deselected: [],
+      target: targetObject
+    });
+    fabricCanvas.requestRenderAll();
+    const overlayItem = videoOverlayItems.find((item) => item.objectRef === targetObject);
+    if (overlayItem) {
+      requestAnimationFrame(() => {
+        const htmlVideo = htmlVideoRefs.current[overlayItem.key];
+        if (!htmlVideo) return;
+        htmlVideo.muted = false;
+        if (!htmlVideo.volume || htmlVideo.volume <= 0) htmlVideo.volume = 1;
+        htmlVideo.play().catch(() => {});
+        setSelectedVideoUi({
+          playing: !htmlVideo.paused,
+          muted: htmlVideo.muted,
+          volume: Math.round((htmlVideo.volume ?? 1) * 100)
+        });
+      });
+    }
+  }, [fabricCanvas, videoOverlayItems]);
+  const effectiveSelectedObject = activeCanvasObject || selectedObj;
+  const selectedVideoOverlayItem = videoOverlayItems.find((item) => item.objectRef === effectiveSelectedObject) || null;
+  const selectedHtmlVideo = selectedVideoOverlayItem ? htmlVideoRefs.current[selectedVideoOverlayItem.key] : null;
+  const syncSelectedVideoUi = useCallback(() => {
+    if (!selectedHtmlVideo) return;
+    setSelectedVideoUi({
+      playing: !selectedHtmlVideo.paused,
+      muted: selectedHtmlVideo.muted,
+      volume: Math.round((selectedHtmlVideo.volume ?? 1) * 100)
+    });
+  }, [selectedHtmlVideo]);
+  const toggleSelectedVideoPlayback = useCallback(() => {
+    if (!selectedHtmlVideo) return;
+    if (selectedHtmlVideo.paused) selectedHtmlVideo.play().catch(() => {});
+    else selectedHtmlVideo.pause();
+    syncSelectedVideoUi();
+  }, [selectedHtmlVideo, syncSelectedVideoUi]);
+  const toggleSelectedVideoMute = useCallback(() => {
+    if (!selectedHtmlVideo) return;
+    selectedHtmlVideo.muted = !selectedHtmlVideo.muted;
+    syncSelectedVideoUi();
+  }, [selectedHtmlVideo, syncSelectedVideoUi]);
+  const setSelectedVideoVolume = useCallback((nextVolume) => {
+    if (!selectedHtmlVideo) return;
+    const normalized = Math.max(0, Math.min(1, Number(nextVolume) / 100));
+    selectedHtmlVideo.volume = normalized;
+    selectedHtmlVideo.muted = normalized === 0;
+    syncSelectedVideoUi();
+  }, [selectedHtmlVideo, syncSelectedVideoUi]);
 
   // Keep fabricCanvasRef in sync
   useEffect(() => { fabricCanvasRef.current = fabricCanvas; }, [fabricCanvas]);
+
+  const buildVideoOverlayItems = useCallback(() => {
+    if (!fabricCanvas) return [];
+
+    const activeObject = fabricCanvas.getActiveObject?.() || null;
+    const vpt = fabricCanvas.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const zoomX = Math.abs(vpt[0] || 1);
+    const zoomY = Math.abs(vpt[3] || 1);
+    const canvasWidth = fabricCanvas.getWidth?.() || 1000;
+    const canvasHeight = fabricCanvas.getHeight?.() || 700;
+
+    return fabricCanvas.getObjects().flatMap((obj, index) => {
+      const source = typeof obj.videoSrc === "string" ? obj.videoSrc.trim() : "";
+      if (obj.customName !== "Lecteur Vidéo" || !source || obj.visible === false) return [];
+
+      const sourceKind = getVideoSourceKind(source);
+      if (sourceKind === "empty" || sourceKind === "unsupported") return [];
+
+      const centerScene = typeof obj.getCenterPoint === "function"
+        ? obj.getCenterPoint()
+        : new fabric.Point(obj.left || 0, obj.top || 0);
+      const centerViewport = centerScene.transform(vpt);
+      const sceneWidth = typeof obj.getScaledWidth === "function"
+        ? obj.getScaledWidth()
+        : (obj.width || 320) * (obj.scaleX || 1);
+      const sceneHeight = typeof obj.getScaledHeight === "function"
+        ? obj.getScaledHeight()
+        : (obj.height || 180) * (obj.scaleY || 1);
+
+      const width = Math.max(1, sceneWidth * zoomX);
+      const height = Math.max(1, sceneHeight * zoomY);
+      const left = centerViewport.x - width / 2;
+      const top = centerViewport.y - height / 2;
+
+      if (left > canvasWidth || top > canvasHeight || left + width < 0 || top + height < 0) {
+        return [];
+      }
+
+      return [{
+        key: obj.__uid ? `video-${obj.__uid}` : `video-${index}-${source}`,
+        objectRef: obj,
+        source,
+        sourceKind,
+        embedSrc: sourceKind === "youtube" ? getYouTubeEmbedUrl(source) : "",
+        resolvedSrc: sourceKind === "direct"
+          ? (resolvedVideoSources[source] || (getLocalVideoAssetId(source) ? "" : source))
+          : "",
+        left,
+        top,
+        width,
+        height,
+        angle: obj.angle || 0,
+        opacity: obj.opacity ?? 1,
+        isSelected: obj === activeObject || obj === selectedObj,
+        zIndex: index + 1
+      }];
+    });
+  }, [fabricCanvas, selectedObj, resolvedVideoSources]);
+
+  useEffect(() => {
+    if (!fabricCanvas) {
+      videoOverlaySignatureRef.current = "";
+      setVideoOverlayItems([]);
+      return;
+    }
+
+    const updateOverlays = () => {
+      const nextItems = buildVideoOverlayItems();
+      const nextSignature = JSON.stringify(
+        nextItems.map((item) => ({
+          key: item.key,
+          source: item.source,
+          sourceKind: item.sourceKind,
+          left: Math.round(item.left * 10) / 10,
+          top: Math.round(item.top * 10) / 10,
+          width: Math.round(item.width * 10) / 10,
+          height: Math.round(item.height * 10) / 10,
+          angle: Math.round(item.angle * 10) / 10,
+          opacity: Math.round(item.opacity * 100) / 100,
+          isSelected: item.isSelected
+        }))
+      );
+
+      if (nextSignature !== videoOverlaySignatureRef.current) {
+        videoOverlaySignatureRef.current = nextSignature;
+        setVideoOverlayItems(nextItems);
+      }
+    };
+
+    const scheduleOverlayUpdate = () => {
+      if (videoOverlayRafRef.current) cancelAnimationFrame(videoOverlayRafRef.current);
+      videoOverlayRafRef.current = requestAnimationFrame(() => {
+        videoOverlayRafRef.current = null;
+        updateOverlays();
+      });
+    };
+
+    const canvasEvents = [
+      "after:render",
+      "object:added",
+      "object:removed",
+      "object:modified",
+      "selection:created",
+      "selection:updated",
+      "selection:cleared"
+    ];
+
+    scheduleOverlayUpdate();
+    canvasEvents.forEach((eventName) => fabricCanvas.on(eventName, scheduleOverlayUpdate));
+    window.addEventListener("resize", scheduleOverlayUpdate);
+
+    return () => {
+      if (videoOverlayRafRef.current) {
+        cancelAnimationFrame(videoOverlayRafRef.current);
+        videoOverlayRafRef.current = null;
+      }
+      canvasEvents.forEach((eventName) => fabricCanvas.off(eventName, scheduleOverlayUpdate));
+      window.removeEventListener("resize", scheduleOverlayUpdate);
+    };
+  }, [fabricCanvas, buildVideoOverlayItems]);
+
+  const buildMapOverlayItems = useCallback(() => {
+    if (!fabricCanvas) return [];
+
+    const activeObject = fabricCanvas.getActiveObject?.() || null;
+    const vpt = fabricCanvas.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const zoomX = Math.abs(vpt[0] || 1);
+    const zoomY = Math.abs(vpt[3] || 1);
+    const canvasWidth = fabricCanvas.getWidth?.() || 1000;
+    const canvasHeight = fabricCanvas.getHeight?.() || 700;
+
+    return fabricCanvas.getObjects().flatMap((obj, index) => {
+      if (obj.customName !== "Carte (Map)" || obj.visible === false) return [];
+
+      const centerScene = typeof obj.getCenterPoint === "function"
+        ? obj.getCenterPoint()
+        : new fabric.Point(obj.left || 0, obj.top || 0);
+      const centerViewport = centerScene.transform(vpt);
+      const sceneWidth = typeof obj.getScaledWidth === "function"
+        ? obj.getScaledWidth()
+        : (obj.width || 320) * (obj.scaleX || 1);
+      const sceneHeight = typeof obj.getScaledHeight === "function"
+        ? obj.getScaledHeight()
+        : (obj.height || 180) * (obj.scaleY || 1);
+
+      const width = Math.max(1, sceneWidth * zoomX);
+      const height = Math.max(1, sceneHeight * zoomY);
+      const left = centerViewport.x - width / 2;
+      const top = centerViewport.y - height / 2;
+
+      if (left > canvasWidth || top > canvasHeight || left + width < 0 || top + height < 0) {
+        return [];
+      }
+
+      const lat = obj.mapLat ?? obj.componentData?.mapLat ?? DEFAULT_MAP_LAT;
+      const lng = obj.mapLng ?? obj.componentData?.mapLng ?? DEFAULT_MAP_LNG;
+      const zoom = Math.min(20, Math.max(1, Number(obj.mapZoom ?? obj.componentData?.mapZoom) || DEFAULT_MAP_ZOOM));
+      const mapAddress = obj.mapAddress ?? obj.componentData?.mapAddress ?? "";
+      const mapType = obj.mapType ?? obj.componentData?.mapType ?? "m";
+      const showMarker = obj.showMarker ?? obj.componentData?.showMarker ?? true;
+
+      const queryParams = [];
+      if (mapAddress) {
+        queryParams.push(`q=${encodeURIComponent(mapAddress)}`);
+      } else {
+        if (showMarker) {
+          queryParams.push(`q=${lat},${lng}`);
+        } else {
+          queryParams.push(`loc:${lat}+${lng}`);
+        }
+      }
+      
+      const queryStr = queryParams.length > 0 ? queryParams.join("&") : `q=${lat},${lng}`;
+      const iframeSrc = `https://maps.google.com/maps?${queryStr}&t=${mapType}&z=${zoom}&ie=UTF8&iwloc=&output=embed`;
+
+      return [{
+        key: obj.__uid ? `map-${obj.__uid}` : `map-${index}`,
+        objectRef: obj,
+        iframeSrc,
+        left,
+        top,
+        width,
+        height,
+        angle: obj.angle || 0,
+        opacity: obj.opacity ?? 1,
+        isSelected: obj === activeObject || obj === selectedObj,
+        zIndex: index + 1
+      }];
+    });
+  }, [fabricCanvas, selectedObj]);
+
+  useEffect(() => {
+    if (!fabricCanvas) {
+      mapOverlaySignatureRef.current = "";
+      setMapOverlayItems([]);
+      return;
+    }
+
+    const updateOverlays = () => {
+      const nextItems = buildMapOverlayItems();
+      const nextSignature = JSON.stringify(
+        nextItems.map((item) => ({
+          key: item.key,
+          iframeSrc: item.iframeSrc,
+          left: Math.round(item.left * 10) / 10,
+          top: Math.round(item.top * 10) / 10,
+          width: Math.round(item.width * 10) / 10,
+          height: Math.round(item.height * 10) / 10,
+          angle: Math.round(item.angle * 10) / 10,
+          opacity: Math.round(item.opacity * 100) / 100,
+          isSelected: item.isSelected
+        }))
+      );
+
+      if (nextSignature !== mapOverlaySignatureRef.current) {
+        mapOverlaySignatureRef.current = nextSignature;
+        setMapOverlayItems(nextItems);
+      }
+    };
+
+    const scheduleOverlayUpdate = () => {
+      if (mapOverlayRafRef.current) cancelAnimationFrame(mapOverlayRafRef.current);
+      mapOverlayRafRef.current = requestAnimationFrame(() => {
+        mapOverlayRafRef.current = null;
+        updateOverlays();
+      });
+    };
+
+    const canvasEvents = [
+      "after:render", "object:added", "object:removed", "object:modified",
+      "selection:created", "selection:updated", "selection:cleared"
+    ];
+
+    scheduleOverlayUpdate();
+    canvasEvents.forEach((eventName) => fabricCanvas.on(eventName, scheduleOverlayUpdate));
+    window.addEventListener("resize", scheduleOverlayUpdate);
+
+    return () => {
+      if (mapOverlayRafRef.current) {
+        cancelAnimationFrame(mapOverlayRafRef.current);
+        mapOverlayRafRef.current = null;
+      }
+      canvasEvents.forEach((eventName) => fabricCanvas.off(eventName, scheduleOverlayUpdate));
+      window.removeEventListener("resize", scheduleOverlayUpdate);
+    };
+  }, [fabricCanvas, buildMapOverlayItems]);
+
+  useEffect(() => {
+    const localSources = [...new Set(
+      videoOverlayItems
+        .map((item) => item.source)
+        .filter((source) => !!getLocalVideoAssetId(source))
+    )];
+
+    if (localSources.length === 0) {
+      setResolvedVideoSources((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((key) => {
+          if (getLocalVideoAssetId(key)) delete next[key];
+        });
+        return next;
+      });
+      return;
+    }
+
+    let isCancelled = false;
+    Promise.all(localSources.map(async (source) => {
+      const assetId = getLocalVideoAssetId(source);
+      if (!assetId) return [source, ""];
+      if (localVideoUrlCacheRef.current[source]) return [source, localVideoUrlCacheRef.current[source]];
+      try {
+        const file = await loadLocalVideoAsset(assetId);
+        if (!file) return [source, ""];
+        const objectUrl = URL.createObjectURL(file);
+        localVideoUrlCacheRef.current[source] = objectUrl;
+        return [source, objectUrl];
+      } catch {
+        return [source, ""];
+      }
+    })).then((entries) => {
+      if (isCancelled) return;
+      setResolvedVideoSources((prev) => {
+        const next = { ...prev };
+        entries.forEach(([source, resolved]) => {
+          next[source] = resolved;
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [videoOverlayItems]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(localVideoUrlCacheRef.current).forEach((url) => {
+        try { URL.revokeObjectURL(url); } catch {}
+      });
+      localVideoUrlCacheRef.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedObj || selectedObj.customName !== "Lecteur Vidéo") return;
+    const selectedOverlay = videoOverlayItems.find((item) => item.objectRef === selectedObj);
+    if (!selectedOverlay || selectedOverlay.sourceKind !== "direct") return;
+    const htmlVideo = htmlVideoRefs.current[selectedOverlay.key];
+    if (!htmlVideo) return;
+    setSelectedVideoUi({
+      playing: !htmlVideo.paused,
+      muted: htmlVideo.muted,
+      volume: Math.round((htmlVideo.volume ?? 1) * 100)
+    });
+  }, [selectedObj, videoOverlayItems]);
+
+  useEffect(() => {
+    if (!selectedHtmlVideo) return;
+    selectedHtmlVideo.muted = selectedVideoUi.muted;
+    selectedHtmlVideo.volume = Math.max(0, Math.min(1, selectedVideoUi.volume / 100));
+  }, [selectedHtmlVideo, selectedVideoUi]);
 
   useEffect(() => {
     const handleClickOutside = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
@@ -1881,12 +3008,19 @@ const DesignEditor = () => {
     let isMounted = true;
     const loadData = async () => {
       try {
-        const [resMaquette, resVersion] = await Promise.all([API.get(`/maquettes/${id}`), API.get(`/maquettes/${id}/latest-version`)]);
+        const savedVersionId = localStorage.getItem(`lastVersion_${id}`);
+        const versionReq = savedVersionId 
+          ? API.get(`/versions/${savedVersionId}`).catch(() => API.get(`/maquettes/${id}/latest-version`))
+          : API.get(`/maquettes/${id}/latest-version`);
+
+        const [resMaquette, resVersion] = await Promise.all([API.get(`/maquettes/${id}`), versionReq]);
         if (isMounted) {
-          setDesignData({ maquette: resMaquette.data, version: resVersion.data });
-          setCurrentVersionNum(resVersion.data.numéro_version);
+          const vData = resVersion.data.version || resVersion.data;
+          setDesignData({ maquette: resMaquette.data, version: vData });
+          setCurrentVersionNum(vData.numéro_version);
           maquetteIdRef.current = resMaquette.data._id;
-          currentVersionIdRef.current = resVersion.data._id;
+          currentVersionIdRef.current = vData._id;
+          localStorage.setItem(`lastVersion_${id}`, vData._id);
         }
       } catch { if (isMounted) setSaveStatus("Erreur de chargement"); }
     };
@@ -1943,7 +3077,7 @@ const DesignEditor = () => {
   }, []);
 
   const updateSliderFromEvent = useCallback((e, group) => {
-    const pointer = group.canvas?.getPointer(e.e);
+    const pointer = getCanvasPointer(group.canvas, e);
     if (!pointer) return;
     const groupLeft = group.left;
     const minX = -75 + groupLeft, maxX = 75 + groupLeft;
@@ -2003,26 +3137,44 @@ const DesignEditor = () => {
     }
     
     // Existing interactions for components
-    if (obj.customVariant === "button") {
-      obj.on("mousedown", () => handleButtonClick(obj, obj.componentData));
-    } else if (obj.customVariant === "checkbox") {
+    if (obj.customVariant === "video" || obj.customName === "Lecteur Vidéo") {
+      // Allow selecting video
       obj.on("mousedown", () => {
+        if (fabricCanvas) {
+          fabricCanvas.setActiveObject(obj);
+          fabricCanvas.renderAll();
+        }
+      });
+    } else if (obj.customVariant === "map" || obj.customName === "Carte (Map)") {
+      // Allow selecting map
+      obj.on("mousedown", () => {
+        if (fabricCanvas) {
+          fabricCanvas.setActiveObject(obj);
+          fabricCanvas.renderAll();
+        }
+      });
+    } else if (obj.customVariant === "button") {
+      obj.on("mousedblclick", () => handleButtonClick(obj, obj.componentData));
+    } else if (obj.customVariant === "checkbox") {
+      obj.on("mousedblclick", () => {
         const newChecked = !obj.componentData.checked;
         obj.componentData.checked = newChecked;
         const t = obj._objects[0], ck = obj._objects[1];
         if (t) t.set({ fill: newChecked ? "#6366f1" : "#e2e8f0" });
         if (ck) ck.set({ visible: newChecked });
+        obj.set("dirty", true);
         obj.canvas?.renderAll();
         showToast(`Checkbox ${newChecked ? "cochée" : "décochée"}`, "info");
       });
     } else if (obj.customVariant === "toggle") {
-      obj.on("mousedown", () => {
+      obj.on("mousedblclick", () => {
         const on = !obj.componentData.toggled;
         obj.componentData.toggled = on;
         const tk = obj._objects[0], kn = obj._objects[1], lb = obj._objects[2];
-        if (tk) tk.set({ fill: on ? "#10b981" : "#94a3b8" });
-        if (kn) kn.set({ left: on ? 14 : -14 });
+        if (tk) tk.set({ fill: on ? "#10b981" : "#e2e8f0" });
+        if (kn) kn.set({ left: on ? 12 : -12 });
         if (lb) lb.set({ text: on ? "ON " : "OFF", fill: on ? "#10b981" : "#64748b" });
+        obj.set("dirty", true);
         obj.canvas?.renderAll();
         showToast(`Switch ${on ? "activé" : "désactivé"}`, "info");
       });
@@ -2032,42 +3184,85 @@ const DesignEditor = () => {
       obj.on("mouseup", () => { isDragging = false; });
       obj.on("mousemove", (e) => { if (isDragging) updateSliderFromEvent(e, obj); });
     } else if (obj.customVariant === "modal") {
-      obj.on("mousedown", () => handleModalOpen(obj, obj.componentData));
+      obj.on("mousedblclick", () => handleModalOpen(obj, obj.componentData));
+    } else if (obj.customVariant && obj.customVariant.startsWith("chart_")) {
+      // Handle chart components
+      obj.on("mousedown", () => {
+        if (fabricCanvas) {
+          fabricCanvas.setActiveObject(obj);
+          fabricCanvas.renderAll();
+        }
+      });
+      
+      // Make individual chart elements editable
+      if (obj._objects) {
+        obj._objects.forEach((chartObj) => {
+          if (chartObj.type === "text" || chartObj.type === "i-text" || chartObj.type === "textbox") {
+            chartObj.on("mousedblclick", () => {
+              if (fabricCanvas) {
+                fabricCanvas.discardActiveObject();
+                fabricCanvas.setActiveObject(chartObj);
+                chartObj.enterEditing();
+                chartObj.selectAll();
+                fabricCanvas.renderAll();
+              }
+            });
+          }
+        });
+      }
     }
   }, [handleButtonClick, handleModalOpen, updateSliderFromEvent]);
 
   // Init canvas
   useEffect(() => {
-    if (!designData?.maquette?._id) return;
+    if (!designData?.maquette?._id || !canvasHostRef.current) return;
     setSaveStatus("Initialisation…");
-    wrapperRef.current.innerHTML = "";
+    canvasHostRef.current.innerHTML = "";
     const el = document.createElement("canvas");
-    wrapperRef.current.appendChild(el);
+    canvasHostRef.current.appendChild(el);
     canvasRef.current = el;
     const canvas = new fabric.Canvas(el, { width: 1000, height: 700, backgroundColor: "#ffffff", preserveObjectStacking: true });
     setFabricCanvas(canvas);
+    
+    // Store reference to restoreInteractivity for reviveVideos to use
+    window.restoreInteractivityRef = restoreInteractivity;
 
     const init = async () => {
+      isSwitchingVersion.current = true;
+      debouncedSave.cancel();
       try {
-        // Reset zoom to 100% before loading content
-        canvas.setZoom(1);
-        setZoom(100);
-        
         if (designData.version?.contenu?.objects?.length) {
-          const loadRes = canvas.loadFromJSON(designData.version.contenu);
+          // Prevent fabric crash when loading old blob URLs from local session history
+          const safeContenuStr = JSON.stringify(designData.version.contenu)
+            .replace(/"(?:blob|file):[^"]+"/g, '"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="');
+          const safeContenu = JSON.parse(safeContenuStr);
+          
+          const loadRes = canvas.loadFromJSON(safeContenu, customFabricReviver);
           if (loadRes && typeof loadRes.then === "function") await loadRes;
+          canvas.getObjects().forEach(restoreInteractivity);
           reviveVideos(canvas);
           reviveMaps(canvas);
         }
         
-        // Ensure viewport is centered after loading
-        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        // Ensure viewport is centered after loading or restore from save
+        if (designData.version?.contenu?.viewportTransform) {
+          canvas.setViewportTransform(designData.version.contenu.viewportTransform);
+          setZoom(Math.round(canvas.getZoom() * 100));
+        } else {
+          canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+          canvas.setZoom(1);
+          setZoom(100);
+        }
+        
         canvas.renderAll();
         
         setSaveStatus("À jour ☁️");
         if (!isDesigner) lockCanvasObjects(canvas);
         if (currentVersionIdRef.current) await fetchCorrectionsForVersion(currentVersionIdRef.current);
       } catch { setSaveStatus("Erreur d'affichage"); }
+      finally {
+        setTimeout(() => { isSwitchingVersion.current = false; }, 300);
+      }
     };
     init();
     return () => { canvas.dispose(); setFabricCanvas(null); };
@@ -2077,11 +3272,19 @@ const DesignEditor = () => {
   useEffect(() => {
     if (!fabricCanvas) return;
     const updateSelection = (e) => { 
-      setSelectedObj(e.selected?.[0] || fabricCanvas.getActiveObject()); 
+      const selected = e.selected?.[0] || fabricCanvas.getActiveObject();
+      setSelectedObj(selected); 
       setLayersKey(k => k + 1);
+
+      if (selected && selected.customVariant && selected.componentData) {
+        setEditorVariant(selected.customVariant);
+        setEditorData({ ...selected.componentData, variant: selected.customVariant });
+      } else {
+        setEditorVariant(null);
+        setEditorData(null);
+      }
       
       // Show/hide text toolbar based on selection
-      const selected = e.selected?.[0] || fabricCanvas.getActiveObject();
       if (selected) {
         showTextToolbar(selected);
       } else {
@@ -2094,6 +3297,27 @@ const DesignEditor = () => {
       if (!fabricCanvas || !e.target) return;
       
       const target = e.target;
+      
+      // Check if the target is part of a chart component
+      let chartGroup = null;
+      if (target.group && target.group.customVariant && target.group.customVariant.startsWith("chart_")) {
+        chartGroup = target.group;
+      } else if (target.customVariant && target.customVariant.startsWith("chart_")) {
+        chartGroup = target;
+      }
+      
+      // If it's a chart component, open the chart editor
+      if (chartGroup) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        setSelectedObj(chartGroup);
+        setEditorVariant(chartGroup.customVariant);
+        setEditorData(chartGroup.componentData || {});
+        setShowComponentEditor(true);
+        return;
+      }
+      
       // Check if it's a text object
       if (target.type === "text" || target.type === "i-text" || target.type === "textbox") {
         // Prevent default behavior
@@ -2197,7 +3421,7 @@ const DesignEditor = () => {
       for(let i=0; i<3; i++){
         for(let j=0; j<3; j++){
           const bg = new fabric.Rect({ left: j*cellW - (cellW*1.5), top: i*cellH - (cellH*1.5), width: cellW, height: cellH, fill: i===0?"#f1f5f9":"white", stroke: "#cbd5e1" });
-          const txt = new fabric.Text(i===0?`En-tête ${j+1}`:`Valeur ${j+1}`, { left: j*cellW - (cellW*1.5) + 16, top: i*cellH - (cellH*1.5) + 16, fontSize: 14, fill: i===0?"#0f172a":"#475569", fontWeight: i===0?"bold":"normal", fontFamily: "Inter" });
+          const txt = new fabric.IText(i===0?`En-tête ${j+1}`:`Valeur ${j+1}`, { left: j*cellW - (cellW*1.5) + 16, top: i*cellH - (cellH*1.5) + 16, fontSize: 14, fill: i===0?"#0f172a":"#475569", fontWeight: i===0?"bold":"normal", fontFamily: "Inter" });
           objs.push(bg, txt);
         }
       }
@@ -2212,16 +3436,19 @@ const DesignEditor = () => {
       // Lecteur Vidéo
       const bg = new fabric.Rect({ width: 320, height: 200, fill: "#0f172a", rx: 12, ry: 12, originX: "center", originY: "center" });
       const playCircle = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" });
-      const playBtn = new fabric.Text("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
-      const label = new fabric.Text("Vidéo", { fontSize: 12, fill: "#94a3b8", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
+      const playBtn = new fabric.IText("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
+      const label = new fabric.IText("Vidéo", { fontSize: 12, fill: "#94a3b8", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
       
       const videoGroup = new fabric.Group([bg, playCircle, playBtn, label], { 
-        left: center.x, 
-        top: center.y, 
+        left: x, 
+        top: y, 
         originX: "center", 
         originY: "center",
+        customName: "Lecteur Vidéo",
         customVariant: "video",
-        componentData: { variant: "video" }
+        componentData: { variant: "video" },
+        videoSrc: "",
+        videoAssetId: ""
       });
       restoreInteractivity(videoGroup);
       fabricCanvas.add(videoGroup);
@@ -2239,15 +3466,22 @@ const DesignEditor = () => {
         originX: "center",
         originY: "center"
       });
-      const mapLabel = new fabric.Text("Localisation", { fontSize: 14, fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: 40 });
+      const mapLabel = new fabric.IText("Localisation", { fontSize: 14, fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: 40 });
       
       const mapGroup = new fabric.Group([bg, mapPin, mapLabel], { 
-        left: center.x, 
-        top: center.y, 
+        left: x, 
+        top: y, 
         originX: "center", 
         originY: "center",
+        customName: "Carte (Map)",
         customVariant: "map",
-        componentData: { variant: "map" }
+        componentData: { variant: "map" },
+        mapLat: DEFAULT_MAP_LAT,
+        mapLng: DEFAULT_MAP_LNG,
+        mapZoom: DEFAULT_MAP_ZOOM,
+        mapAddress: "",
+        mapType: "m",
+        showMarker: true
       });
       restoreInteractivity(mapGroup);
       fabricCanvas.add(mapGroup);
@@ -2269,7 +3503,7 @@ const DesignEditor = () => {
         originX: "center", 
         originY: "center" 
       });
-      const frameLabel = new fabric.Text("Frame / Section", { 
+      const frameLabel = new fabric.IText("Frame / Section", { 
         fontSize: 12, 
         fill: "#94a3b8", 
         fontFamily: "Inter", 
@@ -2298,7 +3532,7 @@ const DesignEditor = () => {
   const spawnRealEmoji = (emoji) => {
     if (!fabricCanvas) return;
     const center = fabricCanvas.getVpCenter();
-    const text = new fabric.Text(emoji, { left: center.x, top: center.y, originX: "center", originY: "center", fontSize: 64 });
+    const text = new fabric.IText(emoji, { left: center.x, top: center.y, originX: "center", originY: "center", fontSize: 64 });
     restoreInteractivity(text);
     fabricCanvas.add(text);
     fabricCanvas.setActiveObject(text);
@@ -2393,13 +3627,26 @@ const DesignEditor = () => {
     if (isSwitchingVersion.current || !vId || !isDesigner) return;
     setSaveStatus("Sauvegarde…");
     try {
-      const json = c.toJSON([
-        "excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", 
-        "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", 
-        "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", 
-        "imageHistoryId", "videoSrc", "mapLat", "mapLng", "mapZoom"
-      ]);
+      const json = c.toJSON(FABRIC_CUSTOM_PROPS);
+      
+      // Prevent massive base64 media saving that crashes API/DB
+      if (json.objects) {
+        json.objects.forEach(obj => {
+          if (obj.customName === "Lecteur Vidéo" && obj.type === "image" && obj.src && obj.src.startsWith("data:")) {
+            obj.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+          }
+          if ((obj.customName === "Carte (Map)" || obj.customVariant === "map") && obj.objects) {
+            obj.objects.forEach(child => {
+              if (child.type === "rect" && child.fill && typeof child.fill === "object" && child.fill.type === "pattern") {
+                child.fill = "#dbeafe";
+              }
+            });
+          }
+        });
+      }
+      
       json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
+      json.viewportTransform = c.viewportTransform;
       await API.put(`/versions/${vId}`, { contenu: json });
       setSaveStatus("À jour ☁️");
     } catch { setSaveStatus("Erreur ❌"); }
@@ -2411,7 +3658,7 @@ const DesignEditor = () => {
     if (!fabricCanvas || !designData?.version?._id || !isDesigner) return;
     const vId = designData.version._id;
     const handleChange = () => { if (!isSwitchingVersion.current) debouncedSave(fabricCanvas, vId); };
-    const handleRemove = () => { if (!isSwitchingVersion.current) { debouncedSave.cancel(); triggerSave(fabricCanvas, vId); } };
+    const handleRemove = () => { if (!isSwitchingVersion.current) debouncedSave(fabricCanvas, vId); };
     fabricCanvas.on("object:modified", handleChange);
     fabricCanvas.on("object:added", handleChange);
     fabricCanvas.on("object:removed", handleRemove);
@@ -2443,7 +3690,7 @@ const DesignEditor = () => {
     };
     const handleMove = (e) => {
       if (activeDrawingTool === "eraser" && isErasing) {
-        const pointer = fabricCanvas.getPointer(e.e);
+        const pointer = getCanvasPointer(fabricCanvas, e);
         const objs = fabricCanvas.getObjects();
         const hit = objs.find(o => o.containsPoint(pointer));
         if (hit) {
@@ -2478,14 +3725,14 @@ const DesignEditor = () => {
 
       // Delete
       if (e.key === "Delete" || e.key === "Backspace") {
-        const activeObjects = fabricCanvas?.getActiveObjects() || [];
+        const activeObjects = canvas.getActiveObjects() || [];
         if (activeObjects.length > 0) {
           // Si l'un des objets est en cours d'édition de texte (ex: Focus dans un Textbox), on ne supprime pas !
           if (activeObjects.some(obj => obj.isEditing)) return;
 
-          activeObjects.forEach(obj => fabricCanvas.remove(obj));
-          fabricCanvas.discardActiveObject();
-          fabricCanvas.renderAll();
+          activeObjects.forEach(obj => canvas.remove(obj));
+          canvas.discardActiveObject();
+          canvas.renderAll();
           setSelectedObj(null);
         }
       }
@@ -2559,33 +3806,31 @@ const DesignEditor = () => {
     if (!fabricCanvas || !maquetteIdRef.current || creatingVersion || !isDesigner) return;
     setCreatingVersion(true);
     try {
-      const json = fabricCanvas.toJSON([
-        "excludeFromExport", 
-        "isPlaceholder", 
-        "placeholderLabel", 
-        "customName", 
-        "boxPaddingTop", 
-        "boxPaddingRight", 
-        "boxPaddingBottom", 
-        "boxPaddingLeft", 
-        "boxStroke", 
-        "boxStrokeWidth", 
-        "rx", 
-        "ry", 
-        "componentData", 
-        "customVariant", 
-        "imageHistoryId", 
-        "videoSrc", 
-        "mapLat", 
-        "mapLng", 
-        "mapZoom"
-      ]);
+      const json = fabricCanvas.toJSON(FABRIC_CUSTOM_PROPS);
+      
+      // Prevent massive base64 media saving that crashes API/DB
+      if (json.objects) {
+        json.objects.forEach(obj => {
+          if (obj.customName === "Lecteur Vidéo" && obj.type === "image" && obj.src && obj.src.startsWith("data:")) {
+            obj.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+          }
+          if ((obj.customName === "Carte (Map)" || obj.customVariant === "map") && obj.objects) {
+            obj.objects.forEach(child => {
+              if (child.type === "rect" && child.fill && typeof child.fill === "object" && child.fill.type === "pattern") {
+                child.fill = "#dbeafe";
+              }
+            });
+          }
+        });
+      }
+      
       const { data } = await API.post("/versions", { contenu: json, id_maquette: maquetteIdRef.current, commentaire: "Nouvelle version manuelle" });
       const newVersion = data.version;
       setCurrentVersionNum(newVersion.numéro_version);
       currentVersionIdRef.current = newVersion._id;
       setSaveStatus("À jour ☁️");
       setDesignData(prev => ({ ...prev, version: newVersion }));
+      localStorage.setItem(`lastVersion_${maquetteIdRef.current}`, newVersion._id);
       setVersionSuccess(true);
       setTimeout(() => setVersionSuccess(false), 2000);
       await fetchVersions();
@@ -2605,26 +3850,42 @@ const DesignEditor = () => {
         contenu = fullVersion.contenu || fullVersion?.version?.contenu;
       }
       if (contenu?.objects?.length > 0) {
-        await new Promise(resolve => fabricCanvas.loadFromJSON(contenu, resolve, customFabricReviver));
+        // Prevent fabric crash when loading old blob URLs from local session history deeply nested in any property
+        const safeContenuStr = JSON.stringify(contenu)
+          .replace(/"(?:blob|file):[^"]+"/g, '"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="');
+        const safeContenu = JSON.parse(safeContenuStr);
+        
+        const loadRes = fabricCanvas.loadFromJSON(safeContenu, customFabricReviver);
+        if (loadRes && typeof loadRes.then === "function") await loadRes;
         
         fabricCanvas.getObjects().forEach(restoreInteractivity);
         reviveVideos(fabricCanvas);
         reviveMaps(fabricCanvas);
-        fabricCanvas.renderAll();
-        const loadRes = fabricCanvas.loadFromJSON(contenu);
-        if (loadRes && typeof loadRes.then === "function") await loadRes;
-        reviveVideos(fabricCanvas);
-        reviveMaps(fabricCanvas);
+        
+        if (contenu.viewportTransform) {
+          fabricCanvas.setViewportTransform(contenu.viewportTransform);
+          setZoom(Math.round(fabricCanvas.getZoom() * 100));
+        } else {
+          fabricCanvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+          fabricCanvas.setZoom(1);
+          setZoom(100);
+        }
+        
         fabricCanvas.renderAll();
       } else {
         fabricCanvas.remove(...fabricCanvas.getObjects());
-        fabricCanvas.backgroundColor = "#ffffff"; fabricCanvas.renderAll();
+        fabricCanvas.backgroundColor = "#ffffff";
+        fabricCanvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        fabricCanvas.setZoom(1);
+        setZoom(100);
+        fabricCanvas.renderAll();
       }
       if (!isDesigner) lockCanvasObjects(fabricCanvas);
       setCurrentVersionNum(version.numéro_version);
       currentVersionIdRef.current = version._id;
       setDesignData(prev => ({ ...prev, version: { ...version, contenu } }));
-      setSaveStatus(`Version ${version.numéro_version} chargée`);
+      localStorage.setItem(`lastVersion_${maquetteIdRef.current}`, version._id);
+      setSaveStatus("À jour ☁️");
       setValidationDone(null); setShowCorrections(false);
       await fetchCorrectionsForVersion(version._id);
       showToast(`Version ${version.numéro_version} chargée`, "success");
@@ -2644,41 +3905,25 @@ const DesignEditor = () => {
     if (!window.confirm("Annuler toutes les modifications non sauvegardées ?")) return;
     setSaveStatus("Réinitialisation..."); isSwitchingVersion.current = true; debouncedSave.cancel();
     try {
-      const contenu = designData.version.contenu;
-      if (contenu?.objects?.length > 0) {
-// Chargement du contenu avec le reviver personnalisé pour les métadonnées
-await new Promise(resolve => fabricCanvas.loadFromJSON(contenu, resolve, customFabricReviver));
-        
-// Restauration de toutes les fonctionnalités spécifiques
-fabricCanvas.getObjects().forEach(restoreInteractivity);
-reviveVideos(fabricCanvas);
-reviveMaps(fabricCanvas);
-} else { 
-fabricCanvas.remove(...fabricCanvas.getObjects()); 
-fabricCanvas.backgroundColor = "#ffffff"; 
-}
+      const originalContenu = designData.version.contenu;
+      
+      // Restaurer le contenu initial sur le backend
+      if (originalContenu) {
+        await API.put(`/versions/${designData.version._id}`, { contenu: originalContenu });
+      } else {
+        await API.put(`/versions/${designData.version._id}`, { contenu: { objects: [] } });
+      }
 
-fabricCanvas.renderAll();
-
-// Exportation avec la liste complète des propriétés fusionnées
-const json = fabricCanvas.toJSON([
-"excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", 
-"boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", 
-"boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", 
-"imageHistoryId", "videoSrc", "mapLat", "mapLng", "mapZoom"
-]);
-
-json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
-
-await API.put(`/versions/${designData?.version?._id}`, { contenu: json });
-
-setSaveStatus("À jour ☁️"); 
-showToast("Réinitialisation effectuée", "success");
-} catch (err) { 
-console.error(err);
-setSaveStatus("Erreur ❌"); 
-showToast("Erreur lors de la réinitialisation", "error"); 
-}
+      // Recharger correctement la version initiale
+      await handleLoadVersion({ ...designData.version, contenu: originalContenu });
+      
+      setSaveStatus("À jour ☁️"); 
+      showToast("Réinitialisation effectuée", "success");
+    } catch (err) { 
+      console.error(err);
+      setSaveStatus("Erreur ❌"); 
+      showToast("Erreur lors de la réinitialisation", "error"); 
+    }
     finally { setTimeout(() => { isSwitchingVersion.current = false; }, 300); }
   };
 
@@ -2832,7 +4077,7 @@ showToast("Erreur lors de la réinitialisation", "error");
       if (item.variant === "h1") obj = new fabric.Textbox("Grand Titre", { ...tc, fontSize: 48, fontWeight: "bold", width: 420 });
       else if (item.variant === "h2") obj = new fabric.Textbox("Sous-titre", { ...tc, fontSize: 32, fontWeight: "600", fill: "#334155" });
       else if (item.variant === "p") obj = new fabric.Textbox("ceci est un paragraphe de texte standard.", { ...tc, fontSize: 16 });
-      else if (item.variant === "ul") obj = new fabric.Textbox("· Élément 1\n· Élément 2\n· Élément 3", { ...tc, fontSize: 17 });
+      else if (item.variant === "ul") obj = new fabric.Textbox("• Élément 1\n• Élément 2\n• Élément 3", { ...tc, fontSize: 17 });
       else if (item.variant === "ol") obj = new fabric.Textbox("1. Premier point\n2. Deuxième point", { ...tc, fontSize: 17 });
       else if (item.variant === "quote") obj = new fabric.Textbox('"Citation inspirante."', { ...tc, fontSize: 20, fontStyle: "italic", fill: "#64748b" });
     } else if (item.type === "shape") {
@@ -2873,18 +4118,18 @@ showToast("Erreur lors de la réinitialisation", "error");
         const bg = new fabric.Rect({ width: 1000, height: 900, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background", customName: "Fond de page" });
         // Menu
         const navBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -410, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "navbar", customName: "Barre de navigation" });
-        const logo = new fabric.Text("⚡ STUDIO", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -410, originX: "left", originY: "center", editable: true, customType: "logo", customName: "Logo" });
-        const navLinks = new fabric.Text("Produit        Solutions        Prix        Ressources", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -410, originX: "center", originY: "center", editable: true, customType: "navLinks", customName: "Liens de navigation" });
+        const logo = new fabric.IText("⚡ STUDIO", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -410, originX: "left", originY: "center", editable: true, customType: "logo", customName: "Logo" });
+        const navLinks = new fabric.IText("Produit        Solutions        Prix        Ressources", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -410, originX: "center", originY: "center", editable: true, customType: "navLinks", customName: "Liens de navigation" });
         const ctaBtn = new fabric.Rect({ width: 140, height: 44, fill: "#0f172a", rx: 8, ry: 8, left: 420, top: -410, originX: "right", originY: "center", editable: true, customType: "button", customName: "Bouton CTA navigation" });
-        const ctaTxt = new fabric.Text("Essayer gratis", { fontSize: 14, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 350, top: -410, originX: "center", originY: "center", editable: true, customType: "buttonText", customName: "Texte bouton CTA" });
+        const ctaTxt = new fabric.IText("Essayer gratis", { fontSize: 14, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 350, top: -410, originX: "center", originY: "center", editable: true, customType: "buttonText", customName: "Texte bouton CTA" });
         // Hero
-        const heroH1 = new fabric.Text("Créez le web\nde demain, aujourd'hui.", { fontSize: 56, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -220, originX: "center", originY: "center", lineHeight: 1.1, editable: true, customType: "heading", customName: "Titre principal" });
-        const heroSub = new fabric.Text("Notre outil vous aide à construire, designer et collaborer en temps réel.\nDes millions d'équipes nous font déjà confiance.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -110, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "subtext", customName: "Sous-titre hero" });
+        const heroH1 = new fabric.IText("Créez le web\nde demain, aujourd'hui.", { fontSize: 56, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -220, originX: "center", originY: "center", lineHeight: 1.1, editable: true, customType: "heading", customName: "Titre principal" });
+        const heroSub = new fabric.IText("Notre outil vous aide à construire, designer et collaborer en temps réel.\nDes millions d'équipes nous font déjà confiance.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -110, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "subtext", customName: "Sous-titre hero" });
         const heroBtnBg = new fabric.Rect({ width: 220, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: -30, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "heroButton", customName: "Bouton principal" });
-        const heroBtnTxt = new fabric.Text("Démarrer mon essai", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: -30, originX: "center", originY: "center", editable: true, customType: "heroButtonText", customName: "Texte bouton principal" });
+        const heroBtnTxt = new fabric.IText("Démarrer mon essai", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: -30, originX: "center", originY: "center", editable: true, customType: "heroButtonText", customName: "Texte bouton principal" });
         // Image Placeholder (Abstract)
         const imgPlaceholder = new fabric.Rect({ width: 800, height: 350, fill: "#e2e8f0", rx: 24, ry: 24, left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imagePlaceholder", customName: "Image placeholder" });
-        const imgIcon = new fabric.Text("🖼 Illustration", { fontSize: 24, fontWeight: "700", fill: "#94a3b8", fontFamily: "Inter", left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imageText", customName: "Texte image" });
+        const imgIcon = new fabric.IText("🖼 Illustration", { fontSize: 24, fontWeight: "700", fill: "#94a3b8", fontFamily: "Inter", left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imageText", customName: "Texte image" });
         
         elements = [bg, navBg, logo, navLinks, ctaBtn, ctaTxt, heroH1, heroSub, heroBtnBg, heroBtnTxt, imgPlaceholder, imgIcon];
         componentData = { variant: "tpl_home", editable: true, templateType: "homepage" };
@@ -2895,28 +4140,28 @@ showToast("Erreur lors de la réinitialisation", "error");
         // Splitted screen login page
         const bg = new fabric.Rect({ width: 1000, height: 600, fill: "white", originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 30, offsetY: 15 }), editable: true, customType: "background", customName: "Fond de page" });
         const leftPanel = new fabric.Rect({ width: 500, height: 600, fill: "#6366f1", left: -250, top: 0, originX: "center", originY: "center", editable: true, customType: "leftPanel", customName: "Panneau gauche" });
-        const leftH1 = new fabric.Text("Heureux de\nvous revoir.", { fontSize: 48, fontWeight: "900", fill: "white", fontFamily: "Inter", left: -420, top: -40, originX: "left", originY: "center", lineHeight: 1.2, editable: true, customType: "welcomeHeading", customName: "Titre bienvenue" });
-        const leftP = new fabric.Text("Connectez-vous pour continuer\nvotre expérience exclusive.", { fontSize: 16, fill: "rgba(255,255,255,0.8)", fontFamily: "Inter", left: -420, top: 60, originX: "left", originY: "center", lineHeight: 1.5, editable: true, customType: "welcomeSubtext", customName: "Sous-titre bienvenue" });
+        const leftH1 = new fabric.IText("Heureux de\nvous revoir.", { fontSize: 48, fontWeight: "900", fill: "white", fontFamily: "Inter", left: -420, top: -40, originX: "left", originY: "center", lineHeight: 1.2, editable: true, customType: "welcomeHeading", customName: "Titre bienvenue" });
+        const leftP = new fabric.IText("Connectez-vous pour continuer\nvotre expérience exclusive.", { fontSize: 16, fill: "rgba(255,255,255,0.8)", fontFamily: "Inter", left: -420, top: 60, originX: "left", originY: "center", lineHeight: 1.5, editable: true, customType: "welcomeSubtext", customName: "Sous-titre bienvenue" });
         
         // Right Form
-        const logo = new fabric.Text("🔒 Espace Client", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -200, originX: "center", originY: "center", editable: true, customType: "formLogo", customName: "Logo formulaire" });
-        const title = new fabric.Text("Se connecter", { fontSize: 32, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -140, originX: "center", originY: "center", editable: true, customType: "formTitle", customName: "Titre formulaire" });
+        const logo = new fabric.IText("🔒 Espace Client", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -200, originX: "center", originY: "center", editable: true, customType: "formLogo", customName: "Logo formulaire" });
+        const title = new fabric.IText("Se connecter", { fontSize: 32, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -140, originX: "center", originY: "center", editable: true, customType: "formTitle", customName: "Titre formulaire" });
         
         // Email Input
-        const l1 = new fabric.Text("Email", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: -80, originX: "left", originY: "center", editable: true, customType: "emailLabel", customName: "Label email" });
+        const l1 = new fabric.IText("Email", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: -80, originX: "left", originY: "center", editable: true, customType: "emailLabel", customName: "Label email" });
         const i1Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: -40, originX: "center", originY: "center", editable: true, customType: "emailInput", customName: "Champ email" });
-        const i1Txt = new fabric.Text("votre@email.com", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: -40, originX: "left", originY: "center", editable: true, customType: "emailPlaceholder", customName: "Placeholder email" });
+        const i1Txt = new fabric.IText("votre@email.com", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: -40, originX: "left", originY: "center", editable: true, customType: "emailPlaceholder", customName: "Placeholder email" });
         
         // Password Input
-        const l2 = new fabric.Text("Mot de passe", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: 30, originX: "left", originY: "center", editable: true, customType: "passwordLabel", customName: "Label mot de passe" });
+        const l2 = new fabric.IText("Mot de passe", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: 30, originX: "left", originY: "center", editable: true, customType: "passwordLabel", customName: "Label mot de passe" });
         const i2Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: 70, originX: "center", originY: "center", editable: true, customType: "passwordInput", customName: "Champ mot de passe" });
-        const i2Txt = new fabric.Text("•••••••", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: 70, originX: "left", originY: "center", editable: true, customType: "passwordPlaceholder", customName: "Placeholder mot de passe" });
+        const i2Txt = new fabric.IText("•••••••", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: 70, originX: "left", originY: "center", editable: true, customType: "passwordPlaceholder", customName: "Placeholder mot de passe" });
         
         // Submit
         const btnBg = new fabric.Rect({ width: 340, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitButton", customName: "Bouton connexion" });
-        const btnTxt = new fabric.Text("Connexion", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitText", customName: "Texte bouton connexion" });
+        const btnTxt = new fabric.IText("Connexion", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitText", customName: "Texte bouton connexion" });
         
-        const forgot = new fabric.Text("Mot de passe oublié ?", { fontSize: 13, fontWeight: "600", fill: "#6366f1", fontFamily: "Inter", left: 250, top: 220, originX: "center", originY: "center", editable: true, customType: "forgotLink", customName: "Lien mot de passe oublié" });
+        const forgot = new fabric.IText("Mot de passe oublié ?", { fontSize: 13, fontWeight: "600", fill: "#6366f1", fontFamily: "Inter", left: 250, top: 220, originX: "center", originY: "center", editable: true, customType: "forgotLink", customName: "Lien mot de passe oublié" });
 
         elements = [bg, leftPanel, leftH1, leftP, logo, title, l1, i1Bg, i1Txt, l2, i2Bg, i2Txt, btnBg, btnTxt, forgot];
         componentData = { variant: "tpl_login", editable: true, templateType: "login" };
@@ -2929,37 +4174,37 @@ showToast("Erreur lors de la réinitialisation", "error");
         
         // Header
         const headerBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -360, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "header", customName: "Header" });
-        const logo = new fabric.Text("🏢 ENTREPRISE", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -360, originX: "left", originY: "center", editable: true, customType: "logo", customName: "Logo entreprise" });
-        const navLinks = new fabric.Text("Accueil        À Propos        Contact", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -360, originX: "center", originY: "center", editable: true, customType: "navLinks", customName: "Navigation" });
+        const logo = new fabric.IText("🏢 ENTREPRISE", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -360, originX: "left", originY: "center", editable: true, customType: "logo", customName: "Logo entreprise" });
+        const navLinks = new fabric.IText("Accueil        À Propos        Contact", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -360, originX: "center", originY: "center", editable: true, customType: "navLinks", customName: "Navigation" });
         
         // Hero Section
-        const heroH1 = new fabric.Text("Notre Histoire", { fontSize: 48, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -200, originX: "center", originY: "center", editable: true, customType: "heroHeading", customName: "Titre histoire" });
-        const heroSub = new fabric.Text("Depuis 2010, nous transformons les idées en expériences numériques exceptionnelles.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -120, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "heroSubtext", customName: "Sous-titre histoire" });
+        const heroH1 = new fabric.IText("Notre Histoire", { fontSize: 48, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -200, originX: "center", originY: "center", editable: true, customType: "heroHeading", customName: "Titre histoire" });
+        const heroSub = new fabric.IText("Depuis 2010, nous transformons les idées en expériences numériques exceptionnelles.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -120, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "heroSubtext", customName: "Sous-titre histoire" });
         
         // Mission Section
         const missionBg = new fabric.Rect({ width: 900, height: 200, fill: "white", rx: 16, ry: 16, left: 0, top: 20, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetY: 4 }), editable: true, customType: "missionBox", customName: "Boîte mission" });
-        const missionTitle = new fabric.Text("Notre Mission", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 20, originX: "left", originY: "center", editable: true, customType: "missionTitle", customName: "Titre mission" });
-        const missionText = new fabric.Text("Innover continuellement pour offrir des solutions web qui dépassent les attentes de nos clients.", { fontSize: 16, fill: "#475569", fontFamily: "Inter", left: -380, top: 60, originX: "left", originY: "center", lineHeight: 1.6, editable: true, customType: "missionText", customName: "Texte mission" });
+        const missionTitle = new fabric.IText("Notre Mission", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 20, originX: "left", originY: "center", editable: true, customType: "missionTitle", customName: "Titre mission" });
+        const missionText = new fabric.IText("Innover continuellement pour offrir des solutions web qui dépassent les attentes de nos clients.", { fontSize: 16, fill: "#475569", fontFamily: "Inter", left: -380, top: 60, originX: "left", originY: "center", lineHeight: 1.6, editable: true, customType: "missionText", customName: "Texte mission" });
         
         // Values Section
-        const valuesTitle = new fabric.Text("Nos Valeurs", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 160, originX: "left", originY: "center", editable: true, customType: "valuesTitle", customName: "Titre valeurs" });
+        const valuesTitle = new fabric.IText("Nos Valeurs", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 160, originX: "left", originY: "center", editable: true, customType: "valuesTitle", customName: "Titre valeurs" });
         
         // Value cards
         const value1Bg = new fabric.Rect({ width: 250, height: 120, fill: "#f1f5f9", rx: 12, ry: 12, left: -280, top: 280, originX: "center", originY: "center", editable: true, customType: "value1Bg", customName: "Fond valeur 1" });
-        const value1Icon = new fabric.Text("💡", { fontSize: 32, left: -280, top: 250, originX: "center", originY: "center", editable: true, customType: "value1Icon", customName: "Icône valeur 1" });
-        const value1Title = new fabric.Text("Innovation", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: 310, originX: "center", originY: "center", editable: true, customType: "value1Title", customName: "Titre valeur 1" });
+        const value1Icon = new fabric.IText("💡", { fontSize: 32, left: -280, top: 250, originX: "center", originY: "center", editable: true, customType: "value1Icon", customName: "Icône valeur 1" });
+        const value1Title = new fabric.IText("Innovation", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: 310, originX: "center", originY: "center", editable: true, customType: "value1Title", customName: "Titre valeur 1" });
         
         const value2Bg = new fabric.Rect({ width: 250, height: 120, fill: "#e0f2fe", rx: 12, ry: 12, left: 0, top: 280, originX: "center", originY: "center", editable: true, customType: "value2Bg", customName: "Fond valeur 2" });
-        const value2Icon = new fabric.Text("🤝", { fontSize: 32, left: 0, top: 250, originX: "center", originY: "center", editable: true, customType: "value2Icon", customName: "Icône valeur 2" });
-        const value2Title = new fabric.Text("Confiance", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 0, top: 310, originX: "center", originY: "center", editable: true, customType: "value2Title", customName: "Titre valeur 2" });
+        const value2Icon = new fabric.IText("🤝", { fontSize: 32, left: 0, top: 250, originX: "center", originY: "center", editable: true, customType: "value2Icon", customName: "Icône valeur 2" });
+        const value2Title = new fabric.IText("Confiance", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 0, top: 310, originX: "center", originY: "center", editable: true, customType: "value2Title", customName: "Titre valeur 2" });
         
         const value3Bg = new fabric.Rect({ width: 250, height: 120, fill: "#fef3c7", rx: 12, ry: 12, left: 280, top: 280, originX: "center", originY: "center", editable: true, customType: "value3Bg", customName: "Fond valeur 3" });
-        const value3Icon = new fabric.Text("⭐", { fontSize: 32, left: 280, top: 250, originX: "center", originY: "center", editable: true, customType: "value3Icon", customName: "Icône valeur 3" });
-        const value3Title = new fabric.Text("Excellence", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 280, top: 310, originX: "center", originY: "center", editable: true, customType: "value3Title", customName: "Titre valeur 3" });
+        const value3Icon = new fabric.IText("⭐", { fontSize: 32, left: 280, top: 250, originX: "center", originY: "center", editable: true, customType: "value3Icon", customName: "Icône valeur 3" });
+        const value3Title = new fabric.IText("Excellence", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 280, top: 310, originX: "center", originY: "center", editable: true, customType: "value3Title", customName: "Titre valeur 3" });
         
         // CTA Button
         const ctaBg = new fabric.Rect({ width: 200, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: 380, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "ctaButton", customName: "Bouton CTA" });
-        const ctaText = new fabric.Text("Nous Contacter", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: 380, originX: "center", originY: "center", editable: true, customType: "ctaText", customName: "Texte bouton CTA" });
+        const ctaText = new fabric.IText("Nous Contacter", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: 380, originX: "center", originY: "center", editable: true, customType: "ctaText", customName: "Texte bouton CTA" });
 
         elements = [bg, headerBg, logo, navLinks, heroH1, heroSub, missionBg, missionTitle, missionText, valuesTitle, value1Bg, value1Icon, value1Title, value2Bg, value2Icon, value2Title, value3Bg, value3Icon, value3Title, ctaBg, ctaText];
         componentData = { variant: "tpl_about", editable: true, templateType: "about" };
@@ -2968,7 +4213,7 @@ showToast("Erreur lors de la réinitialisation", "error");
       
       case "tpl_cart": {
         const bg = new fabric.Rect({ width: 900, height: 700, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background", customName: "Fond panier" });
-        const h1 = new fabric.Text("Votre Panier", { fontSize: 36, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -400, top: -300, originX: "left", originY: "center", editable: true, customType: "cartTitle", customName: "Titre panier" });
+        const h1 = new fabric.IText("Votre Panier", { fontSize: 36, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -400, top: -300, originX: "left", originY: "center", editable: true, customType: "cartTitle", customName: "Titre panier" });
         
         // Items list background
         const listBg = new fabric.Rect({ width: 560, height: 440, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: -120, top: -20, originX: "center", originY: "center", editable: true, customType: "itemsList", customName: "Liste articles" });
@@ -2982,29 +4227,29 @@ showToast("Erreur lors de la réinitialisation", "error");
         for(let i=0; i<3; i++) {
           let y = -160 + (i * 140);
           elements.push(new fabric.Rect({ width: 100, height: 100, fill: "#f1f5f9", rx: 12, ry: 12, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productImage${i+1}`, customName: `Image produit ${i+1}` }));
-          elements.push(new fabric.Text("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i+1}`, customName: `Icône produit ${i+1}` }));
-          elements.push(new fabric.Text(`Produit Premium ${i+1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i+1}`, customName: `Nom produit ${i+1}` }));
-          elements.push(new fabric.Text("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i+1}`, customName: `Détails produit ${i+1}` }));
-          elements.push(new fabric.Text("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i+1}`, customName: `Quantité produit ${i+1}` }));
-          elements.push(new fabric.Text("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i+1}`, customName: `Prix produit ${i+1}` }));
+          elements.push(new fabric.IText("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i+1}`, customName: `Icône produit ${i+1}` }));
+          elements.push(new fabric.IText(`Produit Premium ${i+1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i+1}`, customName: `Nom produit ${i+1}` }));
+          elements.push(new fabric.IText("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i+1}`, customName: `Détails produit ${i+1}` }));
+          elements.push(new fabric.IText("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i+1}`, customName: `Quantité produit ${i+1}` }));
+          elements.push(new fabric.IText("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i+1}`, customName: `Prix produit ${i+1}` }));
           if(i < 2) elements.push(new fabric.Line([-380, y + 70, 140, y + 70], { stroke: "#e2e8f0", strokeWidth: 1 }));
         }
 
         // Summary details
-        elements.push(new fabric.Text("Résumé", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -200, originX: "left", originY: "center", editable: true, customType: "summaryTitle", customName: "Titre résumé" }));
-        elements.push(new fabric.Text("Sous-total", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -140, originX: "left", originY: "center", editable: true, customType: "subtotalLabel", customName: "Label sous-total" }));
-        elements.push(new fabric.Text("297,00 €", { fontSize: 14, fontWeight: "600", fill: "#0f172a", fontFamily: "Inter", left: 440, top: -140, originX: "right", originY: "center", editable: true, customType: "subtotalAmount", customName: "Montant sous-total" }));
+        elements.push(new fabric.IText("Résumé", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -200, originX: "left", originY: "center", editable: true, customType: "summaryTitle", customName: "Titre résumé" }));
+        elements.push(new fabric.IText("Sous-total", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -140, originX: "left", originY: "center", editable: true, customType: "subtotalLabel", customName: "Label sous-total" }));
+        elements.push(new fabric.IText("297,00 €", { fontSize: 14, fontWeight: "600", fill: "#0f172a", fontFamily: "Inter", left: 440, top: -140, originX: "right", originY: "center", editable: true, customType: "subtotalAmount", customName: "Montant sous-total" }));
         
-        elements.push(new fabric.Text("Livraison", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -100, originX: "left", originY: "center", editable: true, customType: "shippingLabel", customName: "Label livraison" }));
-        elements.push(new fabric.Text("Gratuite", { fontSize: 14, fontWeight: "600", fill: "#10b981", fontFamily: "Inter", left: 440, top: -100, originX: "right", originY: "center", editable: true, customType: "shippingAmount", customName: "Montant livraison" }));
+        elements.push(new fabric.IText("Livraison", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -100, originX: "left", originY: "center", editable: true, customType: "shippingLabel", customName: "Label livraison" }));
+        elements.push(new fabric.IText("Gratuite", { fontSize: 14, fontWeight: "600", fill: "#10b981", fontFamily: "Inter", left: 440, top: -100, originX: "right", originY: "center", editable: true, customType: "shippingAmount", customName: "Montant livraison" }));
 
         elements.push(new fabric.Line([200, -70, 440, -70], { stroke: "#e2e8f0", strokeWidth: 1 }));
 
-        elements.push(new fabric.Text("Total TTC", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -30, originX: "left", originY: "center", editable: true, customType: "totalLabel", customName: "Label total" }));
-        elements.push(new fabric.Text("297,00 €", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", left: 440, top: -30, originX: "right", originY: "center", editable: true, customType: "totalAmount", customName: "Montant total" }));
+        elements.push(new fabric.IText("Total TTC", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -30, originX: "left", originY: "center", editable: true, customType: "totalLabel", customName: "Label total" }));
+        elements.push(new fabric.IText("297,00 €", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", left: 440, top: -30, originX: "right", originY: "center", editable: true, customType: "totalAmount", customName: "Montant total" }));
 
         elements.push(new fabric.Rect({ width: 240, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButton", customName: "Bouton payer" }));
-        elements.push(new fabric.Text("Payer maintenant", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButtonText", customName: "Texte bouton payer" }));
+        elements.push(new fabric.IText("Payer maintenant", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButtonText", customName: "Texte bouton payer" }));
 
         componentData = { variant: "tpl_cart", editable: true, templateType: "cart" };
         break;
@@ -3016,6 +4261,35 @@ showToast("Erreur lors de la réinitialisation", "error");
     return { elements, componentData };
   };
 
+  // --- LOGIQUE DE SAUVEGARDE ET MISE À JOUR DES COMPOSANTS (FUSIONNÉE) ---
+  const handleComponentSave = (updatedData) => {
+    if (!selectedObj || !fabricCanvas) return;
+
+    // Fusion des données dans l'objet canvas
+    selectedObj.componentData = { ...(selectedObj.componentData || {}), ...updatedData };
+
+    const variant = selectedObj.customVariant;
+    if (variant === "button") updateButtonOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "input") updateInputOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "profile") updateProfileOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "pricing") updatePricingOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "slider") updateSliderOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "card") updateCardOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "modal") updateModalOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "nav_menu") updateNavMenuOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "hero") updateHeroOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "tabs") updateTabsOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant === "table") updateTableOnCanvas(selectedObj, selectedObj.componentData);
+    else if (variant.startsWith("chart_")) updateChartOnCanvas(selectedObj, selectedObj.componentData);
+
+    fabricCanvas.renderAll();
+    debouncedSave(fabricCanvas, designData?.version?._id);
+    setLayersKey(k => k + 1);
+
+    setEditorData({ ...selectedObj.componentData, variant });
+    setShowComponentEditor(false);
+  };
+
   const buildComplexComponent = (item, x, y) => {
     let elements = [];
     let componentData = {};
@@ -3025,8 +4299,8 @@ showToast("Erreur lors de la réinitialisation", "error");
       case "video": {
         const bg = new fabric.Rect({ width: 320, height: 200, fill: "#0f172a", rx: 12, ry: 12, originX: "center", originY: "center" });
         const playCircle = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" });
-        const playBtn = new fabric.Text("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
-        const label = new fabric.Text("Vidéo", { fontSize: 12, fill: "#94a3b8", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
+        const playBtn = new fabric.IText("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
+        const label = new fabric.IText("Vidéo", { fontSize: 12, fill: "#94a3b8", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
         elements = [bg, playCircle, playBtn, label];
         componentData = { variant: "video" };
         break;
@@ -3040,7 +4314,7 @@ showToast("Erreur lors de la réinitialisation", "error");
           originX: "center",
           originY: "center"
         });
-        const mapLabel = new fabric.Text("Localisation", { fontSize: 14, fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: 40 });
+        const mapLabel = new fabric.IText("Localisation", { fontSize: 14, fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: 40 });
         elements = [bg, mapPin, mapLabel];
         componentData = { variant: "map" };
         break;
@@ -3058,7 +4332,7 @@ showToast("Erreur lors de la réinitialisation", "error");
           originX: "center", 
           originY: "center" 
         });
-        const frameLabel = new fabric.Text("Frame / Section", { 
+        const frameLabel = new fabric.IText("Frame / Section", { 
           fontSize: 12, 
           fill: "#94a3b8", 
           fontFamily: "Inter", 
@@ -3072,16 +4346,16 @@ showToast("Erreur lors de la réinitialisation", "error");
       }
       case "button": {
         const bg = new fabric.Rect({ width: 160, height: 48, rx: 24, ry: 24, fill: "#6366f1", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 14, offsetX: 0, offsetY: 4 }), originX: "center", originY: "center" });
-        const txt = new fabric.Text("Bouton principal", { fontSize: 14, fill: "#ffffff", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center", top: 1, charSpacing: 10 });
+        const txt = new fabric.IText("Bouton principal", { fontSize: 14, fill: "#ffffff", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center", top: 1, charSpacing: 10 });
         elements = [bg, txt];
         componentData = { buttonText: "Bouton principal", buttonColor: "#6366f1", buttonTextColor: "#ffffff", buttonSize: "medium", borderRadius: 24, actionType: "modal" };
-        interactivity = (grp) => grp.on("mousedown", () => handleButtonClick(grp, grp.componentData));
+        interactivity = (grp) => grp.on("mousedblclick", () => handleButtonClick(grp, grp.componentData));
         break;
       }
       case "input": {
         const bg = new fabric.Rect({ width: 280, height: 48, rx: 12, ry: 12, fill: "#ffffff", stroke: "#e2e8f0", strokeWidth: 1.5, shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.02)", blur: 8, offsetX: 0, offsetY: 2 }), originX: "center", originY: "center" });
-        const icon = new fabric.Text("✉", { fontSize: 16, fill: "#94a3b8", fontFamily: "Inter", originX: "left", originY: "center", left: -124, top: 2 });
-        const placeholder = new fabric.Text("votre@email.com", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: -100, top: 1 });
+        const icon = new fabric.IText("✉", { fontSize: 16, fill: "#94a3b8", fontFamily: "Inter", originX: "left", originY: "center", left: -124, top: 2 });
+        const placeholder = new fabric.IText("votre@email.com", { fontSize: 14, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: -100, top: 1 });
         const cursor = new fabric.Rect({ width: 1.5, height: 18, fill: "#6366f1", originX: "left", originY: "center", left: -10, top: 0, opacity: 0 });
         elements = [bg, icon, placeholder, cursor];
         componentData = { placeholder: "votre@email.com", inputWidth: 280, inputHeight: 48, borderColor: "#e2e8f0", bgColor: "#ffffff", textColor: "#0f172a" };
@@ -3089,16 +4363,17 @@ showToast("Erreur lors de la réinitialisation", "error");
       }
       case "checkbox": {
         const track = new fabric.Rect({ width: 24, height: 24, rx: 6, ry: 6, fill: "#f1f5f9", stroke: "#cbd5e1", strokeWidth: 1.5, originX: "center", originY: "center" });
-        const checkIcon = new fabric.Text("✓", { fontSize: 14, fill: "#ffffff", fontFamily: "Inter", fontWeight: "900", originX: "center", originY: "center", top: 1, visible: false });
-        const labelText = new fabric.Text("Accepter les conditions", { fontSize: 14, fill: "#334155", fontFamily: "Inter", fontWeight: "500", originX: "left", originY: "center", left: 20, top: 0 });
+        const checkIcon = new fabric.IText("✓", { fontSize: 14, fill: "#ffffff", fontFamily: "Inter", fontWeight: "900", originX: "center", originY: "center", top: 1, visible: false });
+        const labelText = new fabric.IText("Accepter les conditions", { fontSize: 14, fill: "#334155", fontFamily: "Inter", fontWeight: "500", originX: "left", originY: "center", left: 20, top: 0 });
         elements = [track, checkIcon, labelText];
         componentData = { checked: false, label: "Accepter les conditions", checkboxColor: "#6366f1" };
-        interactivity = (grp) => grp.on("mousedown", () => {
+        interactivity = (grp) => grp.on("mousedblclick", () => {
           const newChecked = !grp.componentData.checked;
           grp.componentData.checked = newChecked;
           const t = grp._objects[0], ck = grp._objects[1];
           if (t) { t.set({ fill: newChecked ? "#6366f1" : "#f1f5f9", stroke: newChecked ? "" : "#cbd5e1", strokeWidth: newChecked ? 0 : 1.5 }); t.set("shadow", newChecked ? new fabric.Shadow({ color: "rgba(99,102,241,0.25)", blur: 6, offsetX: 0, offsetY: 2 }) : null); }
           if (ck) ck.set({ visible: newChecked });
+          grp.set("dirty", true);
           grp.canvas?.renderAll();
           showToast(`Checkbox ${newChecked ? "cochée" : "décochée"}`, "info");
         });
@@ -3107,16 +4382,17 @@ showToast("Erreur lors de la réinitialisation", "error");
       case "toggle": {
         const track = new fabric.Rect({ width: 56, height: 32, rx: 16, ry: 16, fill: "#e2e8f0", originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 2, offsetX: 0, offsetY: 1 }) });
         const knob = new fabric.Circle({ radius: 12, fill: "#ffffff", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.15)", blur: 4, offsetX: 0, offsetY: 2 }), originX: "center", originY: "center", left: -12 });
-        const offLabel = new fabric.Text("OFF", { fontSize: 12, fill: "#64748b", fontFamily: "Inter", fontWeight: "600", originX: "left", originY: "center", left: 38 });
+        const offLabel = new fabric.IText("OFF", { fontSize: 12, fill: "#64748b", fontFamily: "Inter", fontWeight: "600", originX: "left", originY: "center", left: 38 });
         elements = [track, knob, offLabel];
         componentData = { toggled: false };
-        interactivity = (grp) => grp.on("mousedown", () => {
+        interactivity = (grp) => grp.on("mousedblclick", () => {
           const on = !grp.componentData.toggled;
           grp.componentData.toggled = on;
           const tk = grp._objects[0], kn = grp._objects[1], lb = grp._objects[2];
           if (tk) tk.set({ fill: on ? "#10b981" : "#e2e8f0" });
           if (kn) kn.set({ left: on ? 12 : -12 });
           if (lb) lb.set({ text: on ? "ON " : "OFF", fill: on ? "#10b981" : "#64748b" });
+          grp.set("dirty", true);
           grp.canvas?.renderAll();
           showToast(`Switch ${on ? "activé" : "désactivé"}`, "info");
         });
@@ -3126,9 +4402,9 @@ showToast("Erreur lors de la réinitialisation", "error");
         const trackBg = new fabric.Rect({ width: 220, height: 8, rx: 4, ry: 4, fill: "#e2e8f0", originX: "center", originY: "center" });
         const trackFill = new fabric.Rect({ width: 110, height: 8, rx: 4, ry: 4, fill: "#6366f1", originX: "left", originY: "center", left: -110 });
         const knob = new fabric.Circle({ radius: 12, fill: "#ffffff", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.35)", blur: 8, offsetX: 0, offsetY: 3 }), originX: "center", originY: "center", left: 0 });
-        const valLabel = new fabric.Text("50%", { fontSize: 13, fill: "#6366f1", fontFamily: "Inter", fontWeight: "700", originX: "center", originY: "top", top: 22 });
-        const minLabel = new fabric.Text("0", { fontSize: 11, fill: "#94a3b8", fontFamily: "Inter", fontStyle: "italic", originX: "left", originY: "top", left: -110, top: 22 });
-        const maxLabel = new fabric.Text("100", { fontSize: 11, fill: "#94a3b8", fontFamily: "Inter", fontStyle: "italic", originX: "right", originY: "top", left: 110, top: 22 });
+        const valLabel = new fabric.IText("50%", { fontSize: 13, fill: "#6366f1", fontFamily: "Inter", fontWeight: "700", originX: "center", originY: "top", top: 22 });
+        const minLabel = new fabric.IText("0", { fontSize: 11, fill: "#94a3b8", fontFamily: "Inter", fontStyle: "italic", originX: "left", originY: "top", left: -110, top: 22 });
+        const maxLabel = new fabric.IText("100", { fontSize: 11, fill: "#94a3b8", fontFamily: "Inter", fontStyle: "italic", originX: "right", originY: "top", left: 110, top: 22 });
         elements = [trackBg, trackFill, knob, valLabel, minLabel, maxLabel];
         componentData = { sliderValue: 50, min: 0, max: 100, unit: "%", sliderColor: "#6366f1" };
         interactivity = (grp) => {
@@ -3141,7 +4417,7 @@ showToast("Erreur lors de la réinitialisation", "error");
       }
       case "modal": {
         const bg = new fabric.Rect({ width: 200, height: 50, fill: "#ffffff", rx: 12, ry: 12, stroke: "#6366f1", strokeWidth: 1.5, shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.15)", blur: 12, offsetX: 0, offsetY: 4 }), originX: "center", originY: "center" });
-        const txt = new fabric.Text("Ouvrir la pop-up", { fontSize: 14, fill: "#6366f1", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center" });
+        const txt = new fabric.IText("Ouvrir la pop-up", { fontSize: 14, fill: "#6366f1", fontFamily: "Inter", fontWeight: "600", originX: "center", originY: "center" });
         elements = [bg, txt];
         componentData = { modalTitle: "Fenêtre modale", modalContent: "Contenu de la modal." };
         interactivity = (grp) => grp.on("mousedown", () => handleModalOpen(grp, grp.componentData));
@@ -3150,13 +4426,13 @@ showToast("Erreur lors de la réinitialisation", "error");
       case "card": {
         const cardBg = new fabric.Rect({ width: 280, height: 380, fill: "#ffffff", rx: 16, ry: 16, stroke: "#f8fafc", strokeWidth: 1, shadow: new fabric.Shadow({ color: "rgba(15,23,42,0.08)", blur: 24, offsetX: 0, offsetY: 12 }), originX: "center", originY: "center" });
         const imgZone = new fabric.Rect({ width: 256, height: 160, fill: "#f1f5f9", rx: 10, ry: 10, originX: "center", originY: "top", left: 0, top: -178 });
-        const imgIcon = new fabric.Text("🖼", { fontSize: 40, fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: -98, fill: "#94a3b8" });
-        const titleTxt = new fabric.Text("Produit Premium", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 10 });
-        const descTxt = new fabric.Text("Une description moderne et accrocheuse\npour ce produit exceptionnel.", { fontSize: 12, fill: "#64748b", fontFamily: "Inter", textAlign: "center", originX: "center", originY: "center", left: 0, top: 40 });
-        const starRow = new fabric.Text("★★★★★  (128)", { fontSize: 13, fill: "#f59e0b", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 76 });
-        const priceTxt = new fabric.Text("29€", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 110 });
+        const imgIcon = new fabric.IText("🖼", { fontSize: 40, fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: -98, fill: "#94a3b8" });
+        const titleTxt = new fabric.IText("Produit Premium", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 10 });
+        const descTxt = new fabric.IText("Une description moderne et accrocheuse\npour ce produit exceptionnel.", { fontSize: 12, fill: "#64748b", fontFamily: "Inter", textAlign: "center", originX: "center", originY: "center", left: 0, top: 40 });
+        const starRow = new fabric.IText("★★★★★  (128)", { fontSize: 13, fill: "#f59e0b", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 76 });
+        const priceTxt = new fabric.IText("29€", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", originX: "center", originY: "center", left: 0, top: 110 });
         const btnBg = new fabric.Rect({ width: 240, height: 44, rx: 8, ry: 8, fill: "#6366f1", originX: "center", originY: "center", left: 0, top: 156 });
-        const btnTxt = new fabric.Text("Ajouter au panier", { fontSize: 13, fill: "#ffffff", fontFamily: "Inter", fontWeight: "700", originX: "center", originY: "center", left: 0, top: 156 });
+        const btnTxt = new fabric.IText("Ajouter au panier", { fontSize: 13, fill: "#ffffff", fontFamily: "Inter", fontWeight: "700", originX: "center", originY: "center", left: 0, top: 156 });
         elements = [cardBg, imgZone, imgIcon, titleTxt, descTxt, starRow, priceTxt, btnBg, btnTxt];
         componentData = { productTitle: "Produit Premium", productDesc: "Une description moderne et accrocheuse\npour ce produit exceptionnel.", productPrice: "29€", productColor: "#6366f1", productRating: 5, productReviews: "128" };
         break;
@@ -3164,10 +4440,10 @@ showToast("Erreur lors de la réinitialisation", "error");
       case "profile": {
         const bgRect = new fabric.Rect({ width: 340, height: 130, fill: "#ffffff", rx: 18, ry: 18, stroke: "#f1f5f9", strokeWidth: 1, shadow: new fabric.Shadow({ color: "rgba(15,23,42,0.06)", blur: 20, offsetX: 0, offsetY: 8 }), originX: "center", originY: "center" });
         const avatarCircle = new fabric.Circle({ radius: 36, fill: "#eef2ff", originX: "center", originY: "center", left: -110 });
-        const initials = new fabric.Text("MD", { fontSize: 18, fontWeight: "800", fill: "#6366f1", fontFamily: "Inter", originX: "center", originY: "center", left: -110, top: 0 });
-        const nameTxt = new fabric.Text("Marie Dupont", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: -20 });
-        const roleTxt = new fabric.Text("Directrice Design", { fontSize: 13, fill: "#6366f1", fontWeight: "600", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: 4 });
-        const emailTxt = new fabric.Text("marie.dupont@exemple.com", { fontSize: 11, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: 26 });
+        const initials = new fabric.IText("MD", { fontSize: 18, fontWeight: "800", fill: "#6366f1", fontFamily: "Inter", originX: "center", originY: "center", left: -110, top: 0 });
+        const nameTxt = new fabric.IText("Marie Dupont", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: -20 });
+        const roleTxt = new fabric.IText("Directrice Design", { fontSize: 13, fill: "#6366f1", fontWeight: "600", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: 4 });
+        const emailTxt = new fabric.IText("marie.dupont@exemple.com", { fontSize: 11, fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: -54, top: 26 });
         elements = [bgRect, avatarCircle, initials, nameTxt, roleTxt, emailTxt];
         componentData = { profileName: "Marie Dupont", profileRole: "Directrice Design", profileEmail: "marie.dupont@exemple.com", avatarColor: "#eef2ff", profileLayout: "horizontal" };
         break;
@@ -3186,35 +4462,35 @@ showToast("Erreur lors de la réinitialisation", "error");
         componentData.pricingRows.forEach((row, idx) => {
           const cx = startX + idx * colWidth;
           const colBg = new fabric.Rect({ width: 200, height: 340, fill: row.popular ? row.color + "08" : "#ffffff", stroke: row.color, strokeWidth: row.popular ? 2 : 0, rx: 16, ry: 16, left: cx, top: 0, originX: "center", originY: "center", shadow: row.popular ? new fabric.Shadow({ color: "rgba(99,102,241,0.1)", blur: 16, offsetY: 6 }) : null });
-          const titleT = new fabric.Text(row.name, { fontSize: 18, fontWeight: "800", fill: row.popular ? row.color : "#334155", fontFamily: "Inter", left: cx, top: -130, originX: "center" });
-          const priceT = new fabric.Text(row.price, { fontSize: 32, fontWeight: "900", fill: row.popular ? row.color : "#0f172a", fontFamily: "Inter", left: cx, top: -90, originX: "center" });
-          const priceMo = new fabric.Text("/mois", { fontSize: 11, fill: "#64748b", fontFamily: "Inter", left: cx, top: -66, originX: "center" });
+          const titleT = new fabric.IText(row.name, { fontSize: 18, fontWeight: "800", fill: row.popular ? row.color : "#334155", fontFamily: "Inter", left: cx, top: -130, originX: "center" });
+          const priceT = new fabric.IText(row.price, { fontSize: 32, fontWeight: "900", fill: row.popular ? row.color : "#0f172a", fontFamily: "Inter", left: cx, top: -90, originX: "center" });
+          const priceMo = new fabric.IText("/mois", { fontSize: 11, fill: "#64748b", fontFamily: "Inter", left: cx, top: -66, originX: "center" });
           elements.push(colBg, titleT, priceT, priceMo);
           if (row.popular) {
-            elements.push(new fabric.Text(" LE PLUS POPULAIRE ", { fontSize: 9, fontWeight: "800", fill: "white", fontFamily: "Inter", left: cx, top: -150, originX: "center", backgroundColor: row.color, padding: 6 }));
+            elements.push(new fabric.IText(" LE PLUS POPULAIRE ", { fontSize: 9, fontWeight: "800", fill: "white", fontFamily: "Inter", left: cx, top: -150, originX: "center", backgroundColor: row.color, padding: 6 }));
           }
           row.features.forEach((f, fi) => {
-            elements.push(new fabric.Text("✔", { fontSize: 11, fill: row.color, fontFamily: "Inter", left: cx - 74, top: -30 + fi * 28, originX: "center" }));
-            elements.push(new fabric.Text(f, { fontSize: 13, fill: "#475569", fontFamily: "Inter", left: cx - 60, top: -30 + fi * 28, originX: "left" }));
+            elements.push(new fabric.IText("✔", { fontSize: 11, fill: row.color, fontFamily: "Inter", left: cx - 74, top: -30 + fi * 28, originX: "center" }));
+            elements.push(new fabric.IText(f, { fontSize: 13, fill: "#475569", fontFamily: "Inter", left: cx - 60, top: -30 + fi * 28, originX: "left" }));
           });
           const btnBgColor = row.popular ? row.color : "#f1f5f9";
           const btnTxtColor = row.popular ? "white" : row.color;
           elements.push(
             new fabric.Rect({ width: 160, height: 40, rx: 8, ry: 8, fill: btnBgColor, left: cx, top: 136, originX: "center", originY: "center" }),
-            new fabric.Text(row.popular ? "S'inscrire" : "Choisir", { fontSize: 13, fontWeight: "700", fill: btnTxtColor, fontFamily: "Inter", left: cx, top: 136, originX: "center", originY: "center" })
+            new fabric.IText(row.popular ? "S'inscrire" : "Choisir", { fontSize: 13, fontWeight: "700", fill: btnTxtColor, fontFamily: "Inter", left: cx, top: 136, originX: "center", originY: "center" })
           );
         });
         break;
       }
       case "nav_menu": {
         const bg = new fabric.Rect({ width: 720, height: 76, fill: "rgba(255, 255, 255, 0.95)", stroke: "#f1f5f9", strokeWidth: 1.5, rx: 24, ry: 24, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.08)", blur: 32, offsetX: 0, offsetY: 16 }) });
-        const logo = new fabric.Text("◈ Logo", { fontSize: 22, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", originX: "left", originY: "center", left: -320 });
-        const nav1 = new fabric.Text("Accueil", { fontSize: 14, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -60 });
+        const logo = new fabric.IText("◈ Logo", { fontSize: 22, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", originX: "left", originY: "center", left: -320 });
+        const nav1 = new fabric.IText("Accueil", { fontSize: 14, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", originX: "left", originY: "center", left: -60 });
         const navUnderline = new fabric.Rect({ width: 20, height: 3, rx: 1.5, ry: 1.5, fill: "#6366f1", originX: "center", originY: "center", left: -35, top: 12 });
-        const nav2 = new fabric.Text("À propos", { fontSize: 14, fontWeight: "500", fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: 20 });
-        const nav3 = new fabric.Text("Contact", { fontSize: 14, fontWeight: "500", fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: 110 });
+        const nav2 = new fabric.IText("À propos", { fontSize: 14, fontWeight: "500", fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: 20 });
+        const nav3 = new fabric.IText("Contact", { fontSize: 14, fontWeight: "500", fill: "#64748b", fontFamily: "Inter", originX: "left", originY: "center", left: 110 });
         const ctaBg = new fabric.Rect({ width: 130, height: 44, rx: 12, ry: 12, fill: "#6366f1", originX: "right", originY: "center", left: 320, shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.3)", blur: 12, offsetX: 0, offsetY: 4 }) });
-        const ctaTxt = new fabric.Text("Connexion", { fontSize: 13, fontWeight: "700", fill: "white", fontFamily: "Inter", originX: "right", originY: "center", left: 308 });
+        const ctaTxt = new fabric.IText("Connexion", { fontSize: 13, fontWeight: "700", fill: "white", fontFamily: "Inter", originX: "right", originY: "center", left: 308 });
         elements = [bg, logo, nav1, navUnderline, nav2, nav3, ctaBg, ctaTxt];
         componentData = { navLogo: "◈ Logo", nav1: "Accueil", nav2: "À propos", nav3: "Contact", navBtn: "Connexion", navColor: "#6366f1", variant: "nav_menu" };
         interactivity = (grp) => {
@@ -3240,13 +4516,13 @@ showToast("Erreur lors de la réinitialisation", "error");
         const dec1 = new fabric.Circle({ radius: 150, fill: "rgba(255,255,255,0.05)", left: -250, top: -150, originX: "center", originY: "center" });
         const dec2 = new fabric.Circle({ radius: 100, fill: "rgba(255,255,255,0.08)", left: 300, top: 150, originX: "center", originY: "center" });
         const badgeBg = new fabric.Rect({ width: 160, height: 32, rx: 16, ry: 16, fill: "rgba(255,255,255,0.15)", originX: "center", originY: "center", top: -110 });
-        const badgeTxt = new fabric.Text("✨ NOUVEAU DESIGN", { fontSize: 10, fontWeight: "800", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", top: -110 });
-        const h1 = new fabric.Text("Titre Principal", { fontSize: 56, fontWeight: "900", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", top: -30, shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 10, offsetY: 4 }) });
-        const sub = new fabric.Text("Sous-titre génial descriptif accrocheur pour présenter\nvotre produit révolutionnaire avec style.", { fontSize: 18, fill: "rgba(255,255,255,0.85)", fontFamily: "Inter", textAlign: "center", originX: "center", originY: "center", top: 40, lineHeight: 1.5 });
+        const badgeTxt = new fabric.IText("✨ NOUVEAU DESIGN", { fontSize: 10, fontWeight: "800", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", top: -110 });
+        const h1 = new fabric.IText("Titre Principal", { fontSize: 56, fontWeight: "900", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", top: -30, shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 10, offsetY: 4 }) });
+        const sub = new fabric.IText("Sous-titre génial descriptif accrocheur pour présenter\nvotre produit révolutionnaire avec style.", { fontSize: 18, fill: "rgba(255,255,255,0.85)", fontFamily: "Inter", textAlign: "center", originX: "center", originY: "center", top: 40, lineHeight: 1.5 });
         const btn = new fabric.Rect({ width: 180, height: 56, rx: 28, ry: 28, fill: "#ffffff", originX: "center", originY: "center", left: -100, top: 130, shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.2)", blur: 14, offsetY: 6 }) });
-        const btnTxt = new fabric.Text("Commencer", { fontSize: 15, fontWeight: "800", fill: "#4f46e5", fontFamily: "Inter", originX: "center", originY: "center", left: -100, top: 130 });
+        const btnTxt = new fabric.IText("Commencer", { fontSize: 15, fontWeight: "800", fill: "#4f46e5", fontFamily: "Inter", originX: "center", originY: "center", left: -100, top: 130 });
         const btnOutline = new fabric.Rect({ width: 180, height: 56, rx: 28, ry: 28, fill: "transparent", stroke: "rgba(255,255,255,0.5)", strokeWidth: 2, originX: "center", originY: "center", left: 100, top: 130 });
-        const btnOutlineTxt = new fabric.Text("En savoir plus", { fontSize: 15, fontWeight: "700", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", left: 100, top: 130 });
+        const btnOutlineTxt = new fabric.IText("En savoir plus", { fontSize: 15, fontWeight: "700", fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center", left: 100, top: 130 });
         elements = [bg, dec1, dec2, badgeBg, badgeTxt, h1, sub, btn, btnTxt, btnOutline, btnOutlineTxt];
         componentData = { heroTitle: "Titre Principal", heroSub: "Sous-titre génial descriptif accrocheur pour présenter\nvotre produit révolutionnaire avec style.", heroBtn: "Commencer", heroBg: "#4f46e5", variant: "hero" };
         interactivity = (grp) => {
@@ -3259,14 +4535,14 @@ showToast("Erreur lors de la réinitialisation", "error");
       case "tabs": {
         const bg = new fabric.Rect({ width: 440, height: 56, fill: "#f1f5f9", rx: 16, ry: 16, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }) });
         const tab1Bg = new fabric.Rect({ width: 132, height: 44, fill: "#ffffff", rx: 12, ry: 12, left: -140, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(15,23,42,0.12)", blur: 12, offsetY: 4 }) });
-        const tab1 = new fabric.Text("Général", { fontSize: 14, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", originX: "center", originY: "center", left: -140 });
-        const tab2 = new fabric.Text("Sécurité", { fontSize: 14, fontWeight: "600", fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 0 });
-        const tab3 = new fabric.Text("Avancé", { fontSize: 14, fontWeight: "600", fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 140 });
+        const tab1 = new fabric.IText("Général", { fontSize: 14, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", originX: "center", originY: "center", left: -140 });
+        const tab2 = new fabric.IText("Sécurité", { fontSize: 14, fontWeight: "600", fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 0 });
+        const tab3 = new fabric.IText("Avancé", { fontSize: 14, fontWeight: "600", fill: "#64748b", fontFamily: "Inter", originX: "center", originY: "center", left: 140 });
         elements = [bg, tab1Bg, tab1, tab2, tab3];
         componentData = { tab1: "Général", tab2: "Sécurité", tab3: "Avancé", activeTab: 1, variant: "tabs" };
         interactivity = (grp) => {
           grp.on("mousedown", (e) => {
-            const pointer = grp.canvas?.getPointer(e.e);
+            const pointer = getCanvasPointer(grp.canvas, e);
             if (!pointer) return;
             const clickX = pointer.x - grp.left;
             let newActive = 1;
@@ -3292,18 +4568,22 @@ showToast("Erreur lors de la réinitialisation", "error");
         };
         break;
       }
-      case "chart_bar": {
-        const bg = new fabric.Rect({ width: 300, height: 200, fill: "#ffffff", rx: 12, ry: 12, stroke: "#f1f5f9", strokeWidth: 1, originX: "center", originY: "center" });
-        const bars = [
-          new fabric.Rect({ width: 30, height: 80, fill: "#6366f1", rx: 4, ry: 4, left: -110, top: 30, originX: "center", originY: "bottom" }),
-          new fabric.Rect({ width: 30, height: 120, fill: "#8b5cf6", rx: 4, ry: 4, left: -60, top: 30, originX: "center", originY: "bottom" }),
-          new fabric.Rect({ width: 30, height: 60, fill: "#a78bfa", rx: 4, ry: 4, left: -10, top: 30, originX: "center", originY: "bottom" }),
-          new fabric.Rect({ width: 30, height: 100, fill: "#6366f1", rx: 4, ry: 4, left: 40, top: 30, originX: "center", originY: "bottom" }),
-          new fabric.Rect({ width: 30, height: 140, fill: "#8b5cf6", rx: 4, ry: 4, left: 90, top: 30, originX: "center", originY: "bottom" }),
-        ];
-        const label = new fabric.Text("Analyse", { fontSize: 11, fontWeight: "600", fill: "#64748b", fontFamily: "Inter", originX: "center", top: -80 });
-        elements = [bg, ...bars, label];
-        componentData = { variant: "chart_bar" };
+      case "chart_bar":
+      case "chart_bar_horiz":
+      case "chart_bar_stacked":
+      case "chart_pie":
+      case "chart_donut":
+      case "chart_line":
+      case "chart_area": {
+        componentData = { 
+          chartTitle: "Titre du Graphique", 
+          chartColor: "#6366f1", 
+          secondColor: "#8b5cf6", 
+          chartLabels: ["Lun", "Mar", "Mer", "Jeu", "Ven"], 
+          chartValues: [30, 80, 50, 100, 60],
+          variant: item.variant 
+        };
+        elements = generateChartObjects(item.variant, componentData);
         break;
       }
       
@@ -3313,18 +4593,18 @@ showToast("Erreur lors de la réinitialisation", "error");
         const bg = new fabric.Rect({ width: 1000, height: 900, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background" });
         // Menu
         const navBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -410, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "navbar" });
-        const logo = new fabric.Text("⚡ STUDIO", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -410, originX: "left", originY: "center", editable: true, customType: "logo" });
-        const navLinks = new fabric.Text("Produit        Solutions        Prix        Ressources", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -410, originX: "center", originY: "center", editable: true, customType: "navLinks" });
+        const logo = new fabric.IText("⚡ STUDIO", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -410, originX: "left", originY: "center", editable: true, customType: "logo" });
+        const navLinks = new fabric.IText("Produit        Solutions        Prix        Ressources", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -410, originX: "center", originY: "center", editable: true, customType: "navLinks" });
         const ctaBtn = new fabric.Rect({ width: 140, height: 44, fill: "#0f172a", rx: 8, ry: 8, left: 420, top: -410, originX: "right", originY: "center", editable: true, customType: "button" });
-        const ctaTxt = new fabric.Text("Essayer gratis", { fontSize: 14, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 350, top: -410, originX: "center", originY: "center", editable: true, customType: "buttonText" });
+        const ctaTxt = new fabric.IText("Essayer gratis", { fontSize: 14, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 350, top: -410, originX: "center", originY: "center", editable: true, customType: "buttonText" });
         // Hero
-        const heroH1 = new fabric.Text("Créez le web\nde demain, aujourd'hui.", { fontSize: 56, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -220, originX: "center", originY: "center", lineHeight: 1.1, editable: true, customType: "heading" });
-        const heroSub = new fabric.Text("Notre outil vous aide à construire, designer et collaborer en temps réel.\nDes millions d'équipes nous font déjà confiance.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -110, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "subtext" });
+        const heroH1 = new fabric.IText("Créez le web\nde demain, aujourd'hui.", { fontSize: 56, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -220, originX: "center", originY: "center", lineHeight: 1.1, editable: true, customType: "heading" });
+        const heroSub = new fabric.IText("Notre outil vous aide à construire, designer et collaborer en temps réel.\nDes millions d'équipes nous font déjà confiance.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -110, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "subtext" });
         const heroBtnBg = new fabric.Rect({ width: 220, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: -30, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "heroButton" });
-        const heroBtnTxt = new fabric.Text("Démarrer mon essai", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: -30, originX: "center", originY: "center", editable: true, customType: "heroButtonText" });
+        const heroBtnTxt = new fabric.IText("Démarrer mon essai", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: -30, originX: "center", originY: "center", editable: true, customType: "heroButtonText" });
         // Image Placeholder (Abstract)
         const imgPlaceholder = new fabric.Rect({ width: 800, height: 350, fill: "#e2e8f0", rx: 24, ry: 24, left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imagePlaceholder" });
-        const imgIcon = new fabric.Text("🖼 Illustration", { fontSize: 24, fontWeight: "700", fill: "#94a3b8", fontFamily: "Inter", left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imageText" });
+        const imgIcon = new fabric.IText("🖼 Illustration", { fontSize: 24, fontWeight: "700", fill: "#94a3b8", fontFamily: "Inter", left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imageText" });
         
         elements = [bg, navBg, logo, navLinks, ctaBtn, ctaTxt, heroH1, heroSub, heroBtnBg, heroBtnTxt, imgPlaceholder, imgIcon];
         componentData = { variant: "tpl_home", editable: true, templateType: "homepage" };
@@ -3335,28 +4615,28 @@ showToast("Erreur lors de la réinitialisation", "error");
         // Splitted screen login page
         const bg = new fabric.Rect({ width: 1000, height: 600, fill: "white", originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 30, offsetY: 15 }), editable: true, customType: "background" });
         const leftPanel = new fabric.Rect({ width: 500, height: 600, fill: "#6366f1", left: -250, top: 0, originX: "center", originY: "center", editable: true, customType: "leftPanel" });
-        const leftH1 = new fabric.Text("Heureux de\nvous revoir.", { fontSize: 48, fontWeight: "900", fill: "white", fontFamily: "Inter", left: -420, top: -40, originX: "left", originY: "center", lineHeight: 1.2, editable: true, customType: "welcomeHeading" });
-        const leftP = new fabric.Text("Connectez-vous pour continuer\nvotre expérience exclusive.", { fontSize: 16, fill: "rgba(255,255,255,0.8)", fontFamily: "Inter", left: -420, top: 60, originX: "left", originY: "center", lineHeight: 1.5, editable: true, customType: "welcomeSubtext" });
+        const leftH1 = new fabric.IText("Heureux de\nvous revoir.", { fontSize: 48, fontWeight: "900", fill: "white", fontFamily: "Inter", left: -420, top: -40, originX: "left", originY: "center", lineHeight: 1.2, editable: true, customType: "welcomeHeading" });
+        const leftP = new fabric.IText("Connectez-vous pour continuer\nvotre expérience exclusive.", { fontSize: 16, fill: "rgba(255,255,255,0.8)", fontFamily: "Inter", left: -420, top: 60, originX: "left", originY: "center", lineHeight: 1.5, editable: true, customType: "welcomeSubtext" });
         
         // Right Form
-        const logo = new fabric.Text("🔒 Espace Client", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -200, originX: "center", originY: "center", editable: true, customType: "formLogo" });
-        const title = new fabric.Text("Se connecter", { fontSize: 32, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -140, originX: "center", originY: "center", editable: true, customType: "formTitle" });
+        const logo = new fabric.IText("🔒 Espace Client", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -200, originX: "center", originY: "center", editable: true, customType: "formLogo" });
+        const title = new fabric.IText("Se connecter", { fontSize: 32, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -140, originX: "center", originY: "center", editable: true, customType: "formTitle" });
         
         // Email Input
-        const l1 = new fabric.Text("Email", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: -80, originX: "left", originY: "center", editable: true, customType: "emailLabel" });
+        const l1 = new fabric.IText("Email", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: -80, originX: "left", originY: "center", editable: true, customType: "emailLabel" });
         const i1Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: -40, originX: "center", originY: "center", editable: true, customType: "emailInput" });
-        const i1Txt = new fabric.Text("votre@email.com", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: -40, originX: "left", originY: "center", editable: true, customType: "emailPlaceholder" });
+        const i1Txt = new fabric.IText("votre@email.com", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: -40, originX: "left", originY: "center", editable: true, customType: "emailPlaceholder" });
         
         // Password Input
-        const l2 = new fabric.Text("Mot de passe", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: 30, originX: "left", originY: "center", editable: true, customType: "passwordLabel" });
+        const l2 = new fabric.IText("Mot de passe", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: 30, originX: "left", originY: "center", editable: true, customType: "passwordLabel" });
         const i2Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: 70, originX: "center", originY: "center", editable: true, customType: "passwordInput" });
-        const i2Txt = new fabric.Text("•••••••", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: 70, originX: "left", originY: "center", editable: true, customType: "passwordPlaceholder" });
+        const i2Txt = new fabric.IText("•••••••", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: 70, originX: "left", originY: "center", editable: true, customType: "passwordPlaceholder" });
         
         // Submit
         const btnBg = new fabric.Rect({ width: 340, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitButton" });
-        const btnTxt = new fabric.Text("Connexion", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitText" });
+        const btnTxt = new fabric.IText("Connexion", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitText" });
         
-        const forgot = new fabric.Text("Mot de passe oublié ?", { fontSize: 13, fontWeight: "600", fill: "#6366f1", fontFamily: "Inter", left: 250, top: 220, originX: "center", originY: "center", editable: true, customType: "forgotLink" });
+        const forgot = new fabric.IText("Mot de passe oublié ?", { fontSize: 13, fontWeight: "600", fill: "#6366f1", fontFamily: "Inter", left: 250, top: 220, originX: "center", originY: "center", editable: true, customType: "forgotLink" });
 
         elements = [bg, leftPanel, leftH1, leftP, logo, title, l1, i1Bg, i1Txt, l2, i2Bg, i2Txt, btnBg, btnTxt, forgot];
         componentData = { variant: "tpl_login", editable: true, templateType: "login" };
@@ -3365,7 +4645,7 @@ showToast("Erreur lors de la réinitialisation", "error");
 
       case "tpl_cart": {
         const bg = new fabric.Rect({ width: 900, height: 700, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background" });
-        const h1 = new fabric.Text("Votre Panier", { fontSize: 36, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -400, top: -300, originX: "left", originY: "center", editable: true, customType: "cartTitle" });
+        const h1 = new fabric.IText("Votre Panier", { fontSize: 36, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -400, top: -300, originX: "left", originY: "center", editable: true, customType: "cartTitle" });
         
         // Items list background
         const listBg = new fabric.Rect({ width: 560, height: 440, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: -120, top: -20, originX: "center", originY: "center", editable: true, customType: "itemsList" });
@@ -3379,29 +4659,29 @@ showToast("Erreur lors de la réinitialisation", "error");
         for(let i=0; i<3; i++) {
           let y = -160 + (i * 140);
           elements.push(new fabric.Rect({ width: 100, height: 100, fill: "#f1f5f9", rx: 12, ry: 12, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productImage${i+1}` }));
-          elements.push(new fabric.Text("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i+1}` }));
-          elements.push(new fabric.Text(`Produit Premium ${i+1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i+1}` }));
-          elements.push(new fabric.Text("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i+1}` }));
-          elements.push(new fabric.Text("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i+1}` }));
-          elements.push(new fabric.Text("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i+1}` }));
+          elements.push(new fabric.IText("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i+1}` }));
+          elements.push(new fabric.IText(`Produit Premium ${i+1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i+1}` }));
+          elements.push(new fabric.IText("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i+1}` }));
+          elements.push(new fabric.IText("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i+1}` }));
+          elements.push(new fabric.IText("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i+1}` }));
           if(i < 2) elements.push(new fabric.Line([-380, y + 70, 140, y + 70], { stroke: "#e2e8f0", strokeWidth: 1 }));
         }
 
         // Summary details
-        elements.push(new fabric.Text("Résumé", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -200, originX: "left", originY: "center", editable: true, customType: "summaryTitle" }));
-        elements.push(new fabric.Text("Sous-total", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -140, originX: "left", originY: "center", editable: true, customType: "subtotalLabel" }));
-        elements.push(new fabric.Text("297,00 €", { fontSize: 14, fontWeight: "600", fill: "#0f172a", fontFamily: "Inter", left: 440, top: -140, originX: "right", originY: "center", editable: true, customType: "subtotalAmount" }));
+        elements.push(new fabric.IText("Résumé", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -200, originX: "left", originY: "center", editable: true, customType: "summaryTitle" }));
+        elements.push(new fabric.IText("Sous-total", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -140, originX: "left", originY: "center", editable: true, customType: "subtotalLabel" }));
+        elements.push(new fabric.IText("297,00 €", { fontSize: 14, fontWeight: "600", fill: "#0f172a", fontFamily: "Inter", left: 440, top: -140, originX: "right", originY: "center", editable: true, customType: "subtotalAmount" }));
         
-        elements.push(new fabric.Text("Livraison", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -100, originX: "left", originY: "center", editable: true, customType: "shippingLabel" }));
-        elements.push(new fabric.Text("Gratuite", { fontSize: 14, fontWeight: "600", fill: "#10b981", fontFamily: "Inter", left: 440, top: -100, originX: "right", originY: "center", editable: true, customType: "shippingAmount" }));
+        elements.push(new fabric.IText("Livraison", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -100, originX: "left", originY: "center", editable: true, customType: "shippingLabel" }));
+        elements.push(new fabric.IText("Gratuite", { fontSize: 14, fontWeight: "600", fill: "#10b981", fontFamily: "Inter", left: 440, top: -100, originX: "right", originY: "center", editable: true, customType: "shippingAmount" }));
 
         elements.push(new fabric.Line([200, -70, 440, -70], { stroke: "#e2e8f0", strokeWidth: 1 }));
 
-        elements.push(new fabric.Text("Total TTC", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -30, originX: "left", originY: "center", editable: true, customType: "totalLabel" }));
-        elements.push(new fabric.Text("297,00 €", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", left: 440, top: -30, originX: "right", originY: "center", editable: true, customType: "totalAmount" }));
+        elements.push(new fabric.IText("Total TTC", { fontSize: 16, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -30, originX: "left", originY: "center", editable: true, customType: "totalLabel" }));
+        elements.push(new fabric.IText("297,00 €", { fontSize: 24, fontWeight: "900", fill: "#6366f1", fontFamily: "Inter", left: 440, top: -30, originX: "right", originY: "center", editable: true, customType: "totalAmount" }));
 
         elements.push(new fabric.Rect({ width: 240, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButton" }));
-        elements.push(new fabric.Text("Payer maintenant", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButtonText" }));
+        elements.push(new fabric.IText("Payer maintenant", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 320, top: 50, originX: "center", originY: "center", editable: true, customType: "payButtonText" }));
 
         componentData = { variant: "tpl_cart", editable: true, templateType: "cart" };
         break;
@@ -3413,37 +4693,37 @@ showToast("Erreur lors de la réinitialisation", "error");
         
         // Header
         const headerBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -360, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "header" });
-        const logo = new fabric.Text("🏢 ENTREPRISE", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -360, originX: "left", originY: "center", editable: true, customType: "logo" });
-        const navLinks = new fabric.Text("Accueil        À Propos        Contact", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -360, originX: "center", originY: "center", editable: true, customType: "navLinks" });
+        const logo = new fabric.IText("🏢 ENTREPRISE", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -360, originX: "left", originY: "center", editable: true, customType: "logo" });
+        const navLinks = new fabric.IText("Accueil        À Propos        Contact", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -360, originX: "center", originY: "center", editable: true, customType: "navLinks" });
         
         // Hero Section
-        const heroH1 = new fabric.Text("Notre Histoire", { fontSize: 48, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -200, originX: "center", originY: "center", editable: true, customType: "heroHeading" });
-        const heroSub = new fabric.Text("Depuis 2010, nous transformons les idées en expériences numériques exceptionnelles.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -120, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "heroSubtext" });
+        const heroH1 = new fabric.IText("Notre Histoire", { fontSize: 48, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -200, originX: "center", originY: "center", editable: true, customType: "heroHeading" });
+        const heroSub = new fabric.IText("Depuis 2010, nous transformons les idées en expériences numériques exceptionnelles.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -120, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "heroSubtext" });
         
         // Mission Section
         const missionBg = new fabric.Rect({ width: 900, height: 200, fill: "white", rx: 16, ry: 16, left: 0, top: 20, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetY: 4 }), editable: true, customType: "missionBox" });
-        const missionTitle = new fabric.Text("Notre Mission", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 20, originX: "left", originY: "center", editable: true, customType: "missionTitle" });
-        const missionText = new fabric.Text("Innover continuellement pour offrir des solutions web qui dépassent les attentes de nos clients.", { fontSize: 16, fill: "#475569", fontFamily: "Inter", left: -380, top: 60, originX: "left", originY: "center", lineHeight: 1.6, editable: true, customType: "missionText" });
+        const missionTitle = new fabric.IText("Notre Mission", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 20, originX: "left", originY: "center", editable: true, customType: "missionTitle" });
+        const missionText = new fabric.IText("Innover continuellement pour offrir des solutions web qui dépassent les attentes de nos clients.", { fontSize: 16, fill: "#475569", fontFamily: "Inter", left: -380, top: 60, originX: "left", originY: "center", lineHeight: 1.6, editable: true, customType: "missionText" });
         
         // Values Section
-        const valuesTitle = new fabric.Text("Nos Valeurs", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 160, originX: "left", originY: "center", editable: true, customType: "valuesTitle" });
+        const valuesTitle = new fabric.IText("Nos Valeurs", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 160, originX: "left", originY: "center", editable: true, customType: "valuesTitle" });
         
         // Value cards
         const value1Bg = new fabric.Rect({ width: 250, height: 120, fill: "#f1f5f9", rx: 12, ry: 12, left: -280, top: 280, originX: "center", originY: "center", editable: true, customType: "value1Bg" });
-        const value1Icon = new fabric.Text("💡", { fontSize: 32, left: -280, top: 250, originX: "center", originY: "center", editable: true, customType: "value1Icon" });
-        const value1Title = new fabric.Text("Innovation", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: 310, originX: "center", originY: "center", editable: true, customType: "value1Title" });
+        const value1Icon = new fabric.IText("💡", { fontSize: 32, left: -280, top: 250, originX: "center", originY: "center", editable: true, customType: "value1Icon" });
+        const value1Title = new fabric.IText("Innovation", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: 310, originX: "center", originY: "center", editable: true, customType: "value1Title" });
         
         const value2Bg = new fabric.Rect({ width: 250, height: 120, fill: "#e0f2fe", rx: 12, ry: 12, left: 0, top: 280, originX: "center", originY: "center", editable: true, customType: "value2Bg" });
-        const value2Icon = new fabric.Text("🤝", { fontSize: 32, left: 0, top: 250, originX: "center", originY: "center", editable: true, customType: "value2Icon" });
-        const value2Title = new fabric.Text("Confiance", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 0, top: 310, originX: "center", originY: "center", editable: true, customType: "value2Title" });
+        const value2Icon = new fabric.IText("🤝", { fontSize: 32, left: 0, top: 250, originX: "center", originY: "center", editable: true, customType: "value2Icon" });
+        const value2Title = new fabric.IText("Confiance", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 0, top: 310, originX: "center", originY: "center", editable: true, customType: "value2Title" });
         
         const value3Bg = new fabric.Rect({ width: 250, height: 120, fill: "#fef3c7", rx: 12, ry: 12, left: 280, top: 280, originX: "center", originY: "center", editable: true, customType: "value3Bg" });
-        const value3Icon = new fabric.Text("⭐", { fontSize: 32, left: 280, top: 250, originX: "center", originY: "center", editable: true, customType: "value3Icon" });
-        const value3Title = new fabric.Text("Excellence", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 280, top: 310, originX: "center", originY: "center", editable: true, customType: "value3Title" });
+        const value3Icon = new fabric.IText("⭐", { fontSize: 32, left: 280, top: 250, originX: "center", originY: "center", editable: true, customType: "value3Icon" });
+        const value3Title = new fabric.IText("Excellence", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 280, top: 310, originX: "center", originY: "center", editable: true, customType: "value3Title" });
         
         // CTA Button
         const ctaBg = new fabric.Rect({ width: 200, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: 380, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "ctaButton" });
-        const ctaText = new fabric.Text("Nous Contacter", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: 380, originX: "center", originY: "center", editable: true, customType: "ctaText" });
+        const ctaText = new fabric.IText("Nous Contacter", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: 380, originX: "center", originY: "center", editable: true, customType: "ctaText" });
 
         elements = [bg, headerBg, logo, navLinks, heroH1, heroSub, missionBg, missionTitle, missionText, valuesTitle, value1Bg, value1Icon, value1Title, value2Bg, value2Icon, value2Title, value3Bg, value3Icon, value3Title, ctaBg, ctaText];
         componentData = { variant: "tpl_about", editable: true, templateType: "about" };
@@ -3454,13 +4734,55 @@ showToast("Erreur lors de la réinitialisation", "error");
     }
 
     if (elements.length === 0) return null;
-    const group = new fabric.Group(elements, { left: x, top: y });
-    group.customName = item.label;
+    
+    // Special handling for video and map components
+    let groupProps = { left: x, top: y, originX: "center", originY: "center" };
+    let customName = item.label;
+    
+    if (item.variant === "video") {
+      customName = "Lecteur Vidéo";
+      groupProps = {
+        ...groupProps,
+        customName: "Lecteur Vidéo",
+        customVariant: "video",
+        videoSrc: "",
+        videoAssetId: ""
+      };
+    } else if (item.variant === "map") {
+      customName = "Carte (Map)";
+      groupProps = {
+        ...groupProps,
+        customName: "Carte (Map)",
+        customVariant: "map",
+        mapLat: DEFAULT_MAP_LAT,
+        mapLng: DEFAULT_MAP_LNG,
+        mapZoom: DEFAULT_MAP_ZOOM,
+        mapAddress: "",
+        mapType: "m",
+        showMarker: true
+      };
+    }
+    
+    const group = new fabric.Group(elements, groupProps);
+    group.customName = customName;
     group.customVariant = item.variant;
     group.componentData = componentData;
     
+    // Copy special properties to group for video/map
+    if (item.variant === "video") {
+      group.videoSrc = "";
+      group.videoAssetId = "";
+    } else if (item.variant === "map") {
+      group.mapLat = DEFAULT_MAP_LAT;
+      group.mapLng = DEFAULT_MAP_LNG;
+      group.mapZoom = DEFAULT_MAP_ZOOM;
+      group.mapAddress = "";
+      group.mapType = "m";
+      group.showMarker = true;
+    }
+    
     // Add interactivity for template groups
-    if (componentData.templateType) {
+    if (componentData.templateType || item.variant.startsWith("chart_")) {
       interactivity = (grp) => {
         // Make individual elements within the group editable
         grp._objects.forEach((obj, index) => {
@@ -3504,9 +4826,8 @@ showToast("Erreur lors de la réinitialisation", "error");
 
   // ── Drag & drop ────────────────────────────────────────────────────────────
   const handleSidebarClick = (item) => { addElementToCanvas(item); };
-  const handleSidebarDoubleClick = (e, item) => { setDraggableId(item.id); e.currentTarget.setAttribute("draggable", "true"); };
   const handleDragStart = (e, item) => { e.dataTransfer.setData("element-data", JSON.stringify(item)); };
-  const handleDragEnd = () => { setDraggableId(null); };
+  const handleDragEnd = () => {};
 
   const handleCanvasDrop = (e) => {
     if (!isDesigner || !fabricCanvas) return;
@@ -3524,7 +4845,7 @@ showToast("Erreur lors de la réinitialisation", "error");
         const isTargetMatch = (obj) => {
           if (!obj.containsPoint) return false;
           // fabric provides point transform logic, or we can use simpler check:
-          const pointer = fabricCanvas.getPointer(e);
+          const pointer = getCanvasPointer(fabricCanvas, e);
           return obj.containsPoint(pointer);
         };
         const targets = fabricCanvas.getObjects().filter(o => o.type === "image" && isTargetMatch(o));
@@ -3565,7 +4886,6 @@ showToast("Erreur lors de la réinitialisation", "error");
           imgEl.src = newSrc;
         };
         reader.readAsDataURL(file);
-        setDraggableId(null);
         return;
       }
     }
@@ -3574,7 +4894,6 @@ showToast("Erreur lors de la réinitialisation", "error");
     if (!dataStr) return;
     const item = JSON.parse(dataStr);
     addElementToCanvas(item, snapEnabled ? snapToGrid(tx, GRID_SIZE) : tx, snapEnabled ? snapToGrid(ty, GRID_SIZE) : ty);
-    setDraggableId(null);
   };
 
   // FIX: Image import with history tracking
@@ -3813,14 +5132,28 @@ showToast("Erreur lors de la réinitialisation", "error");
     if (!fabricCanvas || !selectedObj || selectedObj.type !== 'group') return;
     
     const group = selectedObj;
-    const objects = group.getObjects();
+    const items = [...group.getObjects()];
+    const transforms = items.map(child => fabric.util.qrDecompose(child.calcTransformMatrix()));
     
     fabricCanvas.remove(group);
-    objects.forEach(obj => {
-      fabricCanvas.add(obj);
+    
+    items.forEach((child, i) => {
+      const opt = transforms[i];
+      child.set({
+          left: opt.translateX, top: opt.translateY,
+          scaleX: opt.scaleX, scaleY: opt.scaleY,
+          angle: opt.angle, skewX: opt.skewX, skewY: opt.skewY,
+          group: null,
+          editable: true,
+          selectable: true,
+          evented: true,
+      });
+      child.setCoords();
+      fabricCanvas.add(child);
+      restoreInteractivity(child);
     });
     
-    fabricCanvas.setActiveObject(objects);
+    fabricCanvas.discardActiveObject();
     fabricCanvas.renderAll();
     
     updateSelectedObjects();
@@ -4143,12 +5476,11 @@ showToast("Erreur lors de la réinitialisation", "error");
                             <>
                               <button
                                 className="tool-btn-list"
-                                draggable={draggableId === "block_card"}
+                                draggable={true}
                                 onDragStart={e => handleDragStart(e, { id: "block_card", label: "Carte Produit", icon: <Package size={15} />, type: "complex", variant: "card" })}
                                 onDragEnd={handleDragEnd}
                                 onClick={() => handleSidebarClick({ id: "block_card", label: "Carte Produit", icon: <Package size={15} />, type: "complex", variant: "card" })}
-                                onDoubleClick={e => handleSidebarDoubleClick(e, { id: "block_card", label: "Carte Produit", icon: <Package size={15} />, type: "complex", variant: "card" })}
-                                title="Clic: ajouter | Double-clic: glisser"
+                                title="Clic: ajouter | Glisser-déposer"
                                 disabled={!fabricCanvas}
                               >
                                 <div className="icon-wrap"><Package size={15} /></div>
@@ -4156,12 +5488,11 @@ showToast("Erreur lors de la réinitialisation", "error");
                               </button>
                               <button
                                 className="tool-btn-list"
-                                draggable={draggableId === "block_profile"}
+                                draggable={true}
                                 onDragStart={e => handleDragStart(e, { id: "block_profile", label: "Profil Utilisateur", icon: <Users size={15} />, type: "complex", variant: "profile" })}
                                 onDragEnd={handleDragEnd}
                                 onClick={() => handleSidebarClick({ id: "block_profile", label: "Profil Utilisateur", icon: <Users size={15} />, type: "complex", variant: "profile" })}
-                                onDoubleClick={e => handleSidebarDoubleClick(e, { id: "block_profile", label: "Profil Utilisateur", icon: <Users size={15} />, type: "complex", variant: "profile" })}
-                                title="Clic: ajouter | Double-clic: glisser"
+                                title="Clic: ajouter | Glisser-déposer"
                                 disabled={!fabricCanvas}
                               >
                                 <div className="icon-wrap"><Users size={15} /></div>
@@ -4169,12 +5500,11 @@ showToast("Erreur lors de la réinitialisation", "error");
                               </button>
                               <button
                                 className="tool-btn-list"
-                                draggable={draggableId === "block_pricing"}
+                                draggable={true}
                                 onDragStart={e => handleDragStart(e, { id: "block_pricing", label: "Tableau de Prix", icon: <DollarSign size={15} />, type: "complex", variant: "pricing" })}
                                 onDragEnd={handleDragEnd}
                                 onClick={() => handleSidebarClick({ id: "block_pricing", label: "Tableau de Prix", icon: <DollarSign size={15} />, type: "complex", variant: "pricing" })}
-                                onDoubleClick={e => handleSidebarDoubleClick(e, { id: "block_pricing", label: "Tableau de Prix", icon: <DollarSign size={15} />, type: "complex", variant: "pricing" })}
-                                title="Clic: ajouter | Double-clic: glisser"
+                                title="Clic: ajouter | Glisser-déposer"
                                 disabled={!fabricCanvas}
                               >
                                 <div className="icon-wrap"><DollarSign size={15} /></div>
@@ -4194,12 +5524,11 @@ showToast("Erreur lors de la réinitialisation", "error");
                                 <button
                                   key={item.id}
                                   className={category.layout === "grid" ? "tool-btn-box" : "tool-btn-list"}
-                                  draggable={draggableId === item.id}
+                                  draggable={true}
                                   onDragStart={e => handleDragStart(e, item)}
                                   onDragEnd={handleDragEnd}
                                   onClick={() => handleSidebarClick(item)}
-                                  onDoubleClick={e => handleSidebarDoubleClick(e, item)}
-                                  title="Clic: ajouter | Double-clic: glisser"
+                                  title="Clic: ajouter | Glisser-déposer"
                                   disabled={!fabricCanvas}
                                 >
                                   <div className="icon-wrap">{item.icon}</div>
@@ -4501,7 +5830,185 @@ showToast("Erreur lors de la réinitialisation", "error");
             )}
             {!designData
               ? <div className="loader-screen"><Loader size={40} className="spin" /><p>Chargement du studio…</p></div>
-              : <div ref={wrapperRef} className="canvas-shadow" />
+              : (
+                <div ref={wrapperRef} className="canvas-shadow">
+                  <div ref={canvasHostRef} className="canvas-host" />
+                  <div className="video-overlay-layer">
+                    {videoOverlayItems.map((item) => (
+                      <div key={item.key}>
+                        <div
+                          className={`video-overlay-card ${item.isSelected ? "video-overlay-card--selected" : ""}`}
+                          style={{
+                            left: `${item.left}px`,
+                            top: `${item.top}px`,
+                            width: `${item.width}px`,
+                            height: `${item.height}px`,
+                            opacity: item.opacity,
+                            zIndex: item.zIndex,
+                            transform: item.angle ? `rotate(${item.angle}deg)` : "none",
+                            pointerEvents: "none"
+                          }}
+                        >
+                          {item.sourceKind === "youtube" ? (
+                            <iframe
+                              className="video-overlay-player"
+                              src={item.embedSrc}
+                              title="YouTube video preview"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              style={{ pointerEvents: item.isSelected ? "auto" : "none" }}
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => event.stopPropagation()}
+                            />
+                          ) : (
+                            <video
+                              ref={(node) => {
+                                if (node) htmlVideoRefs.current[item.key] = node;
+                                else delete htmlVideoRefs.current[item.key];
+                              }}
+                              className="video-overlay-player"
+                              src={item.resolvedSrc}
+                              autoPlay
+                              loop
+                              playsInline
+                              preload="metadata"
+                              controls={item.isSelected}
+                              muted={selectedVideoOverlayItem?.key !== item.key ? true : selectedVideoUi.muted}
+                              style={{ pointerEvents: item.isSelected ? "auto" : "none" }}
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => event.stopPropagation()}
+                              onLoadedMetadata={syncSelectedVideoUi}
+                              onPlay={syncSelectedVideoUi}
+                              onPause={syncSelectedVideoUi}
+                              onVolumeChange={syncSelectedVideoUi}
+                            />
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="video-overlay-select"
+                          style={{
+                            left: `${item.left}px`,
+                            top: `${item.top}px`,
+                            width: `${item.width}px`,
+                            height: `${item.height}px`,
+                            zIndex: item.zIndex + 1,
+                            transform: item.angle ? `rotate(${item.angle}deg)` : "none",
+                            pointerEvents: item.isSelected ? "none" : "auto"
+                          }}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                          }}
+                          onMouseUp={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            selectVideoObject(item.objectRef);
+                          }}
+                        >
+                          {!item.isSelected && (
+                            <span className="video-overlay-mask">
+                              <Play size={18} />
+                            </span>
+                          )}
+                        </button>
+                        {item.isSelected && item.sourceKind === "direct" && (
+                          <div
+                            className="video-control-bar"
+                            style={{
+                              left: `${item.left + item.width / 2}px`,
+                              top: `${Math.max(item.top + 12, item.top + item.height - 54)}px`,
+                              zIndex: item.zIndex + 2,
+                              transform: "translateX(-50%)"
+                            }}
+                            onMouseDown={(event) => {
+                              event.stopPropagation();
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="video-control-btn"
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleSelectedVideoPlayback();
+                              }}
+                            >
+                              {selectedVideoUi.playing ? "Pause" : "Play"}
+                            </button>
+                            <button
+                              type="button"
+                              className="video-control-btn"
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleSelectedVideoMute();
+                              }}
+                            >
+                              {selectedVideoUi.muted ? "Unmute" : "Mute"}
+                            </button>
+                            <div
+                              className="video-control-volume"
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <Volume2 size={14} />
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={selectedVideoUi.volume}
+                                onMouseDown={(event) => event.stopPropagation()}
+                                onInput={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedVideoVolume(event.target.value);
+                                }}
+                                onChange={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedVideoVolume(event.target.value);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="map-overlay-layer" style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', overflow: 'visible' }}>
+                    {mapOverlayItems.map((item) => (
+                      <div key={item.key} className={item.isSelected ? "video-overlay-card--selected" : "video-overlay-card"} style={{
+                        position: 'absolute',
+                        left: `${item.left}px`, top: `${item.top}px`, width: `${item.width}px`, height: `${item.height}px`,
+                        opacity: item.opacity, zIndex: item.zIndex,
+                        transform: item.angle ? `rotate(${item.angle}deg)` : "none",
+                        pointerEvents: 'none'
+                      }}>
+                        <iframe
+                          width="100%" height="100%" frameBorder="0" scrolling="no" marginHeight="0" marginWidth="0"
+                          src={item.iframeSrc}
+                          style={{ pointerEvents: item.isSelected ? 'auto' : 'none', background: "#e2e8f0", border: 'none' }}
+                        />
+                        {!item.isSelected && (
+                          <div 
+                            style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'auto', cursor: 'pointer' }}
+                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onClick={(e) => { 
+                              e.preventDefault(); 
+                              e.stopPropagation(); 
+                              fabricCanvas.setActiveObject(item.objectRef); 
+                              fabricCanvas.requestRenderAll(); 
+                            }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
             }
           </main>
 
@@ -4523,7 +6030,48 @@ showToast("Erreur lors de la réinitialisation", "error");
                     onReplaceImage={handleReplaceImage}
                     onSelectImageFromHistory={handleSelectImageFromHistory}
                     refreshKey={layersKey}
+                    restoreInteractivity={restoreInteractivity}
+                    setShowComponentEditor={setShowComponentEditor}
+                    setEditorVariant={setEditorVariant}
+                    setEditorData={setEditorData}
                   />
+                )}
+                
+                {editorVariant === "button" && (
+                  <ButtonEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "input" && (
+                  <InputEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "profile" && (
+                  <ProfileEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "pricing" && (
+                  <PricingEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "slider" && (
+                  <SliderEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "modal" && (
+                  <ModalEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "card" && (
+                  <CardEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "nav_menu" && (
+                  <NavMenuEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "hero" && (
+                  <HeroEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "tabs" && (
+                  <TabsEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant === "table" && (
+                  <TableEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
+                )}
+                {editorVariant && editorVariant.startsWith("chart_") && (
+                  <ChartEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
                 )}
                 {rightTab === "layers" && (
                   <LayersPanel canvas={fabricCanvas} selectedObject={selectedObj} onSelectObject={setSelectedObj} refreshKey={layersKey} />
@@ -4807,8 +6355,21 @@ showToast("Erreur lors de la réinitialisation", "error");
         .draw-tool-sm.active { background: var(--primary-bg); border-color: var(--primary-border); color: var(--primary); }
 
         .editor-canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 40px; background: var(--canvas-bg); background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px); background-size: 24px 24px; position: relative; }
-        .canvas-shadow { box-shadow: var(--shadow-xl); border-radius: 12px; overflow: hidden; background: white; transition: box-shadow 0.3s; }
+        .canvas-shadow { position: relative; box-shadow: var(--shadow-xl); border-radius: 12px; overflow: visible; background: white; transition: box-shadow 0.3s; isolation: isolate; }
         .canvas-shadow:hover { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .canvas-host { position: relative; z-index: 1; overflow: hidden; border-radius: 12px; }
+        .canvas-host canvas { display: block; }
+        .video-overlay-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: visible; }
+        .video-overlay-card { position: absolute; overflow: hidden; border-radius: 14px; background: #020617; box-shadow: 0 12px 32px rgba(15,23,42,0.18); transform-origin: center center; }
+        .video-overlay-card--selected { box-shadow: 0 0 0 2px rgba(99,102,241,0.45), 0 16px 36px rgba(15,23,42,0.22); }
+        .video-overlay-player { width: 100%; height: 100%; display: block; border: 0; background: #020617; }
+        .video-overlay-select { position: absolute; border: none; background: transparent; padding: 0; margin: 0; pointer-events: auto; cursor: pointer; border-radius: 14px; transform-origin: center center; }
+        .video-overlay-mask { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,23,42,0.08), rgba(15,23,42,0.26)); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.9); pointer-events: none; border-radius: 14px; }
+        .video-control-bar { position: absolute; display: flex; align-items: center; gap: 8px; background: rgba(15,23,42,0.92); color: white; border-radius: 999px; padding: 8px 12px; pointer-events: auto; box-shadow: 0 12px 24px rgba(15,23,42,0.22); }
+        .video-control-btn { border: none; background: rgba(255,255,255,0.12); color: white; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .video-control-btn:hover { background: rgba(255,255,255,0.2); }
+        .video-control-volume { display: flex; align-items: center; gap: 6px; min-width: 120px; }
+        .video-control-volume input { width: 100%; accent-color: #6366f1; }
         .loader-screen { display: flex; flex-direction: column; align-items: center; gap: 16px; color: var(--muted); font-size: 14px; font-weight: 500; }
 
         .corrections-banner-wrap { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100; width: calc(100% - 48px); max-width: 720px; }
@@ -4992,3 +6553,4 @@ showToast("Erreur lors de la réinitialisation", "error");
 };
 
 export default DesignEditor;
+
