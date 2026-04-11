@@ -6,6 +6,7 @@ import {
   MessageSquare, AlertCircle, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { exportBeautifulExcel } from "../utils/excelExport";
 
 // ── Badge statut version ──────────────────────────────────────────────────────
 const VersionStatutBadge = ({ type }) => {
@@ -152,15 +153,51 @@ const ClientFeedbacks = () => {
 
   const [editingComment, setEditingComment] = useState(null);
   const [newText, setNewText] = useState("");
+  const exportProjectsExcel = () => {
+    const headers = ["Projet", "Date début", "Date fin", "Statut"];
+    const rows = projets.map((p) => [
+      p.nom || "",
+      p.date_début ? new Date(p.date_début).toLocaleDateString("fr-FR") : "",
+      p.date_fin ? new Date(p.date_fin).toLocaleDateString("fr-FR") : "",
+      p.statut || "",
+    ]);
+    exportBeautifulExcel({ title: "Historique feedbacks - Projets", headers, rows, filenamePrefix: "feedbacks-projets-client", sheetName: "Projets" });
+  };
+
+  const exportVersionsExcel = (project) => {
+    const data = fbData[project._id];
+    if (!data?.versions) return;
+    const headers = ["Version", "Statut", "Commentaires", "Date"];
+    const rows = data.versions.map((v) => {
+      const commentaires = data.commentaires || [];
+      const validations = data.validations || [];
+      const versionCommentaires = commentaires.filter((c) => {
+        const validation = validations.find((val) => String(val._id) === String(c.validation_id));
+        return String(validation?.version_id?._id || validation?.version_id) === String(v._id);
+      });
+      return [
+        `V${v.numéro_version}`,
+        v.statut || "",
+        versionCommentaires.map((c) => `${c.label_element}: ${c.commentaire_client}`).join("\n"),
+        v.date_creation ? new Date(v.date_creation).toLocaleDateString("fr-FR") : "",
+      ];
+    });
+    exportBeautifulExcel({ title: `Feedbacks versions - ${project.nom || "Projet"}`, headers, rows, filenamePrefix: `feedbacks-versions-${project.nom || "projet"}`, sheetName: "Versions" });
+  };
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6, color: "#1E293B" }}>
         Historique des feedbacks
       </h1>
-      <p style={{ color: "#64748B", fontSize: 14, marginBottom: 28 }}>
-        Consultez les retours sur les versions de vos projets.
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+        <p style={{ color: "#64748B", fontSize: 14, margin: 0 }}>
+          Consultez les retours sur les versions de vos projets.
+        </p>
+        <button onClick={exportProjectsExcel} style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:600, fontSize:12 }}>
+          Exporter Excel
+        </button>
+      </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {fetching ? (
@@ -285,11 +322,17 @@ const ClientFeedbacks = () => {
                                   {data.versions.length === 0 ? (
                                     <p style={{ fontSize: 13, color: "#94A3B8" }}>Aucune version disponible.</p>
                                   ) : (
-                                    <table style={{
-                                      width: "100%", borderCollapse: "collapse",
-                                      background: "white", borderRadius: 10,
-                                      overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-                                    }}>
+                                    <>
+                                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                                        <button onClick={() => exportVersionsExcel(p)} style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"7px 10px", cursor:"pointer", fontWeight:600, fontSize:12 }}>
+                                          Exporter versions Excel
+                                        </button>
+                                      </div>
+                                      <table style={{
+                                        width: "100%", borderCollapse: "collapse",
+                                        background: "white", borderRadius: 10,
+                                        overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                                      }}>
                                       <thead>
                                         <tr style={{ background: "#F1F5F9" }}>
                                           {["Version", "Statut", "Votre commentaire", "Date"].map(h => (
@@ -583,7 +626,8 @@ const ClientFeedbacks = () => {
                                           );
                                         })}
                                       </tbody>
-                                    </table>
+                                      </table>
+                                    </>
                                   )}
                                 </>
                               )}

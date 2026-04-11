@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import API from "../api";
 import { Trash2, Eye, Edit3, X, Download, FileText, Calendar, Loader, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import axios from "axios";
+import { exportBeautifulExcel } from "../utils/excelExport";
 
 function History() {
   const [rapports, setRapports] = useState([]);
@@ -174,6 +175,31 @@ function History() {
     return texte || "";
   };
 
+  const exportHistoryExcel = () => {
+    const sourceRows = rapports.filter((r) => r && r._id);
+    const formatListForCell = (value) => {
+      if (Array.isArray(value)) return value.map((v) => `- ${v}`).join("\n");
+      return value || "";
+    };
+
+    const headers = ["Date", "Designer", "Projet", "Travail effectué", "Tâches restantes", "Blocages"];
+    const rows = sourceRows.map((r) => ([
+      formatDate(r.date),
+      getDesignerNom(r),
+      getProjetNom(r),
+      formatListForCell(r.travail_effectué),
+      formatListForCell(r.tâches_restantes),
+      formatListForCell(r.blocages)
+    ]));
+    exportBeautifulExcel({
+      title: "Historique des rapports",
+      headers,
+      rows,
+      filenamePrefix: "historique-rapports",
+      sheetName: "Historique",
+    });
+  };
+
   return (
     <div className="h-root">
       {/* ── Header ── */}
@@ -183,9 +209,14 @@ function History() {
           <h1 className="h-title">Historique des rapports</h1>
           <p className="h-sub">Consultez et gérez tous les rapports quotidiens</p>
         </div>
-        <div className="h-badge">
-          <FileText size={16} color="#6366F1" />
-          <span>{rapports.length} rapport{rapports.length !== 1 ? "s" : ""}</span>
+        <div className="h-header-actions">
+          <div className="h-badge">
+            <FileText size={16} color="#6366F1" />
+            <span>{rapports.length} rapport{rapports.length !== 1 ? "s" : ""}</span>
+          </div>
+          <button className="h-export-btn" onClick={exportHistoryExcel}>
+            Exporter Excel
+          </button>
         </div>
       </div>
 
@@ -343,7 +374,10 @@ function History() {
         .h-root { font-family: 'Plus Jakarta Sans', sans-serif; max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; color: #1E293B; }
         .h-header { display: flex; justify-content: space-between; margin-bottom: 28px; }
         .h-title { font-size: 26px; font-weight: 800; margin: 0; }
+        .h-header-actions { display: flex; align-items: center; gap: 10px; }
         .h-badge { display: flex; align-items: center; gap: 8px; background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 700; color: #6366F1; }
+        .h-export-btn { border: none; background: #0f766e; color: #fff; border-radius: 10px; padding: 10px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .h-export-btn:hover { background: #0d5f59; }
 
         .panel { background: white; border-radius: 16px; border: 1px solid #F1F5F9; overflow: hidden; }
         .table-wrap { overflow-x: auto; }

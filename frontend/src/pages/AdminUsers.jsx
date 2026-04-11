@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../api";
 import { UserPlus, Mail, User, Briefcase, Palette, Trash2, Edit, Loader, CheckCircle, AlertCircle, X, Save } from 'lucide-react';
+import { exportBeautifulExcel } from "../utils/excelExport";
 
 const AdminUsers = () => {
 
@@ -99,6 +100,18 @@ const AdminUsers = () => {
 
     return matchSearch && matchRole;
   });
+
+  const exportUsersExcel = () => {
+    const headers = ["Nom", "Email", "Rôle"];
+    const rows = filteredUsers.map((u) => [u.nom || "", u.email || "", u.rôle || ""]);
+    exportBeautifulExcel({
+      title: "Liste des utilisateurs",
+      headers,
+      rows,
+      filenamePrefix: "utilisateurs",
+      sheetName: "Utilisateurs",
+    });
+  };
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 24 }}>Gestion des utilisateurs</h1>
@@ -232,7 +245,12 @@ const AdminUsers = () => {
       </div>
       {/* Liste */}
       <div className="card">
-        <h3 style={{ marginBottom: 20 }}>Liste des utilisateurs ({users.length})</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ margin: 0 }}>Liste des utilisateurs ({users.length})</h3>
+          <button onClick={exportUsersExcel} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "#0f766e", color: "white", cursor: "pointer", fontWeight: 600 }}>
+            Exporter Excel
+          </button>
+        </div>
         {fetching ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
             <Loader size={32} color="#2563EB" />

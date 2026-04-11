@@ -10,6 +10,7 @@ import {
 import jsPDF from "jspdf";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
+import { exportBeautifulExcel } from "../utils/excelExport";
 
 const DesignerDashboard = () => {
   const navigate = useNavigate();
@@ -542,6 +543,26 @@ const DesignerDashboard = () => {
     { id: "corrections", label: `Corrections${corrections.length > 0 ? ` (${corrections.length})` : ""}`, alert: corrections.length > 0 },
   ];
 
+  const exportDesignsExcel = () => {
+    const headers = ["Design", "Projet"];
+    const rows = maquettes.map((m) => [m.nom || "", m.id_projet?.nom || "Sans projet"]);
+    exportBeautifulExcel({ title: "Designs du designer", headers, rows, filenamePrefix: "designer-designs", sheetName: "Designs" });
+  };
+
+  const exportAssignedProjectsExcel = () => {
+    const headers = ["Projet", "Client", "Email client", "Date fin", "Statut", "Assigné le", "Lu"];
+    const rows = affectations.map((a) => [
+      a.id_projet?.nom || "",
+      a.id_projet?.id_client?.nom || "",
+      a.id_projet?.id_client?.email || "",
+      a.id_projet?.date_fin ? new Date(a.id_projet.date_fin).toLocaleDateString("fr-FR") : "",
+      a.id_projet?.statut || "",
+      a.date_affectation ? new Date(a.date_affectation).toLocaleDateString("fr-FR") : "",
+      a.lu ? "Oui" : "Non",
+    ]);
+    exportBeautifulExcel({ title: "Projets assignés au designer", headers, rows, filenamePrefix: "designer-projets-assignes", sheetName: "Projets" });
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="db-root">
@@ -672,9 +693,14 @@ const DesignerDashboard = () => {
         <div>
           <div className="section-bar">
             <h2 className="section-title">Mes Designs</h2>
-            <div className="view-toggle">
-              <button className={viewMode === "grid" ? "vt-active" : ""} onClick={() => setViewMode("grid")}><LayoutGrid size={16} /></button>
-              <button className={viewMode === "list" ? "vt-active" : ""} onClick={() => setViewMode("list")}><List size={16} /></button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={exportDesignsExcel} style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:600, fontSize:12 }}>
+                Exporter Excel
+              </button>
+              <div className="view-toggle">
+                <button className={viewMode === "grid" ? "vt-active" : ""} onClick={() => setViewMode("grid")}><LayoutGrid size={16} /></button>
+                <button className={viewMode === "list" ? "vt-active" : ""} onClick={() => setViewMode("list")}><List size={16} /></button>
+              </div>
             </div>
           </div>
 
@@ -755,6 +781,11 @@ const DesignerDashboard = () => {
       {/* ══════════════ TAB: PROJETS ══════════════ */}
       {activeTab === "projets" && (
         <div className="panel">
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+            <button onClick={exportAssignedProjectsExcel} style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:600, fontSize:12 }}>
+              Exporter Excel
+            </button>
+          </div>
           {loadingAff ? <Spinner /> : affectations.length === 0
             ? <Empty icon={<LayoutGrid size={40} color="#0EA5E9" />} text="Aucun projet assigné." sub="L'administrateur vous assignera bientôt à un projet." />
             : (

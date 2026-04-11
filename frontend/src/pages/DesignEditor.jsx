@@ -20,6 +20,31 @@ const GRID_SIZE = 20;
 const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.1;
+const VIDEO_OBJECT_NAMES = new Set(["Lecteur Vidéo", "Lecture Video"]);
+const isVideoObject = (obj) => VIDEO_OBJECT_NAMES.has(obj?.customName);
+const extractYouTubeId = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  try {
+    const u = new URL(rawUrl.trim());
+    const host = u.hostname.replace("www.", "");
+    if (host === "youtu.be") return u.pathname.split("/").filter(Boolean)[0] || null;
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      if (u.pathname === "/watch") return u.searchParams.get("v");
+      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/")[2] || null;
+      if (u.pathname.startsWith("/embed/")) return u.pathname.split("/")[2] || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+const normalizeVideoSrc = (rawUrl) => {
+  const url = (rawUrl || "").trim();
+  const ytId = extractYouTubeId(url);
+  if (!ytId) return url;
+  // Store canonical watch URL so Shorts/share links stay stable in saved data.
+  return `https://www.youtube.com/watch?v=${ytId}`;
+};
 
 const SIDEBAR_MENU = [
   { id: "typography", label: "Typographie", icon: <Type size={16} />, layout: "list", items: [{ id: "text_h1", label: "Titre principal", icon: <Heading1 size={15} />, type: "text", variant: "h1" }, { id: "text_h2", label: "Sous-titre", icon: <Heading2 size={15} />, type: "text", variant: "h2" }, { id: "text_p", label: "Paragraphe", icon: <Pilcrow size={15} />, type: "text", variant: "p" }, { id: "text_ul", label: "Liste à puces", icon: <List size={15} />, type: "text", variant: "ul" }, { id: "text_ol", label: "Liste numérotée", icon: <ListOrdered size={15} />, type: "text", variant: "ol" }, { id: "text_quote", label: "Citation", icon: <Quote size={15} />, type: "text", variant: "quote" }] },
@@ -36,12 +61,47 @@ const snapToGrid = (value, gridSize) => Math.round(value / gridSize) * gridSize;
 const reviveVideos = (canvas) => {
   if (!canvas) return;
   canvas.getObjects().forEach(o => {
-    if (o.customName === "Lecteur Vidéo" && o.videoSrc) {
+    if (isVideoObject(o) && o.videoSrc) {
       if (o.getElement && o.getElement()?.tagName === "VIDEO") return;
 
       // Validate video source
       if (!o.videoSrc || (typeof o.videoSrc === 'string' && !o.videoSrc.trim())) {
         console.error("Invalid video source:", o.videoSrc);
+        return;
+      }
+
+      const ytId = extractYouTubeId(o.videoSrc);
+      if (ytId) {
+        const thumb = new Image();
+        thumb.crossOrigin = "anonymous";
+        thumb.onload = () => {
+          const vImg = new fabric.Image(thumb, {
+            left: o.left, top: o.top,
+            originX: o.originX || "left", originY: o.originY || "top",
+            width: o.width || 320,
+            height: o.height || 180,
+            angle: o.angle || 0
+          });
+          vImg.set({ scaleX: o.scaleX || 1, scaleY: o.scaleY || 1 });
+          vImg.customName = "Lecteur Vidéo";
+          vImg.videoSrc = o.videoSrc;
+          const idx = canvas.getObjects().indexOf(o);
+          try {
+            canvas.remove(o);
+            canvas.add(vImg);
+            if (idx !== -1 && typeof vImg.moveTo === "function") vImg.moveTo(idx);
+            else if (idx !== -1 && typeof canvas.moveTo === "function") canvas.moveTo(vImg, idx);
+            if (canvas.getActiveObject() === o) {
+              canvas.discardActiveObject();
+              canvas.setActiveObject(vImg);
+            }
+            canvas.renderAll();
+          } catch (e) { console.error(e); }
+        };
+        thumb.onerror = () => {
+          console.warn("YouTube thumbnail load failed for:", o.videoSrc);
+        };
+        thumb.src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
         return;
       }
 
@@ -245,7 +305,7 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
     }
 
     let videoProps = {};
-    if (o.customName === "Lecteur Vidéo") {
+    if (isVideoObject(o)) {
       videoProps = { videoSrc: o.videoSrc || "" };
     }
 
@@ -474,6 +534,18 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
     reader.readAsDataURL(file);
   };
 
+  const applyVideoSrc = (value) => {
+    if (!selectedObject || !canvas) return;
+    const o = selectedObject;
+    if (!isVideoObject(o)) return;
+    const nextSrc = normalizeVideoSrc(value);
+    o.videoSrc = nextSrc;
+    setProps((p) => ({ ...p, videoSrc: nextSrc }));
+    onUpdate?.();
+    if (nextSrc) reviveVideos(canvas);
+    else canvas.renderAll();
+  };
+
   const handleVideoUpload = (e) => {
     const file = e.target.files[0];
     if (!file || !selectedObject || !canvas) return;
@@ -481,7 +553,7 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
     try {
       const blobUrl = URL.createObjectURL(file);
       const o = selectedObject;
-      if (o.customName === "Lecteur Vidéo") {
+      if (isVideoObject(o)) {
         o.videoSrc = blobUrl;
         setProps(p => ({ ...p, videoSrc: blobUrl }));
         onUpdate?.();
@@ -608,7 +680,7 @@ const PropertiesPanel = ({ selectedObject, canvas, onUpdate }) => {
         </section>
       )}
 
-      {selectedObject.customName === "Lecteur Vidéo" && (
+      {isVideoObject(selectedObject) && (
         <section className="props-section">
           <h4 className="props-section-title">Vidéo</h4>
           <PropField label="Lien externe (YouTube, MP4)" value={v.videoSrc && !v.videoSrc.startsWith("blob:") ? v.videoSrc : ""} onChange={val => applyVideoSrc(val)} />
