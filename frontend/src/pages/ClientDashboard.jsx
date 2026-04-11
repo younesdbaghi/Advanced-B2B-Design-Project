@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext, useRef } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
+import { exportBeautifulExcel } from "../utils/excelExport";
 import {
   Briefcase, Clock, CheckCircle, AlertCircle,
   FileText, Loader, PlusCircle, Send,
@@ -223,6 +224,30 @@ const ClientDashboard = () => {
   const projetsActifs = projects.filter(p => !p.demanded || p.statut !== "En attente");
   const inpErr = { ...inp, border: "1px solid #DC2626" };
 
+  const exportDemandesExcel = () => {
+    const headers = ["Projet", "Date début", "Date fin", "Statut", "Description"];
+    const rows = demandesEnAttente.map((p) => [
+      p.nom || "",
+      p.date_début ? new Date(p.date_début).toLocaleDateString("fr-FR") : "",
+      p.date_fin ? new Date(p.date_fin).toLocaleDateString("fr-FR") : "",
+      "En attente admin",
+      p.description || "",
+    ]);
+    exportBeautifulExcel({ title: "Demandes en attente", headers, rows, filenamePrefix: "demandes-attente-client", sheetName: "Demandes" });
+  };
+
+  const exportProjetsActifsExcel = () => {
+    const headers = ["Projet", "Date début", "Date fin", "Statut", "Description"];
+    const rows = projetsActifs.map((p) => [
+      p.nom || "",
+      p.date_début ? new Date(p.date_début).toLocaleDateString("fr-FR") : "",
+      p.date_fin ? new Date(p.date_fin).toLocaleDateString("fr-FR") : "",
+      p.statut || "",
+      p.description || "",
+    ]);
+    exportBeautifulExcel({ title: "Projets actifs", headers, rows, filenamePrefix: "projets-actifs-client", sheetName: "Projets actifs" });
+  };
+
   return (
     <div>
       {/* ── Header ── */}
@@ -339,9 +364,14 @@ const ClientDashboard = () => {
       {/* ── Demandes en attente ── */}
       {demandesEnAttente.length > 0 && (
         <div className="card" style={{ marginBottom: 24, borderLeft: "4px solid #D97706" }}>
-          <h3 style={{ marginBottom: 16, color: "#D97706", display: "flex", alignItems: "center", gap: 8 }}>
-            <Clock size={18} /> Demandes en attente ({demandesEnAttente.length})
-          </h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ margin: 0, color: "#D97706", display: "flex", alignItems: "center", gap: 8 }}>
+              <Clock size={18} /> Demandes en attente ({demandesEnAttente.length})
+            </h3>
+            <button onClick={exportDemandesExcel} style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:600, fontSize:12 }}>
+              Exporter Excel
+            </button>
+          </div>
           <div className="table-container">
             <table>
               <thead>
@@ -475,7 +505,12 @@ const ClientDashboard = () => {
       )}
       {/* ── Projets actifs ── */}
       <div className="card">
-        <h3 style={{ marginBottom: 20 }}>Mes projets ({projetsActifs.length})</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ margin: 0 }}>Mes projets ({projetsActifs.length})</h3>
+          <button onClick={exportProjetsActifsExcel} style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:600, fontSize:12 }}>
+            Exporter Excel
+          </button>
+        </div>
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Loader size={32} color="#2563EB" /></div>
         ) : projetsActifs.length === 0 ? (

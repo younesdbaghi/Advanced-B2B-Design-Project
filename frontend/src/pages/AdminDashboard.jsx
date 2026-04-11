@@ -5,6 +5,7 @@ import {
   Loader, CheckCircle, AlertCircle, FolderPlus, Calendar, Clock,
   Bell, X, Send, ChevronDown, ChevronUp, Edit3, AlertTriangle
 } from "lucide-react";
+import { exportBeautifulExcel } from "../utils/excelExport";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("projets");
@@ -199,6 +200,26 @@ const AdminDashboard = () => {
     { id: "reclamations", label: `⚠️ Réclamations${reclamations.length > 0 ? ` (${reclamations.length})` : ""}`, alert: reclamations.length > 0 },
   ];
 
+  const exportAdminProjetsExcel = () => {
+    const headers = ["Projet", "Client", "Email client", "Date début", "Date fin", "Statut", "Demandé"];
+    const rows = projets.map((p) => [
+      p.nom || "",
+      p.id_client?.nom || "",
+      p.id_client?.email || "",
+      p.date_début ? new Date(p.date_début).toLocaleDateString("fr-FR") : "",
+      p.date_fin ? new Date(p.date_fin).toLocaleDateString("fr-FR") : "",
+      p.statut || "",
+      p.demanded ? "Oui" : "Non",
+    ]);
+    exportBeautifulExcel({ title: "Dashboard Admin - Projets", headers, rows, filenamePrefix: "dashboard-admin-projets", sheetName: "Projets" });
+  };
+
+  const exportAdminUsersExcel = () => {
+    const headers = ["Nom", "Email", "Rôle"];
+    const rows = users.map((u) => [u.nom || "", u.email || "", u.rôle || ""]);
+    exportBeautifulExcel({ title: "Dashboard Admin - Utilisateurs", headers, rows, filenamePrefix: "dashboard-admin-utilisateurs", sheetName: "Utilisateurs" });
+  };
+
   return (
     <div>
       {/* ── HEADER ── */}
@@ -268,7 +289,12 @@ const AdminDashboard = () => {
           {projetMsg.text && <div style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 16px", borderRadius:10, marginBottom:20, background: projetMsg.type === "success" ? "#F0FDF4" : "#FEF2F2", color: projetMsg.type === "success" ? "#059669" : "#DC2626", border:`1px solid ${projetMsg.type === "success" ? "#BBF7D0" : "#FECACA"}` }}>{projetMsg.type === "success" ? <CheckCircle size={16}/> : <AlertCircle size={16}/>}{projetMsg.text}</div>}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
             <h2 style={{ fontSize:18, fontWeight:600, color:"#1E293B" }}>Liste des projets ({projets.length})</h2>
-            <button onClick={() => setShowProjetForm(!showProjetForm)} style={{ display:"flex", alignItems:"center", gap:8, background:"#2563EB", color:"white", border:"none", borderRadius:10, padding:"10px 18px", cursor:"pointer", fontWeight:600, fontSize:14 }}><FolderPlus size={18}/>{showProjetForm ? "Annuler" : "Nouveau projet"}</button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={exportAdminProjetsExcel} style={{ background:"#0f766e", color:"white", border:"none", borderRadius:10, padding:"10px 14px", cursor:"pointer", fontWeight:600, fontSize:13 }}>
+                Exporter Excel
+              </button>
+              <button onClick={() => setShowProjetForm(!showProjetForm)} style={{ display:"flex", alignItems:"center", gap:8, background:"#2563EB", color:"white", border:"none", borderRadius:10, padding:"10px 18px", cursor:"pointer", fontWeight:600, fontSize:14 }}><FolderPlus size={18}/>{showProjetForm ? "Annuler" : "Nouveau projet"}</button>
+            </div>
           </div>
 
           {showProjetForm && (
@@ -337,7 +363,12 @@ const AdminDashboard = () => {
             </form>
           </div>
           <div className="card">
-            <h3 style={{ marginBottom:20 }}>Liste des utilisateurs</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ margin: 0 }}>Liste des utilisateurs</h3>
+              <button onClick={exportAdminUsersExcel} style={{ background:"#0f766e", color:"white", border:"none", borderRadius:10, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:13 }}>
+                Exporter Excel
+              </button>
+            </div>
             {fetching ? <div style={{ display:"flex", justifyContent:"center", padding:40 }}><Loader className="spin" size={32} color="var(--primary-color)"/></div>
             : <div className="table-container"><table><thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th style={{ textAlign:"center" }}>Actions</th></tr></thead>
                 <tbody>

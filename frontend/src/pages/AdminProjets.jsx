@@ -6,6 +6,7 @@ import {
   UserPlus, UserMinus, Users, ChevronRight, Image,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { exportBeautifulExcel } from "../utils/excelExport";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const validerDates = (debut, fin) => {
@@ -217,6 +218,26 @@ const EditModal = ({ projet, users, onClose, onSaved, setMsg }) => {
   const [saving, setSaving] = useState(false);
   const clients = users.filter(u => u.rôle === "client");
 
+  const exportProjetsExcel = () => {
+    const headers = ["Projet", "Client", "Email client", "Date début", "Date fin", "Statut", "Demanded"];
+    const rows = projets.map((p) => [
+      p.nom || "",
+      p.id_client?.nom || "",
+      p.id_client?.email || "",
+      p.date_début ? new Date(p.date_début).toLocaleDateString("fr-FR") : "",
+      p.date_fin ? new Date(p.date_fin).toLocaleDateString("fr-FR") : "",
+      p.statut || "",
+      p.demanded ? "Oui" : "Non",
+    ]);
+    exportBeautifulExcel({
+      title: "Liste des projets",
+      headers,
+      rows,
+      filenamePrefix: "projets-admin",
+      sheetName: "Projets",
+    });
+  };
+
   const handleDateChange = (field, value) => {
     const updated = { ...form, [field]: value };
     setForm(updated); setFormErrors(validerDates(updated.date_début, updated.date_fin));
@@ -383,6 +404,26 @@ const AdminProjets = () => {
 
   const clients = users.filter(u => u.rôle === "client");
 
+  const exportProjetsExcel = () => {
+    const headers = ["Projet", "Client", "Email client", "Date début", "Date fin", "Statut", "Demanded"];
+    const rows = projets.map((p) => [
+      p.nom || "",
+      p.id_client?.nom || "",
+      p.id_client?.email || "",
+      p.date_début ? new Date(p.date_début).toLocaleDateString("fr-FR") : "",
+      p.date_fin ? new Date(p.date_fin).toLocaleDateString("fr-FR") : "",
+      p.statut || "",
+      p.demanded ? "Oui" : "Non",
+    ]);
+    exportBeautifulExcel({
+      title: "Liste des projets",
+      headers,
+      rows,
+      filenamePrefix: "projets-admin",
+      sheetName: "Projets",
+    });
+  };
+
   return (
     <div>
       {deleteProjet && <DeleteModal projet={deleteProjet} onClose={() => setDeleteProjet(null)} onConfirm={handleDelete} deleting={deleting}/>}
@@ -400,9 +441,14 @@ const AdminProjets = () => {
 
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h2 style={{ fontSize:18, fontWeight:600 }}>Tous les projets ({projets.length})</h2>
-        <button onClick={() => { setShowForm(!showForm); setFormErrors({ date_début:"", date_fin:"" }); }} style={{ display:"flex", alignItems:"center", gap:8, background:"#2563EB", color:"white", border:"none", borderRadius:10, padding:"10px 18px", cursor:"pointer", fontWeight:600, fontSize:14 }}>
-          <FolderPlus size={18}/>{showForm ? "Annuler" : "Nouveau projet"}
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={exportProjetsExcel} style={{ background:"#0f766e", color:"white", border:"none", borderRadius:10, padding:"10px 14px", cursor:"pointer", fontWeight:600, fontSize:14 }}>
+            Exporter Excel
+          </button>
+          <button onClick={() => { setShowForm(!showForm); setFormErrors({ date_début:"", date_fin:"" }); }} style={{ display:"flex", alignItems:"center", gap:8, background:"#2563EB", color:"white", border:"none", borderRadius:10, padding:"10px 18px", cursor:"pointer", fontWeight:600, fontSize:14 }}>
+            <FolderPlus size={18}/>{showForm ? "Annuler" : "Nouveau projet"}
+          </button>
+        </div>
       </div>
 
       {showForm && (

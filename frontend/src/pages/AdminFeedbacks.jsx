@@ -6,6 +6,7 @@ import {
   Edit,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { exportBeautifulExcel } from "../utils/excelExport";
 
 // ── Avatars ────────────────────────────────────────────────────────────────────
 const AvatarStack = ({ designers }) => {
@@ -273,6 +274,30 @@ const AdminFeedbacks = () => {
 
   const openEditor = (id) => navigate(`/admin/editeur/${id}`);
 
+  const exportProjetsExcel = () => {
+    const headers = ["Projet", "Client", "Date début", "Date fin", "Statut", "Designers"];
+    const rows = projets.map((p) => [
+      p.nom || "",
+      p.id_client?.nom || "",
+      p.date_début ? new Date(p.date_début).toLocaleDateString("fr-FR") : "",
+      p.date_fin ? new Date(p.date_fin).toLocaleDateString("fr-FR") : "",
+      p.statut || "",
+      (designersByProjet[p._id] || []).map((d) => d.nom).join(", "),
+    ]);
+    exportBeautifulExcel({ title: "Feedbacks Admin - Projets", headers, rows, filenamePrefix: "admin-feedbacks-projets", sheetName: "Projets" });
+  };
+
+  const exportVersionsExcel = (projetNom, versions, validations) => {
+    const headers = ["Version", "Statut", "Réclamation", "Date"];
+    const rows = versions.map((v) => {
+      const val = validations?.find((f) => String(f.version_id?._id || f.version_id) === String(v._id));
+      const fbType = val?.statut === "validé" ? "Validé" : val?.statut === "à corriger" ? "Refusé" : "En attente";
+      const recap = val?.commentaires?.length ? `${val.commentaires.length} remarque(s)` : "";
+      return [ `V${v.numéro_version}`, fbType, recap, v.date_creation ? new Date(v.date_creation).toLocaleDateString("fr-FR") : "" ];
+    });
+    exportBeautifulExcel({ title: `Versions feedbacks - ${projetNom}`, headers, rows, filenamePrefix: `admin-feedbacks-versions-${projetNom}`, sheetName: "Versions" });
+  };
+
   return (
     <div>
       {/* Popup réclamations */}
@@ -289,7 +314,12 @@ const AdminFeedbacks = () => {
       )}
 
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6, color: "#1E293B" }}>Feedbacks</h1>
-      <p style={{ color: "#64748B", fontSize: 14, marginBottom: 28 }}>Consultez les retours clients et transmettez les corrections aux designers.</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+        <p style={{ color: "#64748B", fontSize: 14, margin: 0 }}>Consultez les retours clients et transmettez les corrections aux designers.</p>
+        <button onClick={exportProjetsExcel} style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:600, fontSize:12 }}>
+          Exporter Excel
+        </button>
+      </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {fetching ? (
@@ -362,7 +392,16 @@ const AdminFeedbacks = () => {
                                   {maquetteData.versions.length === 0 ? (
                                     <p style={{ fontSize: 13, color: "#94A3B8" }}>Aucune version.</p>
                                   ) : (
-                                    <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                                    <>
+                                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                                        <button
+                                          onClick={() => exportVersionsExcel(p.nom || "projet", maquetteData.versions, maquetteData.validations)}
+                                          style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"7px 10px", cursor:"pointer", fontWeight:600, fontSize:12 }}
+                                        >
+                                          Exporter versions Excel
+                                        </button>
+                                      </div>
+                                      <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                                       <thead>
                                         <tr style={{ background: "#F1F5F9" }}>
                                           {["Version", "Statut", "Réclamation", "Date", "Action"].map(h => (
@@ -469,7 +508,8 @@ const AdminFeedbacks = () => {
                                           );
                                         })}
                                       </tbody>
-                                    </table>
+                                      </table>
+                                    </>
                                   )}
                                 </>
                               )}
