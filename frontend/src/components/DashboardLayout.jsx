@@ -2,7 +2,8 @@ import { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import {
   LogOut, History, UserCircle, Briefcase, FileSignature,
-  Layers, Users, FolderOpen, Bell, X, MessageSquare, Key
+  Layers, Users, FolderOpen, Bell, X, MessageSquare, Key,
+  CheckCircle2, XCircle, FileText
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import API from '../api';
@@ -11,6 +12,7 @@ const DashboardLayout = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
+  const isEditorRoute = location.pathname.includes("/editeur/");
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -105,9 +107,40 @@ const DashboardLayout = ({ children }) => {
     return `Il y a ${j}j`;
   };
 
-  const getIcon = (type) => ({
-    validation: '✅', refus: '❌', demande: '📋', correction: '⚠️',
-  }[type] || '🔔');
+  const getIcon = (type) => {
+    const commonProps = { size: 18, strokeWidth: 2.1 };
+
+    if (type === 'validation') return <CheckCircle2 {...commonProps} color="#059669" />;
+    if (type === 'refus') return <XCircle {...commonProps} color="#dc2626" />;
+    if (type === 'demande') return <FileText {...commonProps} color="#2563eb" />;
+    if (type === 'correction') return <XCircle {...commonProps} color="#dc2626" />;
+    return <Bell {...commonProps} color="#2563eb" />;
+  };
+
+  const getNotifTone = (type) => {
+    if (type === 'refus') return 'danger';
+    if (type === 'correction') return 'danger';
+    if (type === 'validation') return 'success';
+    return userRole === 'designer' ? 'danger' : 'info';
+  };
+
+  const getNotifLabel = (type) => ({
+    validation: 'Validation',
+    refus: 'Refus',
+    demande: 'Nouvelle demande',
+    correction: 'Correction',
+  }[type] || 'Notification');
+
+  const NotificationTypeIcon = ({ type }) => {
+    const tone = getNotifTone(type);
+    const commonProps = { size: 18, strokeWidth: 2.1 };
+
+    if (type === 'validation') return <CheckCircle2 {...commonProps} color="#059669" />;
+    if (type === 'refus') return <XCircle {...commonProps} color="#dc2626" />;
+    if (type === 'demande') return <FileText {...commonProps} color="#2563eb" />;
+    if (type === 'correction') return <AlertTriangle {...commonProps} color="#d97706" />;
+    return <Bell {...commonProps} color={tone === 'danger' ? '#dc2626' : '#2563eb'} />;
+  };
 
   const handleChangePassword = () => {
     setShowUserMenu(false);
@@ -120,6 +153,8 @@ const DashboardLayout = ({ children }) => {
   };
 
   if (!user) return children;
+
+  const userRole = user?.["r\u00f4le"] || user?.role || "";
 
   const menuItems = {
     admin: [
@@ -139,7 +174,7 @@ const DashboardLayout = ({ children }) => {
     ],
   };
 
-  const currentMenu = menuItems[user.rôle] || [];
+  const currentMenu = menuItems[userRole] || [];
 
   const isActive = (itemPath) => {
     const sorted = [...currentMenu].sort((a, b) => b.path.length - a.path.length);
@@ -152,15 +187,39 @@ const DashboardLayout = ({ children }) => {
       .sort((a, b) => b.path.length - a.path.length)
       .find(item => location.pathname.startsWith(item.path))?.label || 'Tableau de bord';
 
+  const roleLabelSafe =
+    userRole === 'admin'
+      ? 'Espace Admin'
+      : userRole === 'designer'
+        ? 'Espace Designer'
+        : 'Espace Client';
+
+  /*
+
+  const roleLabel =
+    user.rÃ´le === 'admin'
+      ? 'Espace Admin'
+      : user.rÃ´le === 'designer'
+        ? 'Espace Designer'
+        : 'Espace Client';
+
   // ─────────────────────────────────────────────────────────
+  */
   return (
-    <div className="layout-container">
+    /*
+    <div className={`layout-container dashboard-shell dashboard-shell--${user.rÃ´le}`}>
+
+    */
+    <div className={`layout-container dashboard-shell dashboard-shell--${userRole}${isEditorRoute ? ' dashboard-shell--editor' : ''}`}>
 
       {/* ── SIDEBAR ── */}
-      <div className="sidebar">
+      <div className="sidebar dashboard-sidebar">
         <div className="sidebar-logo">
           <Layers size={22} color="var(--primary)" />
-          <span>DevPortal</span>
+          <div className="sidebar-logo__copy">
+            <span>DevPortal</span>
+            <small>{roleLabelSafe}</small>
+          </div>
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -176,20 +235,29 @@ const DashboardLayout = ({ children }) => {
           <LogOut size={20} />
           Déconnexion
         </button>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-footer__label">Session active</div>
+          <div>{user.nom}</div>
+          <div style={{ color: 'rgba(203, 213, 225, 0.56)' }}>{user.email}</div>
+        </div>
       </div>
 
       {/* ── MAIN ── */}
       <div className="main-content">
 
         {/* TOPBAR */}
-        <div className="topbar">
-          <h2>{currentLabel}</h2>
+        <div className="topbar dashboard-topbar">
+          <div className="dashboard-topbar__title-block">
+            <span className="dashboard-topbar__eyebrow">{roleLabelSafe}</span>
+            <h2>{currentLabel}</h2>
+          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="dashboard-topbar__actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
 
             {/* ── CLOCHE — admin + designer uniquement ── */}
-            {(user.rôle === 'admin' || user.rôle === 'designer') && (
-              <div style={{ position: 'relative' }} ref={notifRef}>
+            {(userRole === 'admin' || userRole === 'designer' || userRole === 'client') && (
+              <div className="notif-shell" ref={notifRef}>
                 <button
                   onClick={() => { setShowNotif(prev => !prev); if (!showNotif && unreadCount > 0) markAllAsRead(); }}
                   style={{
@@ -200,7 +268,7 @@ const DashboardLayout = ({ children }) => {
                     display: 'flex', alignItems: 'center', transition: 'all 0.2s',
                   }}
                 >
-                  <Bell size={20} color={unreadCount > 0 ? (user.rôle === 'designer' ? '#DC2626' : '#2563EB') : '#64748B'} />
+                  <Bell size={20} />
                   {unreadCount > 0 && (
                     <span style={{
                       position: 'absolute', top: -5, right: -5,
@@ -298,7 +366,7 @@ const DashboardLayout = ({ children }) => {
               >
                 <div className="user-info">
                   <span className="user-name">{user.nom}</span>
-                  <span className="user-role">{user.rôle}</span>
+                  <span className="user-role">{userRole}</span>
                 </div>
                 <div className="user-avatar">
                   {user.nom?.charAt(0)?.toUpperCase() || <UserCircle size={22} />}
@@ -384,7 +452,7 @@ const DashboardLayout = ({ children }) => {
           </div>
         </div>
 
-        <div className="content-area">
+        <div className={`content-area dashboard-content${isEditorRoute ? " dashboard-content--full" : ""}`}>
           {children}
         </div>
       </div>
@@ -421,7 +489,7 @@ const DashboardLayout = ({ children }) => {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #0066FF 0%, #00A8FF 100%);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -429,9 +497,128 @@ const DashboardLayout = ({ children }) => {
           font-weight: 600;
           font-size: 16px;
         }
+        .notif-shell {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+        }
+        .notif-shell > button {
+          position: relative !important;
+          width: 42px !important;
+          height: 42px !important;
+          padding: 0 !important;
+          border-radius: 14px !important;
+          border: 1px solid rgba(191, 219, 254, 0.68) !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(239,246,255,0.92)) !important;
+          color: #2563eb !important;
+          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.12) !important;
+          justify-content: center;
+        }
+        .notif-shell > button svg {
+          width: 20px;
+          height: 20px;
+          display: block;
+          stroke: currentColor;
+          stroke-width: 2.2;
+        }
+        .notif-shell > button[style*='#FFF5F5'] {
+          color: #dc2626 !important;
+        }
+        .notif-shell > button[style*='transparent'] {
+          color: #64748b !important;
+        }
+        .notif-shell > button:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 18px 34px rgba(37, 99, 235, 0.18) !important;
+        }
+        .notif-shell > button > span {
+          min-width: 18px !important;
+          height: 18px !important;
+          padding: 0 4px !important;
+          border-radius: 999px !important;
+          border: 2px solid #fff !important;
+          box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22) !important;
+        }
+        .notif-shell > div {
+          width: 380px !important;
+          max-height: 500px !important;
+          border-radius: 24px !important;
+          border: 1px solid rgba(226, 232, 240, 0.92) !important;
+          background: rgba(255,255,255,0.98) !important;
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16) !important;
+          overflow: hidden !important;
+        }
+        .notif-shell > div > div:first-child {
+          padding: 16px 18px !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.86) !important;
+          background: linear-gradient(180deg, #f8fbff, #f1f7ff) !important;
+        }
+        .notif-shell > div > div:first-child span:first-child {
+          font-size: 15px !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+        }
+        .notif-shell > div > div:last-child {
+          padding: 10px !important;
+        }
+        .notif-shell > div > div:last-child > div:first-child {
+          padding: 28px 16px !important;
+          border-radius: 18px;
+          background: #f8fbff;
+        }
+        .notif-shell > div > div:last-child > div[style*='cursor: pointer'],
+        .notif-shell > div > div:last-child > div[style*='cursor: default'] {
+          padding: 13px 14px !important;
+          border: 1px solid rgba(226, 232, 240, 0.86);
+          border-radius: 18px !important;
+          background: #ffffff !important;
+          transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s !important;
+        }
+        .notif-shell > div > div:last-child > div[style*='cursor: pointer'] + div,
+        .notif-shell > div > div:last-child > div[style*='cursor: default'] + div {
+          margin-top: 8px;
+        }
+        .notif-shell > div > div:last-child > div[style*='cursor: pointer']:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 14px 26px rgba(15, 23, 42, 0.07);
+        }
+        .notif-shell > div > div:last-child > div[style*='#F0F7FF'] {
+          border-color: rgba(147, 197, 253, 0.72) !important;
+          background: linear-gradient(180deg, #ffffff, #f5faff) !important;
+        }
+        .notif-shell > div > div:last-child > div[style*='#FFF5F5'] {
+          border-color: rgba(252, 165, 165, 0.72) !important;
+          background: linear-gradient(180deg, #ffffff, #fff7f7) !important;
+        }
+        .notif-shell > div > div:last-child > div > div:first-child {
+          width: 40px !important;
+          height: 40px !important;
+          border-radius: 14px !important;
+          font-size: 0 !important;
+        }
+        .notif-shell > div > div:last-child > div > div:nth-child(2) p {
+          font-size: 13px !important;
+          line-height: 1.5 !important;
+          color: #0f172a !important;
+        }
+        .notif-shell > div > div:last-child > div > div:nth-child(2) span {
+          font-size: 11px !important;
+          color: #64748b !important;
+        }
+        .notif-shell > div > div:last-child > div button {
+          width: 26px;
+          height: 26px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          background: #fff !important;
+          border: 1px solid rgba(226, 232, 240, 0.92) !important;
+        }
       `}</style>
     </div>
   );
 };
 
 export default DashboardLayout;
+

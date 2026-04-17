@@ -3,7 +3,6 @@ import API from "../api";
 import {
   Loader, Eye, CheckCircle, XCircle, MessageSquare,
   Image, AlertCircle, Send, X, Edit3,
-  Edit,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { exportBeautifulExcel } from "../utils/excelExport";
@@ -13,7 +12,12 @@ const AvatarStack = ({ designers }) => {
   if (!designers || designers.length === 0) return <span style={{ fontSize: 12, color: "#94A3B8" }}>—</span>;
   const visible = designers.slice(0, 2);
   const extra = designers.length - 2;
-  const colors = ["linear-gradient(135deg,#EC4899,#F43F5E)", "linear-gradient(135deg,#6366F1,#8B5CF6)", "linear-gradient(135deg,#059669,#0D9488)", "linear-gradient(135deg,#F59E0B,#EF4444)"];
+  const colors = [
+    "linear-gradient(135deg,#0066FF,#00A8FF)",
+    "linear-gradient(135deg,#07152B,#123062)",
+    "linear-gradient(135deg,#0891B2,#22C55E)",
+    "linear-gradient(135deg,#1D4ED8,#38BDF8)",
+  ];
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
       {visible.map((d, i) => (
@@ -27,6 +31,28 @@ const AvatarStack = ({ designers }) => {
 };
 
 // ── Badges ─────────────────────────────────────────────────────────────────────
+const getProjectStartDate = (project) =>
+  project?.["date_d\u00e9but"] ||
+  project?.["date_dÃ©but"] ||
+  project?.["date_dÃƒÂ©but"] ||
+  project?.date_debut ||
+  "";
+
+const getVersionNumber = (version) =>
+  version?.["num\u00e9ro_version"] ||
+  version?.["numÃ©ro_version"] ||
+  version?.numero_version ||
+  version?.version ||
+  "";
+
+const getValidationFeedbackType = (validation) => {
+  const status = validation?.statut;
+
+  if (status === "valid\u00e9" || status === "validÃ©" || status === "valide") return "Val";
+  if (status === "\u00e0 corriger" || status === "Ã  corriger" || status === "a corriger") return "Refus";
+  return null;
+};
+
 const StatutBadge = ({ statut }) => {
   const cfg = { "En cours": { color: "#2563EB", bg: "rgba(37,99,235,0.1)" }, "En attente": { color: "#D97706", bg: "rgba(217,119,6,0.1)" }, "En révision": { color: "#D97706", bg: "rgba(217,119,6,0.1)" }, "Validé": { color: "#059669", bg: "rgba(5,150,105,0.1)" }, "Refusé": { color: "#DC2626", bg: "rgba(220,38,38,0.1)" }, "Terminé": { color: "#7C3AED", bg: "rgba(124,58,237,0.1)" } }[statut] || { color: "#64748B", bg: "rgba(100,116,139,0.1)" };
   return <span style={{ background: cfg.bg, color: cfg.color, borderRadius: 20, padding: "4px 12px", fontSize: 12, fontWeight: 700 }}>{statut}</span>;
@@ -216,7 +242,6 @@ const AdminFeedbacks = () => {
   const [selectedProjet, setSelectedProjet] = useState(null);
   const [maquetteData, setMaquetteData] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [edit, setEdit] = useState(false)
 
 
   // État du popup réclamations
@@ -291,15 +316,15 @@ const AdminFeedbacks = () => {
     const headers = ["Version", "Statut", "Réclamation", "Date"];
     const rows = versions.map((v) => {
       const val = validations?.find((f) => String(f.version_id?._id || f.version_id) === String(v._id));
-      const fbType = val?.statut === "validé" ? "Validé" : val?.statut === "à corriger" ? "Refusé" : "En attente";
+      const fbType = getValidationFeedbackType(val) === "Val" ? "Valide" : getValidationFeedbackType(val) === "Refus" ? "Refuse" : "En attente";
       const recap = val?.commentaires?.length ? `${val.commentaires.length} remarque(s)` : "";
-      return [ `V${v.numéro_version}`, fbType, recap, v.date_creation ? new Date(v.date_creation).toLocaleDateString("fr-FR") : "" ];
+      return [ `V${getVersionNumber(v)}`, fbType, recap, v.date_creation ? new Date(v.date_creation).toLocaleDateString("fr-FR") : "" ];
     });
     exportBeautifulExcel({ title: `Versions feedbacks - ${projetNom}`, headers, rows, filenamePrefix: `admin-feedbacks-versions-${projetNom}`, sheetName: "Versions" });
   };
 
   return (
-    <div>
+    <div className="admin-page admin-feedbacks-page">
       {/* Popup réclamations */}
       {reclModal && (
         <ReclamationsModal
@@ -313,21 +338,46 @@ const AdminFeedbacks = () => {
         />
       )}
 
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6, color: "#1E293B" }}>Feedbacks</h1>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
-        <p style={{ color: "#64748B", fontSize: 14, margin: 0 }}>Consultez les retours clients et transmettez les corrections aux designers.</p>
-        <button onClick={exportProjetsExcel} style={{ background:"#0f766e", color:"#fff", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:600, fontSize:12 }}>
-          Exporter Excel
-        </button>
+      <div className="admin-page-header">
+        <div className="admin-page-copy">
+          <span className="admin-page-sup">
+            <MessageSquare size={14} />
+            Administration
+          </span>
+          <h1 className="admin-page-title">Feedbacks</h1>
+          <p className="admin-page-text">
+            Suivez les retours et transmettez les corrections.
+          </p>
+        </div>
+
+        <div className="admin-page-actions">
+          <div className="admin-chip">
+            <MessageSquare size={15} />
+            {projets.length} projet{projets.length > 1 ? "s" : ""} suivi{projets.length > 1 ? "s" : ""}
+          </div>
+          <button onClick={exportProjetsExcel} className="admin-btn admin-btn--secondary">
+            Exporter Excel
+          </button>
+        </div>
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card admin-feedbacks-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="admin-section-head" style={{ padding: "24px 24px 0" }}>
+          <div>
+            <div className="admin-section-title">Retours par projet</div>
+            <p className="admin-section-text">Ouvrez un projet pour voir versions et reclamations.</p>
+          </div>
+          <div className="admin-chip">
+            <MessageSquare size={15} />
+            {projets.length} projet{projets.length > 1 ? "s" : ""}
+          </div>
+        </div>
         {fetching ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 60 }}><Loader size={28} color="#2563EB" className="spin" /></div>
         ) : projets.length === 0 ? (
           <div style={{ textAlign: "center", padding: 60, color: "#94A3B8" }}><MessageSquare size={40} style={{ opacity: 0.2, marginBottom: 12 }} /><p>Aucun projet.</p></div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table className="admin-feedbacks-table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#FAFBFF", borderBottom: "1px solid #F1F5F9" }}>
                 {["Projet", "Client", "Date début", "Date fin", "Statut", "Designer", "Action"].map(h => (
@@ -341,18 +391,18 @@ const AdminFeedbacks = () => {
                 const designers = designersByProjet[p._id] || [];
                 return (
                   <React.Fragment key={p._id}>
-                    <tr style={{ borderBottom: isSelected ? "none" : "1px solid #F8FAFC", background: isSelected ? "#EFF6FF" : idx % 2 === 0 ? "white" : "#FAFBFF" }}>
+                    <tr className={isSelected ? "admin-feedbacks-row admin-feedbacks-row--selected" : "admin-feedbacks-row"} style={{ borderBottom: isSelected ? "none" : "1px solid #F8FAFC", background: isSelected ? "#EFF6FF" : idx % 2 === 0 ? "white" : "#FAFBFF" }}>
                       <td style={{ padding: "14px 20px" }}>
                         <div style={{ fontWeight: 600, fontSize: 14, color: "#1E293B" }}>{p.nom}</div>
                         {p.description && <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{p.description.slice(0, 45)}{p.description.length > 45 ? "…" : ""}</div>}
                       </td>
                       <td style={{ padding: "14px 20px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#2563EB,#7C3AED)", color: "white", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{p.id_client?.nom?.charAt(0) || "?"}</div>
+                          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#0066FF,#00A8FF)", color: "white", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 10px 22px rgba(0,102,255,0.16)" }}>{p.id_client?.nom?.charAt(0) || "?"}</div>
                           <div><div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>{p.id_client?.nom || "—"}</div><div style={{ fontSize: 11, color: "#94A3B8" }}>{p.id_client?.email || ""}</div></div>
                         </div>
                       </td>
-                      <td style={{ padding: "14px 20px", fontSize: 13, color: "#64748B" }}>{new Date(p.date_début).toLocaleDateString("fr-FR")}</td>
+                      <td style={{ padding: "14px 20px", fontSize: 13, color: "#64748B" }}>{getProjectStartDate(p) ? new Date(getProjectStartDate(p)).toLocaleDateString("fr-FR") : "—"}</td>
                       <td style={{ padding: "14px 20px", fontSize: 13, color: "#64748B" }}>{new Date(p.date_fin).toLocaleDateString("fr-FR")}</td>
                       <td style={{ padding: "14px 20px" }}><StatutBadge statut={p.statut} /></td>
                       <td style={{ padding: "14px 20px" }}><AvatarStack designers={designers} /></td>
@@ -361,7 +411,7 @@ const AdminFeedbacks = () => {
                           style={{ background: "none", border: "none", cursor: "pointer", color: "#2563EB", fontSize: 13, fontWeight: 600, padding: 0 }}
                           onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
                           onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
-                          {isSelected ? "▲ Masquer" : "Voir Feedbacks"}
+                          {isSelected ? "Masquer" : "Ouvrir"}
                         </button>
                       </td>
                     </tr>
@@ -369,7 +419,7 @@ const AdminFeedbacks = () => {
                     {isSelected && (
                       <tr>
                         <td colSpan={7} style={{ padding: 0 }}>
-                          <div style={{ background: "#F8FBFF", borderTop: "2px solid #BFDBFE", borderBottom: "1px solid #E2E8F0", padding: "24px 32px" }}>
+                          <div className="admin-feedbacks-detail" style={{ background: "#F8FBFF", borderTop: "2px solid #BFDBFE", borderBottom: "1px solid #E2E8F0", padding: "24px 32px" }}>
                             {loadingDetail ? (
                               <div style={{ display: "flex", justifyContent: "center", padding: 20 }}><Loader size={22} color="#2563EB" className="spin" /></div>
                             ) : !maquetteData ? null
@@ -401,7 +451,7 @@ const AdminFeedbacks = () => {
                                           Exporter versions Excel
                                         </button>
                                       </div>
-                                      <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                                      <table className="admin-feedbacks-versions" style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                                       <thead>
                                         <tr style={{ background: "#F1F5F9" }}>
                                           {["Version", "Statut", "Réclamation", "Date", "Action"].map(h => (
@@ -421,7 +471,7 @@ const AdminFeedbacks = () => {
                                             String(f.version_id?._id || f.version_id) === String(v._id)
                                           );
 
-                                          const fbType = fb?.type || (val?.statut === "validé" ? "Val" : val?.statut === "à corriger" ? "Refus" : null);
+                                          const fbType = fb?.type || getValidationFeedbackType(val);
                                           const isRefus = fbType === "Refus";
                                           const dejaTransmis = val?.transmis_designer;
 
@@ -430,7 +480,7 @@ const AdminFeedbacks = () => {
                                               {/* Version */}
                                               <td style={{ padding: "12px 16px" }}>
                                                 <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, background: "linear-gradient(135deg,#4F46E5,#7C3AED)", color: "white", fontWeight: 700, fontSize: 13 }}>
-                                                  V{v.numéro_version}
+                                                  V{getVersionNumber(v)}
                                                 </div>
                                               </td>
 
@@ -451,7 +501,7 @@ const AdminFeedbacks = () => {
                                                         validation: val,
                                                         projetNom: p.nom,
                                                         clientNom: p.id_client?.nom || "Client",
-                                                        versionNum: v.numéro_version,
+                                                        versionNum: getVersionNumber(v),
                                                         isEditMode: true
                                                       })
                                                     }
@@ -466,16 +516,13 @@ const AdminFeedbacks = () => {
                                                   /* Bouton ouvrir popup */
                                                   <button
                                                     onClick={() => {
-                                                      {
-                                                        setReclModal({
-                                                          validation: val,
-                                                          projetNom: p.nom,
-                                                          clientNom: p.id_client?.nom || "Client",
-                                                          versionNum: v.numéro_version,
-                                                          isEditMode: false
-                                                        })
-                                                      }
-                                                      setEdit(false)
+                                                      setReclModal({
+                                                        validation: val,
+                                                        projetNom: p.nom,
+                                                        clientNom: p.id_client?.nom || "Client",
+                                                        versionNum: getVersionNumber(v),
+                                                        isEditMode: false
+                                                      })
                                                     }
                                                     }
                                                     style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(220,38,38,0.08)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "background .15s" }}
@@ -525,7 +572,44 @@ const AdminFeedbacks = () => {
         )}
       </div>
 
-      <style>{`.spin{animation:spin 1s linear infinite;}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      <style>{`
+        .admin-feedbacks-page {
+          max-width: none;
+        }
+        .admin-feedbacks-card {
+          overflow: hidden;
+        }
+        .admin-feedbacks-table th,
+        .admin-feedbacks-table td {
+          vertical-align: middle;
+        }
+        .admin-feedbacks-row td {
+          transition: background 0.2s ease;
+        }
+        .admin-feedbacks-row:hover td {
+          background: rgba(236, 244, 255, 0.86);
+        }
+        .admin-feedbacks-row--selected td {
+          background: rgba(226, 239, 255, 0.96) !important;
+        }
+        .admin-feedbacks-detail {
+          background: linear-gradient(180deg, rgba(247, 251, 255, 0.98), rgba(240, 246, 255, 0.96)) !important;
+        }
+        .admin-feedbacks-versions tbody tr:hover td {
+          background: rgba(244, 248, 255, 0.9);
+        }
+        .admin-feedbacks-versions th,
+        .admin-feedbacks-versions td {
+          vertical-align: middle;
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

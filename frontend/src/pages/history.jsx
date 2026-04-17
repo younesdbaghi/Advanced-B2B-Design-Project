@@ -3,6 +3,7 @@ import API from "../api";
 import { Trash2, Eye, Edit3, X, Download, FileText, Calendar, Loader, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import axios from "axios";
 import { exportBeautifulExcel } from "../utils/excelExport";
+import { generateRapportPDF } from "../utils/pdfGenerator";
 
 function History() {
   const [rapports, setRapports] = useState([]);
@@ -134,23 +135,25 @@ function History() {
 
   const downloadPDF = async (id) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `http://localhost:5000/Api_B2B/rapportPDF/${id}`,
-        {},
-        {
-          responseType: "blob",
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const res = await API.get(`/rapport/${id}`);
+      const rapportData = res.data.rapport;
+      if (!rapportData) return;
+      
+      const designerName = getDesignerNom(rapportData);
+      const projectNom = getProjetNom(rapportData);
+
+      const pdfBlob = generateRapportPDF(rapportData, designerName, projectNom);
+      const url = window.URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "rapport.pdf";
+      a.download = `RAPPORT_${projectNom.replace(/\s+/g, "_")}_${new Date(rapportData.date).toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } catch (e) { console.log("err download pdf ", e); }
+      window.open(url, '_blank');
+    } catch (e) {
+      console.log("err download pdf ", e);
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -200,38 +203,49 @@ function History() {
     });
   };
 
+  const userRole = user?.["r\u00f4le"] || user?.role || user?.["rÃ´le"] || "";
+  const visibleRapports = rapports.filter((item) => item && item._id);
+
   return (
-    <div className="h-root">
+    <div className="h-root admin-page">
       {/* ── Header ── */}
-      <div className="h-header">
-        <div>
-          <p className="h-sup">Tableau de bord</p>
-          <h1 className="h-title">Historique des rapports</h1>
-          <p className="h-sub">Consultez et gérez tous les rapports quotidiens</p>
+      <div className="admin-page-header">
+        <div className="admin-page-copy">
+          <span className="admin-page-sup">
+            <FileText size={14} />
+            Administration
+          </span>
+          <h1 className="admin-page-title">Rapports & historique</h1>
+          <p className="admin-page-text">
+            Consultez les rapports et le suivi des designers.
+          </p>
         </div>
-        <div className="h-header-actions">
-          <div className="h-badge">
-            <FileText size={16} color="#6366F1" />
-            <span>{rapports.length} rapport{rapports.length !== 1 ? "s" : ""}</span>
+        <div className="admin-page-actions">
+          <div className="admin-chip">
+            <FileText size={15} />
+            <span>{visibleRapports.length} rapport{visibleRapports.length !== 1 ? "s" : ""}</span>
           </div>
-          <button className="h-export-btn" onClick={exportHistoryExcel}>
+          <button className="admin-btn admin-btn--secondary" onClick={exportHistoryExcel}>
             Exporter Excel
           </button>
         </div>
       </div>
 
       {/* ── Table ── */}
-      <div className="panel">
+      <div className="panel history-panel">
         {loading ? (
-          <div className="center-block"><Loader className="spin" size={28} color="#6366F1" /></div>
-        ) : rapports.length === 0 ? (
-          <div className="center-block">
-            <div className="empty-icon"><FileText size={28} color="#6366F1" /></div>
-            <p className="empty-title">Aucun rapport disponible</p>
+          <div className="admin-empty-state" style={{ border: "none", background: "transparent", padding: 60 }}>
+            <Loader className="spin" size={28} color="#0066FF" />
+            <div>Chargement de l historique...</div>
+          </div>
+        ) : visibleRapports.length === 0 ? (
+          <div className="admin-empty-state" style={{ margin: 4 }}>
+            <FileText size={34} />
+            <div>Aucun rapport disponible.</div>
           </div>
         ) : (
-          <div className="table-wrap">
-            <table className="data-table">
+          <div className="table-wrap history-table-wrap">
+            <table className="data-table history-table">
               <thead>
                 <tr>
                   <th>Date</th>
@@ -241,19 +255,19 @@ function History() {
                 </tr>
               </thead>
               <tbody>
-                {rapports.filter(r => r && r._id).map((p) => (
+                {visibleRapports.map((p) => (
                   <tr key={p._id}>
-                    <td><div className="date-cell"><Calendar size={13} color="#6366F1" /><span>{formatDate(p.date)}</span></div></td>
+                    <td><div className="date-cell"><Calendar size={13} color="#0066FF" /><span>{formatDate(p.date)}</span></div></td>
                     <td><span className="truncate">{getDesignerNom(p)}</span></td>
                     <td><span className="truncate">{getProjetNom(p)}</span></td>
                     <td>
-                      <div className="actions-cell">
-                        <button className="icon-btn down-c" onClick={() => downloadPDF(p._id)}><Download size={15} /></button>
-                        <button className="icon-btn eye-c" onClick={() => handleView(p._id)} title="Voir"><Eye size={15} /></button>
-                        {user?.rôle === "designer" && (
-                          <button className="icon-btn edit-c" onClick={() => handleUpdate(p)} title="Modifier"><Edit3 size={15} /></button>
+                      <div className="actions-cell history-actions-cell">
+                        <button className="history-icon-btn history-icon-btn--download" onClick={() => downloadPDF(p._id)} title="Telecharger"><Download size={15} /></button>
+                        <button className="history-icon-btn history-icon-btn--view" onClick={() => handleView(p._id)} title="Voir"><Eye size={15} /></button>
+                        {userRole === "designer" && (
+                          <button className="history-icon-btn history-icon-btn--edit" onClick={() => handleUpdate(p)} title="Modifier"><Edit3 size={15} /></button>
                         )}
-                        <button className="icon-btn del-c" onClick={() => handleDelete(p._id)} title="Supprimer"><Trash2 size={15} /></button>
+                        <button className="history-icon-btn history-icon-btn--delete" onClick={() => handleDelete(p._id)} title="Supprimer"><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -269,7 +283,7 @@ function History() {
         <div className="overlay">
           <div className="modal">
             <div className="modal-head">
-              <div className="modal-head-left"><div className="modal-icon"><FileText size={18} color="#6366F1" /></div><h3>Détails</h3></div>
+              <div className="modal-head-left"><div className="modal-icon"><FileText size={18} color="#0066FF" /></div><h3>Détails</h3></div>
               <button className="modal-close" onClick={() => setShowView(false)}><X size={18} /></button>
             </div>
             <div className="modal-body">
@@ -288,7 +302,7 @@ function History() {
           <div className="modal h-modal-scroll">
             <div className="modal-head">
               <div className="modal-head-left">
-                <div className="modal-icon"><Edit3 size={18} color="#6366F1" /></div>
+                <div className="modal-icon"><Edit3 size={18} color="#0066FF" /></div>
                 <h3>Modifier le rapport</h3>
               </div>
               <button className="modal-close" onClick={() => setShowUpdate(false)}><X size={18} /></button>
@@ -296,7 +310,7 @@ function History() {
             <form className="modal-body" onSubmit={submitUpdate}>
               <div className="field">
                 <label className="field-label"><Calendar size={12} /> Date</label>
-                <input type="date" value={updateData.date} onChange={(e) => setUpdateData({ ...updateData, date: e.target.value })} className="inp" />
+                <input type="date" value={updateData.date} onChange={(e) => setTagInputs({ ...updateData, date: e.target.value })} className="inp" />
               </div>
 
               {/* Travail Effectué */}
@@ -369,53 +383,206 @@ function History() {
       )}
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-        .h-root { font-family: 'Plus Jakarta Sans', sans-serif; max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; color: #1E293B; }
-        .h-header { display: flex; justify-content: space-between; margin-bottom: 28px; }
-        .h-title { font-size: 26px; font-weight: 800; margin: 0; }
-        .h-header-actions { display: flex; align-items: center; gap: 10px; }
-        .h-badge { display: flex; align-items: center; gap: 8px; background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 700; color: #6366F1; }
-        .h-export-btn { border: none; background: #0f766e; color: #fff; border-radius: 10px; padding: 10px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
-        .h-export-btn:hover { background: #0d5f59; }
-
-        .panel { background: white; border-radius: 16px; border: 1px solid #F1F5F9; overflow: hidden; }
-        .table-wrap { overflow-x: auto; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .data-table th { text-align: left; padding: 14px 18px; color: #94A3B8; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #F1F5F9; }
-        .data-table td { padding: 15px 18px; border-bottom: 1px solid #F8FAFC; }
-
-        .actions-cell { display: flex; gap: 8px; justify-content: center; }
-        .icon-btn { border: none; cursor: pointer; padding: 7px; border-radius: 8px; display: flex; transition: .2s; }
-        .eye-c { color: #2a9d8f; background: rgba(42,157,143,0.1); }
-        .edit-c { color: #6366F1; background: rgba(99,102,241,0.1); }
-        .del-c { color: #e63946; background: rgba(230,57,70,0.1); }
-        .down-c { color: #10B981; background: rgba(16,185,129,0.1); }
-        .icon-btn:hover { transform: scale(1.1); }
-
-        .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-        .modal { background: white; border-radius: 20px; width: 100%; max-width: 520px; box-shadow: 0 25px 60px rgba(0,0,0,0.2); animation: popIn .25s ease; }
-        .h-modal-scroll { max-height: 90vh; overflow-y: auto; }
-        
-        @keyframes popIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-        .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid #F1F5F9; }
-        .modal-body { display: flex; flex-direction: column; gap: 16px; padding: 20px 24px; }
-        
-        .field { display: flex; flex-direction: column; gap: 6px; }
-        .field-label { font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
-        .inp { width: 100%; padding: 10px 12px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 13px; outline: none; resize: none; }
-        .inp:focus { border-color: #6366F1; }
-
-        .tagsContainer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-        .tag-chip { background: #1E293B; color: white; padding: 4px 10px; border-radius: 100px; font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: .2s; }
-        .tag-chip:hover { background: #334155; }
-        .tag-close { font-weight: bold; cursor: pointer; color: #94A3B8; }
-
-        .btn-submit { background: #6366F1; color: white; border: none; border-radius: 12px; padding: 12px; font-weight: 700; cursor: pointer; transition: .2s; margin-top: 10px; }
-        .btn-submit:hover { background: #4F46E5; }
-
-        .detail-section-text { background: #F8FAFC; padding: 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; border: 1px solid #F1F5F9; }
+        .h-root {
+          max-width: none;
+        }
+        .history-panel {
+          overflow: hidden;
+        }
+        .history-table tbody tr td {
+          transition: background 0.2s ease;
+        }
+        .history-actions-cell {
+          justify-content: center;
+        }
+        .history-icon-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: 12px;
+          border: 1px solid transparent;
+          background: transparent;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+        .history-icon-btn:hover {
+          transform: translateY(-2px);
+        }
+        .history-icon-btn--download {
+          color: #059669;
+          background: rgba(5,150,105,0.1);
+          border-color: rgba(5,150,105,0.16);
+        }
+        .history-icon-btn--view {
+          color: #0066FF;
+          background: rgba(0,102,255,0.08);
+          border-color: rgba(0,102,255,0.12);
+        }
+        .history-icon-btn--edit {
+          color: #D97706;
+          background: rgba(245,158,11,0.1);
+          border-color: rgba(245,158,11,0.16);
+        }
+        .history-icon-btn--delete {
+          color: #DC2626;
+          background: rgba(220,38,38,0.08);
+          border-color: rgba(220,38,38,0.14);
+        }
+        .overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(7,21,43,0.68);
+          backdrop-filter: blur(10px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+        }
+        .modal {
+          background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,250,255,0.94));
+          border-radius: 28px;
+          width: 100%;
+          max-width: 620px;
+          border: 1px solid rgba(187,213,239,0.72);
+          box-shadow: 0 32px 90px rgba(2,6,23,0.35);
+          animation: popIn .24s ease;
+        }
+        .h-modal-scroll {
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+        @keyframes popIn {
+          from { transform: translateY(12px) scale(.98); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .modal-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px 24px;
+          border-bottom: 1px solid rgba(226,232,240,0.86);
+        }
+        .modal-head-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .modal-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0,102,255,0.08);
+        }
+        .modal-head h3 {
+          margin: 0;
+          font-size: 22px;
+          line-height: 1.04;
+          letter-spacing: -0.04em;
+          color: #07152B;
+        }
+        .modal-close {
+          width: 40px;
+          height: 40px;
+          border-radius: 14px;
+          border: 1px solid rgba(187,213,239,0.72);
+          background: rgba(248,250,252,0.92);
+          color: #64748B;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .modal-body {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding: 22px 24px 24px;
+        }
+        .field {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .field-label {
+          font-size: 11px;
+          font-weight: 800;
+          color: #64748B;
+          text-transform: uppercase;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          letter-spacing: 0.08em;
+        }
+        .inp {
+          width: 100%;
+          padding: 13px 14px;
+          border: 1.5px solid rgba(187,213,239,0.82);
+          border-radius: 18px;
+          font-size: 13px;
+          outline: none;
+          resize: none;
+          background: rgba(255,255,255,0.94);
+          color: #07152B;
+        }
+        .inp:focus {
+          border-color: #0066FF;
+          box-shadow: 0 0 0 5px rgba(0,102,255,0.08);
+        }
+        .tagsContainer {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 4px;
+        }
+        .tag-chip {
+          background: linear-gradient(135deg, #07152B, #123062);
+          color: white;
+          padding: 8px 12px;
+          border-radius: 999px;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: .2s;
+        }
+        .tag-chip:hover {
+          transform: translateY(-1px);
+        }
+        .tag-close {
+          font-weight: bold;
+          cursor: pointer;
+          color: rgba(255,255,255,0.72);
+        }
+        .btn-submit {
+          background: linear-gradient(135deg, #0066FF, #00A8FF);
+          color: white;
+          border: none;
+          border-radius: 18px;
+          padding: 14px 16px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: .2s;
+          margin-top: 6px;
+          box-shadow: 0 18px 38px rgba(0,102,255,0.24);
+        }
+        .btn-submit:hover {
+          transform: translateY(-2px);
+        }
+        .detail-section-text {
+          background: rgba(248,250,252,0.9);
+          padding: 14px;
+          border-radius: 18px;
+          font-size: 13px;
+          line-height: 1.6;
+          border: 1px solid rgba(187,213,239,0.72);
+        }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
