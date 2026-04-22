@@ -381,7 +381,7 @@ let reviveVideos = (canvas) => {
             canvas.remove(o);
             // Restore interactivity on the new image element
             if (window.restoreInteractivityRef) {
-               window.restoreInteractivityRef(vImg);
+              window.restoreInteractivityRef(vImg);
             }
             canvas.add(vImg);
             if (idx !== -1 && typeof vImg.moveTo === "function") {
@@ -422,13 +422,13 @@ let reviveVideos = (canvas) => {
           networkState: videoEl.networkState,
           readyState: videoEl.readyState
         });
-        
+
         // Restore placeholder since video failed (e.g. dead blob URL on refresh)
         const bg = new fabric.Rect({ width: o.width || 320, height: o.height || 200, fill: "#0f172a", rx: 12, ry: 12, originX: "center", originY: "center" });
         const playCircle = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" });
         const playBtn = new fabric.IText("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
         const label = new fabric.IText("Vidéo (Introuvable)", { fontSize: 12, fill: "#ef4444", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
-        
+
         const group = new fabric.Group([bg, playCircle, playBtn, label], {
           left: o.left,
           top: o.top,
@@ -441,7 +441,7 @@ let reviveVideos = (canvas) => {
           customVariant: "video",
           componentData: o.componentData ? JSON.parse(JSON.stringify(o.componentData)) : { variant: "video" }
         });
-        
+
         const idx = canvas.getObjects().indexOf(o);
         if (idx !== -1) {
           canvas.remove(o);
@@ -629,7 +629,7 @@ const hydrateVideoObject = (canvas, sourceObject) => {
 
   const currentLiveVideo = sourceObject.liveVideoElement;
   if (currentLiveVideo?.src === source) {
-    currentLiveVideo.play?.().catch(() => {});
+    currentLiveVideo.play?.().catch(() => { });
     startVideoRenderLoop(canvas, sourceObject);
     return Promise.resolve(sourceObject);
   }
@@ -744,7 +744,7 @@ const hydrateVideoObject = (canvas, sourceObject) => {
       liveObject.liveVideoCtx = frameCtx;
       liveObject.liveVideoSource = source;
 
-      videoEl.play().catch(() => {});
+      videoEl.play().catch(() => { });
       startVideoRenderLoop(canvas, liveObject);
       canvas.requestRenderAll();
       finalize(liveObject);
@@ -810,12 +810,12 @@ const loadOsmMapIntoGroup = (group, canvas) => {
   if (!group || group.type !== "group" || group.customName !== "Carte (Map)" || !canvas) return;
   const mapRect = findMapRectLayer(group);
   if (!mapRect) return;
-  
+
   // On récupère les valeurs soit à la racine de l'objet, soit dans componentData
   const lat = group.mapLat ?? group.componentData?.mapLat ?? DEFAULT_MAP_LAT;
   const lng = group.mapLng ?? group.componentData?.mapLng ?? DEFAULT_MAP_LNG;
   const zoom = Math.min(18, Math.max(1, Number(group.mapZoom ?? group.componentData?.mapZoom) || DEFAULT_MAP_ZOOM));
-  
+
   const w = Math.max(1, Math.round(mapRect.width || 1));
   const h = Math.max(1, Math.round(mapRect.height || 1));
   const baseUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=${w}x${h}&maptype=mapnik`;
@@ -1442,10 +1442,10 @@ const TabsEditorModal = ({ isOpen, onClose, component, onSave }) => {
 // ─── EMOJI PICKER ─────────────────────────────────────────────────────────────
 const EmojiPickerModal = ({ isOpen, onClose, onSelect }) => {
   const categories = [
-    { name: "Sourires & Visages", emojis: ["😀","😂","🥰","😎","🤩","🤔","😴","🥳","🤯","🤬","😱","👽","🤖","💩","👾","👻"] },
-    { name: "Gestes & Corps", emojis: ["👍","👎","👏","🤝","✌️","🤞","💪","👀","🧠","🔥","❤️","💔","✨","💅","🙏"] },
-    { name: "Objets & Fun", emojis: ["💻","📱","💡","🎉","🎈","🎁","🏆","🚀","🎨","🎵","📸","🍔","🍕","☕","🍹"] },
-    { name: "Symboles", emojis: ["✅","❌","💯","⚠️","✔️","🔔","🚩","💬","💭","❓","❕","📍","🛑","⚡","⭐"] }
+    { name: "Sourires & Visages", emojis: ["😀", "😂", "🥰", "😎", "🤩", "🤔", "😴", "🥳", "🤯", "🤬", "😱", "👽", "🤖", "💩", "👾", "👻"] },
+    { name: "Gestes & Corps", emojis: ["👍", "👎", "👏", "🤝", "✌️", "🤞", "💪", "👀", "🧠", "🔥", "❤️", "💔", "✨", "💅", "🙏"] },
+    { name: "Objets & Fun", emojis: ["💻", "📱", "💡", "🎉", "🎈", "🎁", "🏆", "🚀", "🎨", "🎵", "📸", "🍔", "🍕", "☕", "🍹"] },
+    { name: "Symboles", emojis: ["✅", "❌", "💯", "⚠️", "✔️", "🔔", "🚩", "💬", "💭", "❓", "❕", "📍", "🛑", "⚡", "⭐"] }
   ];
 
   if (!isOpen) return null;
@@ -1577,10 +1577,10 @@ const TableEditorModal = ({ isOpen, onClose, component, onSave }) => {
               {tableData.map((rowArr, rowIndex) => (
                 <div key={rowIndex} style={{ display: "flex", gap: 4, minWidth: "max-content" }}>
                   {rowArr.map((cellTxt, colIndex) => (
-                    <input 
-                      key={colIndex} 
-                      type="text" 
-                      value={cellTxt || ""} 
+                    <input
+                      key={colIndex}
+                      type="text"
+                      value={cellTxt || ""}
                       onChange={e => handleDataChange(rowIndex, colIndex, e.target.value)}
                       style={{ width: 120, padding: 6, fontSize: 13, border: "1px solid #e2e8f0", borderRadius: 4, background: rowIndex === 0 ? "rgba(0,0,0,0.02)" : "white", fontWeight: rowIndex === 0 ? "bold" : "normal" }}
                     />
@@ -1635,11 +1635,11 @@ const ChartEditorModal = ({ isOpen, onClose, component, onSave }) => {
         </div>
         <div className="component-editor-footer">
           <button className="btn-cancel" onClick={onClose}>Annuler</button>
-          <button className="btn-save" onClick={() => { 
+          <button className="btn-save" onClick={() => {
             const arrLabels = labels.split(",").map(s => s.trim());
             const arrValues = values.split(",").map(v => parseFloat(v.trim()) || 0);
-            onSave({ chartTitle, chartColor, secondColor, chartLabels: arrLabels, chartValues: arrValues }); 
-            onClose(); 
+            onSave({ chartTitle, chartColor, secondColor, chartLabels: arrLabels, chartValues: arrValues });
+            onClose();
           }}>Enregistrer</button>
         </div>
       </div>
@@ -1741,37 +1741,37 @@ const generateChartObjects = (variant, data) => {
   const bg = new fabric.Rect({ width: 300, height: 200, fill: "#ffffff", rx: 12, ry: 12, stroke: "#f1f5f9", strokeWidth: 1, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }) });
   const title = new fabric.IText(data.chartTitle || "Analyse", { fontSize: 13, fontWeight: "700", fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: -80 });
   const objs = [bg, title];
-  
+
   const labels = data.chartLabels || ["Lun", "Mar", "Mer", "Jeu", "Ven"];
   const values = data.chartValues || [30, 80, 50, 100, 60];
   const color1 = data.chartColor || "#6366f1";
   const color2 = data.secondColor || "#8b5cf6";
   const color3 = "#f59e0b"; // third color
   const colors = [color1, color2, color3, "#ec4899", "#10b981", "#3b82f6"];
-  
+
   const maxVal = Math.max(...values, 1);
   const chartW = 240;
   const chartH = 120;
-  const startX = -chartW/2;
-  const startY = chartH/2;
-  
+  const startX = -chartW / 2;
+  const startY = chartH / 2;
+
   if (variant === "chart_bar") {
     const barW = Math.min(30, (chartW / values.length) * 0.6);
     const spacing = chartW / values.length;
     values.forEach((v, i) => {
       const h = Math.max(2, (v / maxVal) * chartH);
-      const x = startX + i * spacing + spacing/2;
-      objs.push(new fabric.Rect({ width: barW, height: h, fill: colors[i%colors.length], rx: 4, ry: 4, left: x, top: startY + 15, originX: "center", originY: "bottom" }));
-      objs.push(new fabric.IText(labels[i]||"", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
+      const x = startX + i * spacing + spacing / 2;
+      objs.push(new fabric.Rect({ width: barW, height: h, fill: colors[i % colors.length], rx: 4, ry: 4, left: x, top: startY + 15, originX: "center", originY: "bottom" }));
+      objs.push(new fabric.IText(labels[i] || "", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
     });
   } else if (variant === "chart_bar_horiz") {
     const barH = Math.min(15, (chartH / values.length) * 0.6);
     const spacing = chartH / values.length;
     values.forEach((v, i) => {
       const w = Math.max(2, (v / maxVal) * chartW);
-      const y = -chartH/2 + i * spacing + spacing/2 + 10;
-      objs.push(new fabric.Rect({ width: w, height: barH, fill: colors[i%colors.length], rx: 4, ry: 4, left: startX + 20, top: y, originX: "left", originY: "center" }));
-      objs.push(new fabric.IText(labels[i]||"", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: startX + 15, top: y, originX: "right", originY: "center" }));
+      const y = -chartH / 2 + i * spacing + spacing / 2 + 10;
+      objs.push(new fabric.Rect({ width: w, height: barH, fill: colors[i % colors.length], rx: 4, ry: 4, left: startX + 20, top: y, originX: "left", originY: "center" }));
+      objs.push(new fabric.IText(labels[i] || "", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: startX + 15, top: y, originX: "right", originY: "center" }));
     });
   } else if (variant === "chart_bar_stacked") {
     const barW = Math.min(30, (chartW / values.length) * 0.6);
@@ -1780,59 +1780,59 @@ const generateChartObjects = (variant, data) => {
       const h = Math.max(2, (v / maxVal) * chartH);
       const h1 = h * 0.6;
       const h2 = h * 0.4;
-      const x = startX + i * spacing + spacing/2;
+      const x = startX + i * spacing + spacing / 2;
       objs.push(new fabric.Rect({ width: barW, height: h2, fill: color2, rx: 4, ry: 4, left: x, top: startY + 15 - h1 + 4, originX: "center", originY: "bottom" }));
       objs.push(new fabric.Rect({ width: barW, height: h1, fill: color1, rx: 4, ry: 4, left: x, top: startY + 15, originX: "center", originY: "bottom" }));
-      objs.push(new fabric.IText(labels[i]||"", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
+      objs.push(new fabric.IText(labels[i] || "", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
     });
   } else if (variant === "chart_pie" || variant === "chart_donut") {
-    const total = values.reduce((a,b)=>a+b, 0) || 1;
+    const total = values.reduce((a, b) => a + b, 0) || 1;
     let currentAngle = -90;
     const isPie = variant === "chart_pie";
     const r = isPie ? 40 : 50;
     const strokeW = isPie ? 80 : 35;
     const circ = 2 * Math.PI * r;
-    
+
     values.forEach((v, i) => {
       const slicePct = v / total;
       const drawLen = slicePct * circ;
       objs.push(new fabric.Circle({
-        radius: r, fill: "transparent", stroke: colors[i%colors.length],
+        radius: r, fill: "transparent", stroke: colors[i % colors.length],
         strokeWidth: strokeW, strokeDashArray: [drawLen + 1, circ - drawLen],
         originX: "center", originY: "center", left: 0, top: 15, angle: currentAngle,
       }));
       currentAngle += slicePct * 360;
     });
-    
+
     const legendStartX = -90;
     const legSpacing = 180 / Math.max(1, values.length);
     values.forEach((v, i) => {
-      objs.push(new fabric.Circle({ radius: 4, fill: colors[i%colors.length], left: legendStartX + i * legSpacing, top: startY+20, originX: "center", originY: "center" }));
-      objs.push(new fabric.IText(labels[i]||"", { fontSize: 9, fill: "#64748b", fontFamily: "Inter", left: legendStartX + i * legSpacing + 8, top: startY+20, originX: "left", originY: "center" }));
+      objs.push(new fabric.Circle({ radius: 4, fill: colors[i % colors.length], left: legendStartX + i * legSpacing, top: startY + 20, originX: "center", originY: "center" }));
+      objs.push(new fabric.IText(labels[i] || "", { fontSize: 9, fill: "#64748b", fontFamily: "Inter", left: legendStartX + i * legSpacing + 8, top: startY + 20, originX: "left", originY: "center" }));
     });
   } else if (variant === "chart_line" || variant === "chart_area") {
     const spacing = chartW / Math.max(1, values.length - 1);
-    
+
     if (variant === "chart_area") {
-       const areaSteps = values.length * 4;
-       const stepSpacing = chartW / (areaSteps - 1);
-       for(let i=0; i<areaSteps; i++) {
-         const t = i / (areaSteps - 1);
-         const idx = t * (values.length - 1);
-         const idx0 = Math.floor(idx);
-         const idx1 = Math.min(idx0 + 1, values.length - 1);
-         const v = values[idx0] + (values[idx1] - values[idx0]) * (idx - idx0);
-         const h = (v / maxVal) * chartH;
-         objs.push(new fabric.Rect({ width: stepSpacing*1.5, height: h, fill: color1, opacity: 0.3, left: startX + i * stepSpacing, top: startY + 15, originX: "center", originY: "bottom" }));
-       }
+      const areaSteps = values.length * 4;
+      const stepSpacing = chartW / (areaSteps - 1);
+      for (let i = 0; i < areaSteps; i++) {
+        const t = i / (areaSteps - 1);
+        const idx = t * (values.length - 1);
+        const idx0 = Math.floor(idx);
+        const idx1 = Math.min(idx0 + 1, values.length - 1);
+        const v = values[idx0] + (values[idx1] - values[idx0]) * (idx - idx0);
+        const h = (v / maxVal) * chartH;
+        objs.push(new fabric.Rect({ width: stepSpacing * 1.5, height: h, fill: color1, opacity: 0.3, left: startX + i * stepSpacing, top: startY + 15, originX: "center", originY: "bottom" }));
+      }
     }
-    
+
     values.forEach((v, i) => {
       const x = startX + i * spacing;
       const y = startY + 15 - ((v / maxVal) * chartH);
       if (i > 0) {
-        const prevH = (values[i-1] / maxVal) * chartH;
-        objs.push(new fabric.Line([startX + (i-1)*spacing, startY + 15 - prevH, x, y], { stroke: color1, strokeWidth: 3, originX: "center", originY: "center" }));
+        const prevH = (values[i - 1] / maxVal) * chartH;
+        objs.push(new fabric.Line([startX + (i - 1) * spacing, startY + 15 - prevH, x, y], { stroke: color1, strokeWidth: 3, originX: "center", originY: "center" }));
       }
     });
 
@@ -1840,7 +1840,7 @@ const generateChartObjects = (variant, data) => {
       const x = startX + i * spacing;
       const y = startY + 15 - ((v / maxVal) * chartH);
       objs.push(new fabric.Circle({ radius: 4, fill: color2, left: x, top: y, originX: "center", originY: "center" }));
-      objs.push(new fabric.IText(labels[i]||"", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
+      objs.push(new fabric.IText(labels[i] || "", { fontSize: 10, fill: "#94a3b8", fontFamily: "Inter", left: x, top: startY + 25, originX: "center", originY: "center" }));
     });
   }
 
@@ -2010,183 +2010,183 @@ const PropertiesPanel = ({
     canvas.renderAll(); onUpdate?.();
   };
 
-// --- LOGIQUE DE SAUVEGARDE ET MISE À JOUR DES COMPOSANTS (FUSIONNÉE) ---
+  // --- LOGIQUE DE SAUVEGARDE ET MISE À JOUR DES COMPOSANTS (FUSIONNÉE) ---
 
 
-const handleUngroup = () => {
-  if (!selectedObject || !canvas || selectedObject.type !== "group") return;
-  const items = [...selectedObject.getObjects()];
-  const transforms = items.map(child => fabric.util.qrDecompose(child.calcTransformMatrix()));
-  
-  canvas.remove(selectedObject);
-  items.forEach((child, i) => {
+  const handleUngroup = () => {
+    if (!selectedObject || !canvas || selectedObject.type !== "group") return;
+    const items = [...selectedObject.getObjects()];
+    const transforms = items.map(child => fabric.util.qrDecompose(child.calcTransformMatrix()));
+
+    canvas.remove(selectedObject);
+    items.forEach((child, i) => {
       const opt = transforms[i];
       child.set({
-          left: opt.translateX, top: opt.translateY,
-          scaleX: opt.scaleX, scaleY: opt.scaleY,
-          angle: opt.angle, skewX: opt.skewX, skewY: opt.skewY,
-          group: null,
-          editable: true,
-          selectable: true,
-          evented: true,
+        left: opt.translateX, top: opt.translateY,
+        scaleX: opt.scaleX, scaleY: opt.scaleY,
+        angle: opt.angle, skewX: opt.skewX, skewY: opt.skewY,
+        group: null,
+        editable: true,
+        selectable: true,
+        evented: true,
       });
       child.setCoords();
       canvas.add(child);
       restoreInteractivity?.(child);
-  });
-  canvas.discardActiveObject();
-  canvas.requestRenderAll();
-  onUpdate?.();
-};
-
-// --- Fonctions utilitaires de origin (Cartes, Profils, Maps, Vidéos) ---
-
-const applyGroupText = (index, key, value) => {
-  if (!selectedObject || !canvas || selectedObject.type !== "group") return;
-  const objs = selectedObject.getObjects();
-  if (objs[index]) {
-    objs[index].set("text", value);
-    canvas.renderAll();
-    onUpdate?.();
-    setProps(p => ({ ...p, [key]: value }));
-  }
-};
-
-const applyGroupBgFill = (index, key, value) => {
-  if (!selectedObject || !canvas || selectedObject.type !== "group") return;
-  const objs = selectedObject.getObjects();
-  if (objs[index]) {
-    objs[index].set("fill", value);
-    selectedObject.dirty = true;
-    canvas.renderAll();
-    onUpdate?.();
-    setProps((p) => ({ ...p, [key]: value }));
-  }
-};
-
-const applyMapField = (key, raw) => {
-  if (!selectedObject || !canvas || selectedObject.customName !== "Carte (Map)") return;
-  if (key === "mapAddress" || key === "mapType") {
-    selectedObject[key] = raw;
-    setProps((p) => ({ ...p, [key]: raw }));
-    canvas.fire("object:modified", { target: selectedObject });
-    canvas.requestRenderAll();
-    onUpdate?.();
-    return;
-  }
-  if (key === "showMarker") {
-    selectedObject[key] = !!raw;
-    setProps((p) => ({ ...p, [key]: !!raw }));
-    canvas.fire("object:modified", { target: selectedObject });
-    canvas.requestRenderAll();
-    onUpdate?.();
-    return;
-  }
-  let num = key === "mapZoom" ? Math.min(20, Math.max(1, parseInt(raw, 10))) : parseFloat(String(raw).replace(",", "."));
-  if (Number.isNaN(num)) return;
-  selectedObject[key] = num;
-  setProps((p) => ({ ...p, [key]: num }));
-  canvas.fire("object:modified", { target: selectedObject });
-  canvas.requestRenderAll();
-  onUpdate?.();
-};
-
-const refreshMapPreview = () => {
-  if (!selectedObject || !canvas || selectedObject.customName !== "Carte (Map)") return;
-  loadOsmMapIntoGroup(selectedObject, canvas);
-  canvas.fire("object:modified", { target: selectedObject });
-  canvas.requestRenderAll();
-  onUpdate?.();
-};
-
-const handleCardImageUpload = (e) => {
-  const file = e.target.files[0];
-  if (!file || !selectedObject || !canvas || selectedObject.customName !== "Carte Produit") return;
-  const imageSlot = selectedObject.getObjects()[1];
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const img = new Image();
-    img.onload = () => {
-      const patternCanvas = document.createElement("canvas");
-      patternCanvas.width = imageSlot.width; patternCanvas.height = imageSlot.height;
-      const ctx = patternCanvas.getContext("2d");
-      const scale = Math.max(imageSlot.width / img.width, imageSlot.height / img.height);
-      ctx.drawImage(img, (imageSlot.width - img.width * scale) / 2, (imageSlot.height - img.height * scale) / 2, img.width * scale, img.height * scale);
-      imageSlot.set("fill", new fabric.Pattern({ source: patternCanvas, repeat: "no-repeat" }));
-      canvas.renderAll(); onUpdate?.();
-      setProps(p => ({ ...p, cardImageName: file.name }));
-    };
-    if (typeof ev.target?.result === "string") img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-};
-
-const handleProfileImageUpload = (e) => {
-  const file = e.target.files[0];
-  if (!file || !selectedObject || !canvas || selectedObject.customName !== "Profil Utilisateur") return;
-  const avatarSlot = selectedObject.getObjects()[1];
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const img = new Image();
-    img.onload = () => {
-      const size = avatarSlot.radius * 2;
-      const patternCanvas = document.createElement("canvas");
-      patternCanvas.width = size; patternCanvas.height = size;
-      const ctx = patternCanvas.getContext("2d");
-      ctx.beginPath(); ctx.arc(size/2, size/2, size/2, 0, Math.PI*2); ctx.clip();
-      const scale = Math.max(size / img.width, size / img.height);
-      ctx.drawImage(img, (size - img.width * scale) / 2, (size - img.height * scale) / 2, img.width * scale, img.height * scale);
-      avatarSlot.set("fill", new fabric.Pattern({ source: patternCanvas, repeat: "no-repeat" }));
-      canvas.renderAll(); onUpdate?.();
-      setProps(p => ({ ...p, profileImageName: file.name }));
-    };
-    if (typeof ev.target?.result === "string") img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-};
-
-const applyVideoSrc = (val) => {
-  if (!selectedObject || !canvas || selectedObject.customName !== "Lecteur Vidéo") return;
-  const nextSrc = normalizeVideoSrc(val);
-  setProps(p => ({ ...p, videoSrc: nextSrc }));
-  const sourceIssue = getVideoSourceIssue(nextSrc);
-  if (sourceIssue) return;
-  selectedObject.videoSrc = nextSrc;
-  onUpdate?.();
-  if (nextSrc) reviveVideos(canvas);
-  else canvas.renderAll();
-};
-
-const handleVideoUpload = (e) => {
-  const file = e.target.files[0];
-  if (!file || !selectedObject || !canvas || selectedObject.customName !== "Lecteur Vidéo") return;
-  const targetVideoObject = selectedObject;
-  const assetId = targetVideoObject.videoAssetId || createLocalVideoAssetId();
-  saveLocalVideoAsset(assetId, file)
-    .then(() => {
-      const localSource = makeLocalVideoSource(assetId);
-      targetVideoObject.videoAssetId = assetId;
-      targetVideoObject.videoSrc = localSource;
-      setResolvedVideoSources((prev) => {
-        const previousUrl = prev[localSource];
-        if (previousUrl) {
-          try { URL.revokeObjectURL(previousUrl); } catch {}
-        }
-        const objectUrl = URL.createObjectURL(file);
-        localVideoUrlCacheRef.current[localSource] = objectUrl;
-        return { ...prev, [localSource]: objectUrl };
-      });
-      setProps(p => ({ ...p, videoSrc: localSource }));
-      onUpdate?.();
-      reviveVideos(canvas);
-      e.target.value = "";
-    })
-    .catch(() => {
-      showToast("Impossible de sauvegarder cette vidéo locale dans le navigateur.", "error");
-      e.target.value = "";
     });
-};
-// --- HELPERS DE MISE À JOUR VISUELLE (HEAD) ---
+    canvas.discardActiveObject();
+    canvas.requestRenderAll();
+    onUpdate?.();
+  };
+
+  // --- Fonctions utilitaires de origin (Cartes, Profils, Maps, Vidéos) ---
+
+  const applyGroupText = (index, key, value) => {
+    if (!selectedObject || !canvas || selectedObject.type !== "group") return;
+    const objs = selectedObject.getObjects();
+    if (objs[index]) {
+      objs[index].set("text", value);
+      canvas.renderAll();
+      onUpdate?.();
+      setProps(p => ({ ...p, [key]: value }));
+    }
+  };
+
+  const applyGroupBgFill = (index, key, value) => {
+    if (!selectedObject || !canvas || selectedObject.type !== "group") return;
+    const objs = selectedObject.getObjects();
+    if (objs[index]) {
+      objs[index].set("fill", value);
+      selectedObject.dirty = true;
+      canvas.renderAll();
+      onUpdate?.();
+      setProps((p) => ({ ...p, [key]: value }));
+    }
+  };
+
+  const applyMapField = (key, raw) => {
+    if (!selectedObject || !canvas || selectedObject.customName !== "Carte (Map)") return;
+    if (key === "mapAddress" || key === "mapType") {
+      selectedObject[key] = raw;
+      setProps((p) => ({ ...p, [key]: raw }));
+      canvas.fire("object:modified", { target: selectedObject });
+      canvas.requestRenderAll();
+      onUpdate?.();
+      return;
+    }
+    if (key === "showMarker") {
+      selectedObject[key] = !!raw;
+      setProps((p) => ({ ...p, [key]: !!raw }));
+      canvas.fire("object:modified", { target: selectedObject });
+      canvas.requestRenderAll();
+      onUpdate?.();
+      return;
+    }
+    let num = key === "mapZoom" ? Math.min(20, Math.max(1, parseInt(raw, 10))) : parseFloat(String(raw).replace(",", "."));
+    if (Number.isNaN(num)) return;
+    selectedObject[key] = num;
+    setProps((p) => ({ ...p, [key]: num }));
+    canvas.fire("object:modified", { target: selectedObject });
+    canvas.requestRenderAll();
+    onUpdate?.();
+  };
+
+  const refreshMapPreview = () => {
+    if (!selectedObject || !canvas || selectedObject.customName !== "Carte (Map)") return;
+    loadOsmMapIntoGroup(selectedObject, canvas);
+    canvas.fire("object:modified", { target: selectedObject });
+    canvas.requestRenderAll();
+    onUpdate?.();
+  };
+
+  const handleCardImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedObject || !canvas || selectedObject.customName !== "Carte Produit") return;
+    const imageSlot = selectedObject.getObjects()[1];
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const patternCanvas = document.createElement("canvas");
+        patternCanvas.width = imageSlot.width; patternCanvas.height = imageSlot.height;
+        const ctx = patternCanvas.getContext("2d");
+        const scale = Math.max(imageSlot.width / img.width, imageSlot.height / img.height);
+        ctx.drawImage(img, (imageSlot.width - img.width * scale) / 2, (imageSlot.height - img.height * scale) / 2, img.width * scale, img.height * scale);
+        imageSlot.set("fill", new fabric.Pattern({ source: patternCanvas, repeat: "no-repeat" }));
+        canvas.renderAll(); onUpdate?.();
+        setProps(p => ({ ...p, cardImageName: file.name }));
+      };
+      if (typeof ev.target?.result === "string") img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleProfileImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedObject || !canvas || selectedObject.customName !== "Profil Utilisateur") return;
+    const avatarSlot = selectedObject.getObjects()[1];
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const size = avatarSlot.radius * 2;
+        const patternCanvas = document.createElement("canvas");
+        patternCanvas.width = size; patternCanvas.height = size;
+        const ctx = patternCanvas.getContext("2d");
+        ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); ctx.clip();
+        const scale = Math.max(size / img.width, size / img.height);
+        ctx.drawImage(img, (size - img.width * scale) / 2, (size - img.height * scale) / 2, img.width * scale, img.height * scale);
+        avatarSlot.set("fill", new fabric.Pattern({ source: patternCanvas, repeat: "no-repeat" }));
+        canvas.renderAll(); onUpdate?.();
+        setProps(p => ({ ...p, profileImageName: file.name }));
+      };
+      if (typeof ev.target?.result === "string") img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const applyVideoSrc = (val) => {
+    if (!selectedObject || !canvas || selectedObject.customName !== "Lecteur Vidéo") return;
+    const nextSrc = normalizeVideoSrc(val);
+    setProps(p => ({ ...p, videoSrc: nextSrc }));
+    const sourceIssue = getVideoSourceIssue(nextSrc);
+    if (sourceIssue) return;
+    selectedObject.videoSrc = nextSrc;
+    onUpdate?.();
+    if (nextSrc) reviveVideos(canvas);
+    else canvas.renderAll();
+  };
+
+  const handleVideoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedObject || !canvas || selectedObject.customName !== "Lecteur Vidéo") return;
+    const targetVideoObject = selectedObject;
+    const assetId = targetVideoObject.videoAssetId || createLocalVideoAssetId();
+    saveLocalVideoAsset(assetId, file)
+      .then(() => {
+        const localSource = makeLocalVideoSource(assetId);
+        targetVideoObject.videoAssetId = assetId;
+        targetVideoObject.videoSrc = localSource;
+        setResolvedVideoSources((prev) => {
+          const previousUrl = prev[localSource];
+          if (previousUrl) {
+            try { URL.revokeObjectURL(previousUrl); } catch { }
+          }
+          const objectUrl = URL.createObjectURL(file);
+          localVideoUrlCacheRef.current[localSource] = objectUrl;
+          return { ...prev, [localSource]: objectUrl };
+        });
+        setProps(p => ({ ...p, videoSrc: localSource }));
+        onUpdate?.();
+        reviveVideos(canvas);
+        e.target.value = "";
+      })
+      .catch(() => {
+        showToast("Impossible de sauvegarder cette vidéo locale dans le navigateur.", "error");
+        e.target.value = "";
+      });
+  };
+  // --- HELPERS DE MISE À JOUR VISUELLE (HEAD) ---
 
   if (!selectedObject) return (
     <div className="props-empty">
@@ -2250,119 +2250,119 @@ const handleVideoUpload = (e) => {
           </section>
         )}
 
-      {isGroup && selectedObject.customName === "Carte Produit" && (
-        <section className="props-section">
-          <h4 className="props-section-title">Contenu Carte Produit</h4>
-          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <PropField label="Couleur de fond" type="color" value={v.cardBgColor} onChange={val => applyGroupBgFill(0, "cardBgColor", val)} />
-            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
-              Uploader image produit
-              <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleCardImageUpload} />
-            </label>
-            {v.cardImageName && (
-              <div style={{ fontSize: 11, color: "var(--muted)" }}>Image active: {v.cardImageName}</div>
-            )}
-            <PropField label="Titre" value={v.cardTitle} onChange={val => applyGroupText(2, "cardTitle", val)} />
-            <PropField label="Prix" value={v.cardPrice} onChange={val => applyGroupText(3, "cardPrice", val)} />
-            <PropField label="Texte Bouton" value={v.cardButton} onChange={val => applyGroupText(5, "cardButton", val)} />
-          </div>
-        </section>
-      )}
-
-      {isGroup && selectedObject.customName === "Profil Utilisateur" && (
-        <section className="props-section">
-          <h4 className="props-section-title">Contenu Profil</h4>
-          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <PropField label="Couleur de fond" type="color" value={v.profileBgColor} onChange={val => applyGroupBgFill(0, "profileBgColor", val)} />
-            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
-              Uploader photo profil
-              <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleProfileImageUpload} />
-            </label>
-            {v.profileImageName && (
-              <div style={{ fontSize: 11, color: "var(--muted)" }}>Photo active: {v.profileImageName}</div>
-            )}
-            <PropField label="Nom" value={v.profileName} onChange={val => applyGroupText(2, "profileName", val)} />
-            <PropField label="Rôle" value={v.profileRole} onChange={val => applyGroupText(3, "profileRole", val)} />
-          </div>
-        </section>
-      )}
-
-      {isGroup && selectedObject.customName === "Tableau de Prix" && (
-        <section className="props-section">
-          <h4 className="props-section-title">Contenu Prix</h4>
-          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <PropField label="Offre" value={v.pricingTitle} onChange={val => applyGroupText(1, "pricingTitle", val)} />
-            <PropField label="Prix" value={v.pricingPrice} onChange={val => applyGroupText(2, "pricingPrice", val)} />
-            <PropField label="Texte Bouton" value={v.pricingButton} onChange={val => applyGroupText(7, "pricingButton", val)} />
-          </div>
-        </section>
-      )}
-
-      {isGroup && selectedObject.customName === "Carte (Map)" && (
-        <section className="props-section">
-          <h4 className="props-section-title">Carte Interactive</h4>
-          <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <PropField label="Rechercher lieu/adresse" value={v.mapAddress} onChange={val => applyMapField("mapAddress", val)} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              <PropField label="Latitude" type="number" value={v.mapLat} onChange={val => applyMapField("mapLat", val)} />
-              <PropField label="Longitude" type="number" value={v.mapLng} onChange={val => applyMapField("mapLng", val)} />
+        {isGroup && selectedObject.customName === "Carte Produit" && (
+          <section className="props-section">
+            <h4 className="props-section-title">Contenu Carte Produit</h4>
+            <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <PropField label="Couleur de fond" type="color" value={v.cardBgColor} onChange={val => applyGroupBgFill(0, "cardBgColor", val)} />
+              <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+                Uploader image produit
+                <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleCardImageUpload} />
+              </label>
+              {v.cardImageName && (
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>Image active: {v.cardImageName}</div>
+              )}
+              <PropField label="Titre" value={v.cardTitle} onChange={val => applyGroupText(2, "cardTitle", val)} />
+              <PropField label="Prix" value={v.cardPrice} onChange={val => applyGroupText(3, "cardPrice", val)} />
+              <PropField label="Texte Bouton" value={v.cardButton} onChange={val => applyGroupText(5, "cardButton", val)} />
             </div>
-            <PropField label="Zoom (1–20)" type="number" value={v.mapZoom} onChange={val => applyMapField("mapZoom", val)} min="1" max="20" />
-            
-            <div className="props-row" style={{ marginTop: 4, marginBottom: 0 }}>
-              <label className="props-label">Vue par défaut</label>
-              <select value={v.mapType || "m"} onChange={e => applyMapField("mapType", e.target.value)} className="props-select" style={{ width: 120 }}>
-                <option value="m">Plan</option>
-                <option value="k">Satellite</option>
-              </select>
-            </div>
-            
-            <div className="props-row" style={{ marginTop: 0, marginBottom: 0 }}>
-              <label className="props-label" style={{ fontSize: 11 }}>Afficher le marqueur</label>
-              <input type="checkbox" checked={v.showMarker ?? true} onChange={e => applyMapField("showMarker", e.target.checked)} className="custom-checkbox" />
-            </div>
-            <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4, margin: 0, marginTop: 4 }}>
-               Cliquez une fois sur la carte pour la sélectionner, puis interagissez avec pour vous déplacer ou zoomer.
-            </p>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
 
-      {isVideoObject(selectedObject) && (
-        <section className="props-section">
-          <h4 className="props-section-title">Vidéo</h4>
-          <PropField label="Lien vidéo (YouTube, MP4, WebM)" value={v.videoSrc && !v.videoSrc.startsWith("blob:") && !v.videoSrc.startsWith("data:video/") && !v.videoSrc.startsWith("localvideo:") ? v.videoSrc : ""} onChange={val => applyVideoSrc(val)} />
-          <div style={{ marginTop: 8 }}>
-            <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
-              Tester une vidéo locale
-              <input type="file" accept="video/mp4,video/webm" style={{ display: "none" }} onChange={handleVideoUpload} />
-            </label>
-            <div style={{ marginTop: 8, fontSize: 11, color: "var(--muted)", lineHeight: "1.35" }}>
-              Cliquez une fois sur le bloc vidéo pour le sélectionner, puis utilisez les contrôles lecture, pause et volume.
+        {isGroup && selectedObject.customName === "Profil Utilisateur" && (
+          <section className="props-section">
+            <h4 className="props-section-title">Contenu Profil</h4>
+            <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <PropField label="Couleur de fond" type="color" value={v.profileBgColor} onChange={val => applyGroupBgFill(0, "profileBgColor", val)} />
+              <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+                Uploader photo profil
+                <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleProfileImageUpload} />
+              </label>
+              {v.profileImageName && (
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>Photo active: {v.profileImageName}</div>
+              )}
+              <PropField label="Nom" value={v.profileName} onChange={val => applyGroupText(2, "profileName", val)} />
+              <PropField label="Rôle" value={v.profileRole} onChange={val => applyGroupText(3, "profileRole", val)} />
             </div>
-            {getVideoSourceIssue(v.videoSrc) && !v.videoSrc.startsWith("blob:") && (
-              <div style={{ marginTop: 8, fontSize: 11, color: "#b45309", lineHeight: "1.35" }}>
-                {getVideoSourceIssue(v.videoSrc)}
+          </section>
+        )}
+
+        {isGroup && selectedObject.customName === "Tableau de Prix" && (
+          <section className="props-section">
+            <h4 className="props-section-title">Contenu Prix</h4>
+            <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <PropField label="Offre" value={v.pricingTitle} onChange={val => applyGroupText(1, "pricingTitle", val)} />
+              <PropField label="Prix" value={v.pricingPrice} onChange={val => applyGroupText(2, "pricingPrice", val)} />
+              <PropField label="Texte Bouton" value={v.pricingButton} onChange={val => applyGroupText(7, "pricingButton", val)} />
+            </div>
+          </section>
+        )}
+
+        {isGroup && selectedObject.customName === "Carte (Map)" && (
+          <section className="props-section">
+            <h4 className="props-section-title">Carte Interactive</h4>
+            <div className="props-grid-1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <PropField label="Rechercher lieu/adresse" value={v.mapAddress} onChange={val => applyMapField("mapAddress", val)} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <PropField label="Latitude" type="number" value={v.mapLat} onChange={val => applyMapField("mapLat", val)} />
+                <PropField label="Longitude" type="number" value={v.mapLng} onChange={val => applyMapField("mapLng", val)} />
               </div>
-            )}
-            {v.videoSrc && v.videoSrc.startsWith("localvideo:") && <div style={{ marginTop: 8, fontSize: 11, color: "#0f766e", lineHeight: "1.2" }}>Vidéo locale enregistrée dans ce navigateur.<br />(Elle reste disponible après actualisation de la page.)</div>}
-          </div>
-        </section>
-      )}
+              <PropField label="Zoom (1–20)" type="number" value={v.mapZoom} onChange={val => applyMapField("mapZoom", val)} min="1" max="20" />
 
-      {isText && (
-        <section className="props-section">
-          <h4 className="props-section-title">Dimensions & Position</h4>
-          <div className="props-grid-2">
-            <PropField label="X" value={v.left} onChange={val => apply("left", +val)} type="number" />
-            <PropField label="Y" value={v.top} onChange={val => apply("top", +val)} type="number" />
-            <PropField label="Largeur" value={v.width} onChange={val => apply("width", +val)} type="number" />
-            <PropField label="Hauteur" value={v.height} onChange={val => apply("height", +val)} type="number" />
-            <PropField label="Angle °" value={v.angle} onChange={val => apply("angle", +val)} type="number" />
-            <PropField label="Opacité %" value={v.opacity} onChange={val => apply("opacity", +val)} type="number" min="0" max="100" />
-          </div>
-        </section>
-      )}
+              <div className="props-row" style={{ marginTop: 4, marginBottom: 0 }}>
+                <label className="props-label">Vue par défaut</label>
+                <select value={v.mapType || "m"} onChange={e => applyMapField("mapType", e.target.value)} className="props-select" style={{ width: 120 }}>
+                  <option value="m">Plan</option>
+                  <option value="k">Satellite</option>
+                </select>
+              </div>
+
+              <div className="props-row" style={{ marginTop: 0, marginBottom: 0 }}>
+                <label className="props-label" style={{ fontSize: 11 }}>Afficher le marqueur</label>
+                <input type="checkbox" checked={v.showMarker ?? true} onChange={e => applyMapField("showMarker", e.target.checked)} className="custom-checkbox" />
+              </div>
+              <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4, margin: 0, marginTop: 4 }}>
+                Cliquez une fois sur la carte pour la sélectionner, puis interagissez avec pour vous déplacer ou zoomer.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {isVideoObject(selectedObject) && (
+          <section className="props-section">
+            <h4 className="props-section-title">Vidéo</h4>
+            <PropField label="Lien vidéo (YouTube, MP4, WebM)" value={v.videoSrc && !v.videoSrc.startsWith("blob:") && !v.videoSrc.startsWith("data:video/") && !v.videoSrc.startsWith("localvideo:") ? v.videoSrc : ""} onChange={val => applyVideoSrc(val)} />
+            <div style={{ marginTop: 8 }}>
+              <label style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "8px 12px", borderRadius: 6, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", fontWeight: "600" }}>
+                Tester une vidéo locale
+                <input type="file" accept="video/mp4,video/webm" style={{ display: "none" }} onChange={handleVideoUpload} />
+              </label>
+              <div style={{ marginTop: 8, fontSize: 11, color: "var(--muted)", lineHeight: "1.35" }}>
+                Cliquez une fois sur le bloc vidéo pour le sélectionner, puis utilisez les contrôles lecture, pause et volume.
+              </div>
+              {getVideoSourceIssue(v.videoSrc) && !v.videoSrc.startsWith("blob:") && (
+                <div style={{ marginTop: 8, fontSize: 11, color: "#b45309", lineHeight: "1.35" }}>
+                  {getVideoSourceIssue(v.videoSrc)}
+                </div>
+              )}
+              {v.videoSrc && v.videoSrc.startsWith("localvideo:") && <div style={{ marginTop: 8, fontSize: 11, color: "#0f766e", lineHeight: "1.2" }}>Vidéo locale enregistrée dans ce navigateur.<br />(Elle reste disponible après actualisation de la page.)</div>}
+            </div>
+          </section>
+        )}
+
+        {isText && (
+          <section className="props-section">
+            <h4 className="props-section-title">Dimensions & Position</h4>
+            <div className="props-grid-2">
+              <PropField label="X" value={v.left} onChange={val => apply("left", +val)} type="number" />
+              <PropField label="Y" value={v.top} onChange={val => apply("top", +val)} type="number" />
+              <PropField label="Largeur" value={v.width} onChange={val => apply("width", +val)} type="number" />
+              <PropField label="Hauteur" value={v.height} onChange={val => apply("height", +val)} type="number" />
+              <PropField label="Angle °" value={v.angle} onChange={val => apply("angle", +val)} type="number" />
+              <PropField label="Opacité %" value={v.opacity} onChange={val => apply("opacity", +val)} type="number" min="0" max="100" />
+            </div>
+          </section>
+        )}
 
         {isText && (
           <section className="props-section">
@@ -2524,9 +2524,9 @@ const LayersPanel = ({ canvas, selectedObject, onSelectObject, refreshKey }) => 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 const FABRIC_CUSTOM_PROPS = [
-  "excludeFromExport", "isPlaceholder", "placeholderLabel", "customName", 
-  "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft", 
-  "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant", 
+  "excludeFromExport", "isPlaceholder", "placeholderLabel", "customName",
+  "boxPaddingTop", "boxPaddingRight", "boxPaddingBottom", "boxPaddingLeft",
+  "boxStroke", "boxStrokeWidth", "rx", "ry", "componentData", "customVariant",
   "imageHistoryId", "videoSrc", "videoAssetId", "mapLat", "mapLng", "mapZoom",
   "editable", "customType", "templateType"
 ];
@@ -2580,11 +2580,11 @@ const DesignEditor = () => {
   const [toast, setToast] = useState(null);
   const [validating, setValidating] = useState(false);
   const [validationDone, setValidationDone] = useState(null);
-  
+
   // Text formatting toolbar state
   const [textToolbarVisible, setTextToolbarVisible] = useState(false);
   const [textToolbarPosition, setTextToolbarPosition] = useState({ x: 0, y: 0 });
-  
+
   // Professional features state
   const [isMultiSelecting, setIsMultiSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState(null);
@@ -2595,6 +2595,7 @@ const DesignEditor = () => {
   const [rejetModal, setRejetModal] = useState(false);
   const [rejetElements, setRejetElements] = useState([]);
   const [rejetSubmitting, setRejetSubmitting] = useState(false);
+  const [rejetJustification, setRejetJustification] = useState("");
 
   // FIX: Use a ref for clipboard to avoid stale closure in keyboard handler
   const clipboardRef = useRef(null);
@@ -2654,7 +2655,7 @@ const DesignEditor = () => {
         if (!htmlVideo) return;
         htmlVideo.muted = false;
         if (!htmlVideo.volume || htmlVideo.volume <= 0) htmlVideo.volume = 1;
-        htmlVideo.play().catch(() => {});
+        htmlVideo.play().catch(() => { });
         setSelectedVideoUi({
           playing: !htmlVideo.paused,
           muted: htmlVideo.muted,
@@ -2676,7 +2677,7 @@ const DesignEditor = () => {
   }, [selectedHtmlVideo]);
   const toggleSelectedVideoPlayback = useCallback(() => {
     if (!selectedHtmlVideo) return;
-    if (selectedHtmlVideo.paused) selectedHtmlVideo.play().catch(() => {});
+    if (selectedHtmlVideo.paused) selectedHtmlVideo.play().catch(() => { });
     else selectedHtmlVideo.pause();
     syncSelectedVideoUi();
   }, [selectedHtmlVideo, syncSelectedVideoUi]);
@@ -2866,7 +2867,7 @@ const DesignEditor = () => {
           queryParams.push(`loc:${lat}+${lng}`);
         }
       }
-      
+
       const queryStr = queryParams.length > 0 ? queryParams.join("&") : `q=${lat},${lng}`;
       const iframeSrc = `https://maps.google.com/maps?${queryStr}&t=${mapType}&z=${zoom}&ie=UTF8&iwloc=&output=embed`;
 
@@ -2993,7 +2994,7 @@ const DesignEditor = () => {
   useEffect(() => {
     return () => {
       Object.values(localVideoUrlCacheRef.current).forEach((url) => {
-        try { URL.revokeObjectURL(url); } catch {}
+        try { URL.revokeObjectURL(url); } catch { }
       });
       localVideoUrlCacheRef.current = {};
     };
@@ -3060,7 +3061,7 @@ const DesignEditor = () => {
     const loadData = async () => {
       try {
         const savedVersionId = localStorage.getItem(`lastVersion_${id}`);
-        const versionReq = savedVersionId 
+        const versionReq = savedVersionId
           ? API.get(`/versions/${savedVersionId}`).catch(() => API.get(`/maquettes/${id}/latest-version`))
           : API.get(`/maquettes/${id}/latest-version`);
 
@@ -3151,7 +3152,7 @@ const DesignEditor = () => {
   const restoreInteractivity = useCallback((obj) => {
     // Make ALL elements editable, not just ones with customVariant
     if (!obj) return;
-    
+
     // Enable text editing for ALL text elements
     if (obj.type === "text" || obj.type === "i-text" || obj.type === "textbox") {
       obj.on("mousedblclick", () => {
@@ -3163,7 +3164,7 @@ const DesignEditor = () => {
         }
       });
     }
-    
+
     // Enable color editing for all elements with fill
     obj.on("selected", () => {
       if (fabricCanvas && obj.fill) {
@@ -3174,7 +3175,7 @@ const DesignEditor = () => {
         }
       }
     });
-    
+
     // Handle template pages
     if (obj.componentData && obj.componentData.templateType) {
       // Make template elements editable
@@ -3186,7 +3187,7 @@ const DesignEditor = () => {
       });
       return;
     }
-    
+
     // Existing interactions for components
     if (obj.customVariant === "video" || obj.customName === "Lecteur Vidéo") {
       // Allow selecting video
@@ -3244,7 +3245,7 @@ const DesignEditor = () => {
           fabricCanvas.renderAll();
         }
       });
-      
+
       // Make individual chart elements editable
       if (obj._objects) {
         obj._objects.forEach((chartObj) => {
@@ -3274,7 +3275,7 @@ const DesignEditor = () => {
     canvasRef.current = el;
     const canvas = new fabric.Canvas(el, { width: 1000, height: 700, backgroundColor: "#ffffff", preserveObjectStacking: true });
     setFabricCanvas(canvas);
-    
+
     // Store reference to restoreInteractivity for reviveVideos to use
     window.restoreInteractivityRef = restoreInteractivity;
 
@@ -3287,14 +3288,14 @@ const DesignEditor = () => {
           const safeContenuStr = JSON.stringify(designData.version.contenu)
             .replace(/"(?:blob|file):[^"]+"/g, '"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="');
           const safeContenu = JSON.parse(safeContenuStr);
-          
+
           const loadRes = canvas.loadFromJSON(safeContenu, customFabricReviver);
           if (loadRes && typeof loadRes.then === "function") await loadRes;
           canvas.getObjects().forEach(restoreInteractivity);
           reviveVideos(canvas);
           reviveMaps(canvas);
         }
-        
+
         // Ensure viewport is centered after loading or restore from save
         if (designData.version?.contenu?.viewportTransform) {
           canvas.setViewportTransform(designData.version.contenu.viewportTransform);
@@ -3304,9 +3305,9 @@ const DesignEditor = () => {
           canvas.setZoom(1);
           setZoom(100);
         }
-        
+
         canvas.renderAll();
-        
+
         setSaveStatus("À jour ☁️");
         if (!isDesigner) lockCanvasObjects(canvas);
         if (currentVersionIdRef.current) await fetchCorrectionsForVersion(currentVersionIdRef.current);
@@ -3322,9 +3323,9 @@ const DesignEditor = () => {
   // Canvas event listeners
   useEffect(() => {
     if (!fabricCanvas) return;
-    const updateSelection = (e) => { 
+    const updateSelection = (e) => {
       const selected = e.selected?.[0] || fabricCanvas.getActiveObject();
-      setSelectedObj(selected); 
+      setSelectedObj(selected);
       setLayersKey(k => k + 1);
 
       if (selected && selected.customVariant && selected.componentData) {
@@ -3334,7 +3335,7 @@ const DesignEditor = () => {
         setEditorVariant(null);
         setEditorData(null);
       }
-      
+
       // Show/hide text toolbar based on selection
       if (selected) {
         showTextToolbar(selected);
@@ -3342,13 +3343,13 @@ const DesignEditor = () => {
         hideTextToolbar();
       }
     };
-    
+
     // Global text editing handler for all text objects
     const handleTextDoubleClick = (e) => {
       if (!fabricCanvas || !e.target) return;
-      
+
       const target = e.target;
-      
+
       // Check if the target is part of a chart component
       let chartGroup = null;
       if (target.group && target.group.customVariant && target.group.customVariant.startsWith("chart_")) {
@@ -3356,35 +3357,35 @@ const DesignEditor = () => {
       } else if (target.customVariant && target.customVariant.startsWith("chart_")) {
         chartGroup = target;
       }
-      
+
       // If it's a chart component, open the chart editor
       if (chartGroup) {
         e.preventDefault();
         e.stopPropagation();
-        
+
         setSelectedObj(chartGroup);
         setEditorVariant(chartGroup.customVariant);
         setEditorData(chartGroup.componentData || {});
         setShowComponentEditor(true);
         return;
       }
-      
+
       // Check if it's a text object
       if (target.type === "text" || target.type === "i-text" || target.type === "textbox") {
         // Prevent default behavior
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Set as active object
         fabricCanvas.setActiveObject(target);
-        
+
         // Enter editing mode
         target.enterEditing();
         target.selectAll();
         fabricCanvas.renderAll();
       }
     };
-    
+
     fabricCanvas.on("selection:created", updateSelection);
     fabricCanvas.on("selection:updated", updateSelection);
     fabricCanvas.on("selection:cleared", () => {
@@ -3443,7 +3444,7 @@ const DesignEditor = () => {
       const brush = new fabric.PencilBrush(fabricCanvas);
       if (activeDrawingTool === "highlighter") {
         brush.color = drawingColor + "66"; // Translucent
-        brush.width = Math.max(16, drawingWidth * 4); 
+        brush.width = Math.max(16, drawingWidth * 4);
       } else if (activeDrawingTool === "marker") {
         brush.color = drawingColor;
         brush.width = Math.max(8, drawingWidth * 2);
@@ -3461,7 +3462,7 @@ const DesignEditor = () => {
   const spawnToolElement = (type) => {
     if (!fabricCanvas) return;
     const center = fabricCanvas.getVpCenter();
-    
+
     if (type === "emoji") {
       setShowEmojiPicker(true);
     } else if (type === "sticker") {
@@ -3469,10 +3470,10 @@ const DesignEditor = () => {
     } else if (type === "table") {
       const cellW = 120, cellH = 50;
       const objs = [];
-      for(let i=0; i<3; i++){
-        for(let j=0; j<3; j++){
-          const bg = new fabric.Rect({ left: j*cellW - (cellW*1.5), top: i*cellH - (cellH*1.5), width: cellW, height: cellH, fill: i===0?"#f1f5f9":"white", stroke: "#cbd5e1" });
-          const txt = new fabric.IText(i===0?`En-tête ${j+1}`:`Valeur ${j+1}`, { left: j*cellW - (cellW*1.5) + 16, top: i*cellH - (cellH*1.5) + 16, fontSize: 14, fill: i===0?"#0f172a":"#475569", fontWeight: i===0?"bold":"normal", fontFamily: "Inter" });
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          const bg = new fabric.Rect({ left: j * cellW - (cellW * 1.5), top: i * cellH - (cellH * 1.5), width: cellW, height: cellH, fill: i === 0 ? "#f1f5f9" : "white", stroke: "#cbd5e1" });
+          const txt = new fabric.IText(i === 0 ? `En-tête ${j + 1}` : `Valeur ${j + 1}`, { left: j * cellW - (cellW * 1.5) + 16, top: i * cellH - (cellH * 1.5) + 16, fontSize: 14, fill: i === 0 ? "#0f172a" : "#475569", fontWeight: i === 0 ? "bold" : "normal", fontFamily: "Inter" });
           objs.push(bg, txt);
         }
       }
@@ -3489,11 +3490,11 @@ const DesignEditor = () => {
       const playCircle = new fabric.Circle({ radius: 30, fill: "rgba(255,255,255,0.2)", originX: "center", originY: "center" });
       const playBtn = new fabric.IText("▶", { fontSize: 22, fill: "#ffffff", fontFamily: "Inter", originX: "center", originY: "center" });
       const label = new fabric.IText("Vidéo", { fontSize: 12, fill: "#94a3b8", fontFamily: "Inter", originX: "center", originY: "center", top: 70 });
-      
-      const videoGroup = new fabric.Group([bg, playCircle, playBtn, label], { 
-        left: x, 
-        top: y, 
-        originX: "center", 
+
+      const videoGroup = new fabric.Group([bg, playCircle, playBtn, label], {
+        left: x,
+        top: y,
+        originX: "center",
         originY: "center",
         customName: "Lecteur Vidéo",
         customVariant: "video",
@@ -3518,11 +3519,11 @@ const DesignEditor = () => {
         originY: "center"
       });
       const mapLabel = new fabric.IText("Localisation", { fontSize: 14, fill: "#475569", fontFamily: "Inter", originX: "center", originY: "center", top: 40 });
-      
-      const mapGroup = new fabric.Group([bg, mapPin, mapLabel], { 
-        left: x, 
-        top: y, 
-        originX: "center", 
+
+      const mapGroup = new fabric.Group([bg, mapPin, mapLabel], {
+        left: x,
+        top: y,
+        originX: "center",
         originY: "center",
         customName: "Carte (Map)",
         customVariant: "map",
@@ -3542,31 +3543,31 @@ const DesignEditor = () => {
       if (!isSidebarOpen) setOpenMenu("");
     } else if (type === "cont_frame") {
       // Frame / Section
-      const frame = new fabric.Rect({ 
-        width: 600, 
-        height: 400, 
-        fill: "transparent", 
-        stroke: "#cbd5e1", 
-        strokeWidth: 2, 
+      const frame = new fabric.Rect({
+        width: 600,
+        height: 400,
+        fill: "transparent",
+        stroke: "#cbd5e1",
+        strokeWidth: 2,
         strokeDashArray: [8, 4],
-        rx: 8, 
-        ry: 8, 
-        originX: "center", 
-        originY: "center" 
+        rx: 8,
+        ry: 8,
+        originX: "center",
+        originY: "center"
       });
-      const frameLabel = new fabric.IText("Frame / Section", { 
-        fontSize: 12, 
-        fill: "#94a3b8", 
-        fontFamily: "Inter", 
-        originX: "center", 
+      const frameLabel = new fabric.IText("Frame / Section", {
+        fontSize: 12,
+        fill: "#94a3b8",
+        fontFamily: "Inter",
+        originX: "center",
         originY: "top",
         top: -200 - 20
       });
-      
-      const frameGroup = new fabric.Group([frame, frameLabel], { 
-        left: center.x, 
-        top: center.y, 
-        originX: "center", 
+
+      const frameGroup = new fabric.Group([frame, frameLabel], {
+        left: center.x,
+        top: center.y,
+        originX: "center",
         originY: "center",
         customVariant: "frame",
         componentData: { variant: "frame" }
@@ -3596,7 +3597,7 @@ const DesignEditor = () => {
     if (!fabricCanvas) return;
     const center = fabricCanvas.getVpCenter();
     const star = new fabric.Path(s.path, {
-      left: center.x, top: center.y, originX: "center", originY: "center", fill: s.fill, scaleX: 80 / (s.width||100), scaleY: 80 / (s.height||100)
+      left: center.x, top: center.y, originX: "center", originY: "center", fill: s.fill, scaleX: 80 / (s.width || 100), scaleY: 80 / (s.height || 100)
     });
     restoreInteractivity(star);
     fabricCanvas.add(star);
@@ -3679,7 +3680,7 @@ const DesignEditor = () => {
     setSaveStatus("Sauvegarde…");
     try {
       const json = c.toJSON(FABRIC_CUSTOM_PROPS);
-      
+
       // Prevent massive base64 media saving that crashes API/DB
       if (json.objects) {
         json.objects.forEach(obj => {
@@ -3695,7 +3696,7 @@ const DesignEditor = () => {
           }
         });
       }
-      
+
       json.objects = (json.objects || []).filter(o => !o.excludeFromExport);
       json.viewportTransform = c.viewportTransform;
       await API.put(`/versions/${vId}`, { contenu: json });
@@ -3858,7 +3859,7 @@ const DesignEditor = () => {
     setCreatingVersion(true);
     try {
       const json = fabricCanvas.toJSON(FABRIC_CUSTOM_PROPS);
-      
+
       // Prevent massive base64 media saving that crashes API/DB
       if (json.objects) {
         json.objects.forEach(obj => {
@@ -3874,7 +3875,7 @@ const DesignEditor = () => {
           }
         });
       }
-      
+
       const { data } = await API.post("/versions", { contenu: json, id_maquette: maquetteIdRef.current, commentaire: "Nouvelle version manuelle" });
       const newVersion = data.version;
       setCurrentVersionNum(newVersion.numéro_version);
@@ -3905,14 +3906,14 @@ const DesignEditor = () => {
         const safeContenuStr = JSON.stringify(contenu)
           .replace(/"(?:blob|file):[^"]+"/g, '"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="');
         const safeContenu = JSON.parse(safeContenuStr);
-        
+
         const loadRes = fabricCanvas.loadFromJSON(safeContenu, customFabricReviver);
         if (loadRes && typeof loadRes.then === "function") await loadRes;
-        
+
         fabricCanvas.getObjects().forEach(restoreInteractivity);
         reviveVideos(fabricCanvas);
         reviveMaps(fabricCanvas);
-        
+
         if (contenu.viewportTransform) {
           fabricCanvas.setViewportTransform(contenu.viewportTransform);
           setZoom(Math.round(fabricCanvas.getZoom() * 100));
@@ -3921,7 +3922,7 @@ const DesignEditor = () => {
           fabricCanvas.setZoom(1);
           setZoom(100);
         }
-        
+
         fabricCanvas.renderAll();
       } else {
         fabricCanvas.remove(...fabricCanvas.getObjects());
@@ -3957,7 +3958,7 @@ const DesignEditor = () => {
     setSaveStatus("Réinitialisation..."); isSwitchingVersion.current = true; debouncedSave.cancel();
     try {
       const originalContenu = designData.version.contenu;
-      
+
       // Restaurer le contenu initial sur le backend
       if (originalContenu) {
         await API.put(`/versions/${designData.version._id}`, { contenu: originalContenu });
@@ -3967,13 +3968,13 @@ const DesignEditor = () => {
 
       // Recharger correctement la version initiale
       await handleLoadVersion({ ...designData.version, contenu: originalContenu });
-      
-      setSaveStatus("À jour ☁️"); 
+
+      setSaveStatus("À jour ☁️");
       showToast("Réinitialisation effectuée", "success");
-    } catch (err) { 
+    } catch (err) {
       console.error(err);
-      setSaveStatus("Erreur ❌"); 
-      showToast("Erreur lors de la réinitialisation", "error"); 
+      setSaveStatus("Erreur ❌");
+      showToast("Erreur lors de la réinitialisation", "error");
     }
     finally { setTimeout(() => { isSwitchingVersion.current = false; }, 300); }
   };
@@ -4162,7 +4163,7 @@ const DesignEditor = () => {
   const buildTemplateElements = (item, x, y) => {
     let elements = [];
     let componentData = {};
-    
+
     switch (item.variant) {
       case "tpl_home": {
         // Page d'accueil : Header + Hero + Features + Footer
@@ -4181,78 +4182,78 @@ const DesignEditor = () => {
         // Image Placeholder (Abstract)
         const imgPlaceholder = new fabric.Rect({ width: 800, height: 350, fill: "#e2e8f0", rx: 24, ry: 24, left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imagePlaceholder", customName: "Image placeholder" });
         const imgIcon = new fabric.IText("🖼 Illustration", { fontSize: 24, fontWeight: "700", fill: "#94a3b8", fontFamily: "Inter", left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imageText", customName: "Texte image" });
-        
+
         elements = [bg, navBg, logo, navLinks, ctaBtn, ctaTxt, heroH1, heroSub, heroBtnBg, heroBtnTxt, imgPlaceholder, imgIcon];
         componentData = { variant: "tpl_home", editable: true, templateType: "homepage" };
         break;
       }
-      
+
       case "tpl_login": {
         // Splitted screen login page
         const bg = new fabric.Rect({ width: 1000, height: 600, fill: "white", originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.1)", blur: 30, offsetY: 15 }), editable: true, customType: "background", customName: "Fond de page" });
         const leftPanel = new fabric.Rect({ width: 500, height: 600, fill: "#6366f1", left: -250, top: 0, originX: "center", originY: "center", editable: true, customType: "leftPanel", customName: "Panneau gauche" });
         const leftH1 = new fabric.IText("Heureux de\nvous revoir.", { fontSize: 48, fontWeight: "900", fill: "white", fontFamily: "Inter", left: -420, top: -40, originX: "left", originY: "center", lineHeight: 1.2, editable: true, customType: "welcomeHeading", customName: "Titre bienvenue" });
         const leftP = new fabric.IText("Connectez-vous pour continuer\nvotre expérience exclusive.", { fontSize: 16, fill: "rgba(255,255,255,0.8)", fontFamily: "Inter", left: -420, top: 60, originX: "left", originY: "center", lineHeight: 1.5, editable: true, customType: "welcomeSubtext", customName: "Sous-titre bienvenue" });
-        
+
         // Right Form
         const logo = new fabric.IText("🔒 Espace Client", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -200, originX: "center", originY: "center", editable: true, customType: "formLogo", customName: "Logo formulaire" });
         const title = new fabric.IText("Se connecter", { fontSize: 32, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -140, originX: "center", originY: "center", editable: true, customType: "formTitle", customName: "Titre formulaire" });
-        
+
         // Email Input
         const l1 = new fabric.IText("Email", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: -80, originX: "left", originY: "center", editable: true, customType: "emailLabel", customName: "Label email" });
         const i1Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: -40, originX: "center", originY: "center", editable: true, customType: "emailInput", customName: "Champ email" });
         const i1Txt = new fabric.IText("votre@email.com", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: -40, originX: "left", originY: "center", editable: true, customType: "emailPlaceholder", customName: "Placeholder email" });
-        
+
         // Password Input
         const l2 = new fabric.IText("Mot de passe", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: 30, originX: "left", originY: "center", editable: true, customType: "passwordLabel", customName: "Label mot de passe" });
         const i2Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: 70, originX: "center", originY: "center", editable: true, customType: "passwordInput", customName: "Champ mot de passe" });
         const i2Txt = new fabric.IText("•••••••", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: 70, originX: "left", originY: "center", editable: true, customType: "passwordPlaceholder", customName: "Placeholder mot de passe" });
-        
+
         // Submit
         const btnBg = new fabric.Rect({ width: 340, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitButton", customName: "Bouton connexion" });
         const btnTxt = new fabric.IText("Connexion", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitText", customName: "Texte bouton connexion" });
-        
+
         const forgot = new fabric.IText("Mot de passe oublié ?", { fontSize: 13, fontWeight: "600", fill: "#6366f1", fontFamily: "Inter", left: 250, top: 220, originX: "center", originY: "center", editable: true, customType: "forgotLink", customName: "Lien mot de passe oublié" });
 
         elements = [bg, leftPanel, leftH1, leftP, logo, title, l1, i1Bg, i1Txt, l2, i2Bg, i2Txt, btnBg, btnTxt, forgot];
         componentData = { variant: "tpl_login", editable: true, templateType: "login" };
         break;
       }
-      
+
       case "tpl_about": {
         // Page À Propos avec équipe et valeurs
         const bg = new fabric.Rect({ width: 1000, height: 800, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background", customName: "Fond de page" });
-        
+
         // Header
         const headerBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -360, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "header", customName: "Header" });
         const logo = new fabric.IText("🏢 ENTREPRISE", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -360, originX: "left", originY: "center", editable: true, customType: "logo", customName: "Logo entreprise" });
         const navLinks = new fabric.IText("Accueil        À Propos        Contact", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -360, originX: "center", originY: "center", editable: true, customType: "navLinks", customName: "Navigation" });
-        
+
         // Hero Section
         const heroH1 = new fabric.IText("Notre Histoire", { fontSize: 48, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -200, originX: "center", originY: "center", editable: true, customType: "heroHeading", customName: "Titre histoire" });
         const heroSub = new fabric.IText("Depuis 2010, nous transformons les idées en expériences numériques exceptionnelles.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -120, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "heroSubtext", customName: "Sous-titre histoire" });
-        
+
         // Mission Section
         const missionBg = new fabric.Rect({ width: 900, height: 200, fill: "white", rx: 16, ry: 16, left: 0, top: 20, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetY: 4 }), editable: true, customType: "missionBox", customName: "Boîte mission" });
         const missionTitle = new fabric.IText("Notre Mission", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 20, originX: "left", originY: "center", editable: true, customType: "missionTitle", customName: "Titre mission" });
         const missionText = new fabric.IText("Innover continuellement pour offrir des solutions web qui dépassent les attentes de nos clients.", { fontSize: 16, fill: "#475569", fontFamily: "Inter", left: -380, top: 60, originX: "left", originY: "center", lineHeight: 1.6, editable: true, customType: "missionText", customName: "Texte mission" });
-        
+
         // Values Section
         const valuesTitle = new fabric.IText("Nos Valeurs", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 160, originX: "left", originY: "center", editable: true, customType: "valuesTitle", customName: "Titre valeurs" });
-        
+
         // Value cards
         const value1Bg = new fabric.Rect({ width: 250, height: 120, fill: "#f1f5f9", rx: 12, ry: 12, left: -280, top: 280, originX: "center", originY: "center", editable: true, customType: "value1Bg", customName: "Fond valeur 1" });
         const value1Icon = new fabric.IText("💡", { fontSize: 32, left: -280, top: 250, originX: "center", originY: "center", editable: true, customType: "value1Icon", customName: "Icône valeur 1" });
         const value1Title = new fabric.IText("Innovation", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: 310, originX: "center", originY: "center", editable: true, customType: "value1Title", customName: "Titre valeur 1" });
-        
+
         const value2Bg = new fabric.Rect({ width: 250, height: 120, fill: "#e0f2fe", rx: 12, ry: 12, left: 0, top: 280, originX: "center", originY: "center", editable: true, customType: "value2Bg", customName: "Fond valeur 2" });
         const value2Icon = new fabric.IText("🤝", { fontSize: 32, left: 0, top: 250, originX: "center", originY: "center", editable: true, customType: "value2Icon", customName: "Icône valeur 2" });
         const value2Title = new fabric.IText("Confiance", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 0, top: 310, originX: "center", originY: "center", editable: true, customType: "value2Title", customName: "Titre valeur 2" });
-        
+
         const value3Bg = new fabric.Rect({ width: 250, height: 120, fill: "#fef3c7", rx: 12, ry: 12, left: 280, top: 280, originX: "center", originY: "center", editable: true, customType: "value3Bg", customName: "Fond valeur 3" });
         const value3Icon = new fabric.IText("⭐", { fontSize: 32, left: 280, top: 250, originX: "center", originY: "center", editable: true, customType: "value3Icon", customName: "Icône valeur 3" });
         const value3Title = new fabric.IText("Excellence", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 280, top: 310, originX: "center", originY: "center", editable: true, customType: "value3Title", customName: "Titre valeur 3" });
-        
+
         // CTA Button
         const ctaBg = new fabric.Rect({ width: 200, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: 380, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "ctaButton", customName: "Bouton CTA" });
         const ctaText = new fabric.IText("Nous Contacter", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: 380, originX: "center", originY: "center", editable: true, customType: "ctaText", customName: "Texte bouton CTA" });
@@ -4261,36 +4262,36 @@ const DesignEditor = () => {
         componentData = { variant: "tpl_about", editable: true, templateType: "about" };
         break;
       }
-      
+
       case "tpl_cart": {
         const bg = new fabric.Rect({ width: 900, height: 700, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background", customName: "Fond panier" });
         const h1 = new fabric.IText("Votre Panier", { fontSize: 36, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -400, top: -300, originX: "left", originY: "center", editable: true, customType: "cartTitle", customName: "Titre panier" });
-        
+
         // Items list background
         const listBg = new fabric.Rect({ width: 560, height: 440, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: -120, top: -20, originX: "center", originY: "center", editable: true, customType: "itemsList", customName: "Liste articles" });
-        
+
         // Summary background
         const sumBg = new fabric.Rect({ width: 280, height: 350, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: 320, top: -65, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetX: 0, offsetY: 4 }), editable: true, customType: "summaryBox", customName: "Boîte résumé" });
-        
+
         elements = [bg, h1, listBg, sumBg];
 
         // 3 products
-        for(let i=0; i<3; i++) {
+        for (let i = 0; i < 3; i++) {
           let y = -160 + (i * 140);
-          elements.push(new fabric.Rect({ width: 100, height: 100, fill: "#f1f5f9", rx: 12, ry: 12, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productImage${i+1}`, customName: `Image produit ${i+1}` }));
-          elements.push(new fabric.IText("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i+1}`, customName: `Icône produit ${i+1}` }));
-          elements.push(new fabric.IText(`Produit Premium ${i+1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i+1}`, customName: `Nom produit ${i+1}` }));
-          elements.push(new fabric.IText("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i+1}`, customName: `Détails produit ${i+1}` }));
-          elements.push(new fabric.IText("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i+1}`, customName: `Quantité produit ${i+1}` }));
-          elements.push(new fabric.IText("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i+1}`, customName: `Prix produit ${i+1}` }));
-          if(i < 2) elements.push(new fabric.Line([-380, y + 70, 140, y + 70], { stroke: "#e2e8f0", strokeWidth: 1 }));
+          elements.push(new fabric.Rect({ width: 100, height: 100, fill: "#f1f5f9", rx: 12, ry: 12, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productImage${i + 1}`, customName: `Image produit ${i + 1}` }));
+          elements.push(new fabric.IText("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i + 1}`, customName: `Icône produit ${i + 1}` }));
+          elements.push(new fabric.IText(`Produit Premium ${i + 1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i + 1}`, customName: `Nom produit ${i + 1}` }));
+          elements.push(new fabric.IText("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i + 1}`, customName: `Détails produit ${i + 1}` }));
+          elements.push(new fabric.IText("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i + 1}`, customName: `Quantité produit ${i + 1}` }));
+          elements.push(new fabric.IText("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i + 1}`, customName: `Prix produit ${i + 1}` }));
+          if (i < 2) elements.push(new fabric.Line([-380, y + 70, 140, y + 70], { stroke: "#e2e8f0", strokeWidth: 1 }));
         }
 
         // Summary details
         elements.push(new fabric.IText("Résumé", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -200, originX: "left", originY: "center", editable: true, customType: "summaryTitle", customName: "Titre résumé" }));
         elements.push(new fabric.IText("Sous-total", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -140, originX: "left", originY: "center", editable: true, customType: "subtotalLabel", customName: "Label sous-total" }));
         elements.push(new fabric.IText("297,00 €", { fontSize: 14, fontWeight: "600", fill: "#0f172a", fontFamily: "Inter", left: 440, top: -140, originX: "right", originY: "center", editable: true, customType: "subtotalAmount", customName: "Montant sous-total" }));
-        
+
         elements.push(new fabric.IText("Livraison", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -100, originX: "left", originY: "center", editable: true, customType: "shippingLabel", customName: "Label livraison" }));
         elements.push(new fabric.IText("Gratuite", { fontSize: 14, fontWeight: "600", fill: "#10b981", fontFamily: "Inter", left: 440, top: -100, originX: "right", originY: "center", editable: true, customType: "shippingAmount", customName: "Montant livraison" }));
 
@@ -4305,7 +4306,7 @@ const DesignEditor = () => {
         componentData = { variant: "tpl_cart", editable: true, templateType: "cart" };
         break;
       }
-      
+
       default: return null;
     }
 
@@ -4371,23 +4372,23 @@ const DesignEditor = () => {
         break;
       }
       case "frame": {
-        const frame = new fabric.Rect({ 
-          width: 600, 
-          height: 400, 
-          fill: "transparent", 
-          stroke: "#cbd5e1", 
-          strokeWidth: 2, 
+        const frame = new fabric.Rect({
+          width: 600,
+          height: 400,
+          fill: "transparent",
+          stroke: "#cbd5e1",
+          strokeWidth: 2,
           strokeDashArray: [8, 4],
-          rx: 8, 
-          ry: 8, 
-          originX: "center", 
-          originY: "center" 
+          rx: 8,
+          ry: 8,
+          originX: "center",
+          originY: "center"
         });
-        const frameLabel = new fabric.IText("Frame / Section", { 
-          fontSize: 12, 
-          fill: "#94a3b8", 
-          fontFamily: "Inter", 
-          originX: "center", 
+        const frameLabel = new fabric.IText("Frame / Section", {
+          fontSize: 12,
+          fill: "#94a3b8",
+          fontFamily: "Inter",
+          originX: "center",
           originY: "top",
           top: -200 - 20
         });
@@ -4626,18 +4627,18 @@ const DesignEditor = () => {
       case "chart_donut":
       case "chart_line":
       case "chart_area": {
-        componentData = { 
-          chartTitle: "Titre du Graphique", 
-          chartColor: "#6366f1", 
-          secondColor: "#8b5cf6", 
-          chartLabels: ["Lun", "Mar", "Mer", "Jeu", "Ven"], 
+        componentData = {
+          chartTitle: "Titre du Graphique",
+          chartColor: "#6366f1",
+          secondColor: "#8b5cf6",
+          chartLabels: ["Lun", "Mar", "Mer", "Jeu", "Ven"],
           chartValues: [30, 80, 50, 100, 60],
-          variant: item.variant 
+          variant: item.variant
         };
         elements = generateChartObjects(item.variant, componentData);
         break;
       }
-      
+
       // ─── TEMPLATES COMPLETS ───
       case "tpl_home": {
         // Page d'accueil : Header + Hero + Features + Footer
@@ -4656,7 +4657,7 @@ const DesignEditor = () => {
         // Image Placeholder (Abstract)
         const imgPlaceholder = new fabric.Rect({ width: 800, height: 350, fill: "#e2e8f0", rx: 24, ry: 24, left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imagePlaceholder" });
         const imgIcon = new fabric.IText("🖼 Illustration", { fontSize: 24, fontWeight: "700", fill: "#94a3b8", fontFamily: "Inter", left: 0, top: 220, originX: "center", originY: "center", editable: true, customType: "imageText" });
-        
+
         elements = [bg, navBg, logo, navLinks, ctaBtn, ctaTxt, heroH1, heroSub, heroBtnBg, heroBtnTxt, imgPlaceholder, imgIcon];
         componentData = { variant: "tpl_home", editable: true, templateType: "homepage" };
         break;
@@ -4668,25 +4669,25 @@ const DesignEditor = () => {
         const leftPanel = new fabric.Rect({ width: 500, height: 600, fill: "#6366f1", left: -250, top: 0, originX: "center", originY: "center", editable: true, customType: "leftPanel" });
         const leftH1 = new fabric.IText("Heureux de\nvous revoir.", { fontSize: 48, fontWeight: "900", fill: "white", fontFamily: "Inter", left: -420, top: -40, originX: "left", originY: "center", lineHeight: 1.2, editable: true, customType: "welcomeHeading" });
         const leftP = new fabric.IText("Connectez-vous pour continuer\nvotre expérience exclusive.", { fontSize: 16, fill: "rgba(255,255,255,0.8)", fontFamily: "Inter", left: -420, top: 60, originX: "left", originY: "center", lineHeight: 1.5, editable: true, customType: "welcomeSubtext" });
-        
+
         // Right Form
         const logo = new fabric.IText("🔒 Espace Client", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -200, originX: "center", originY: "center", editable: true, customType: "formLogo" });
         const title = new fabric.IText("Se connecter", { fontSize: 32, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 250, top: -140, originX: "center", originY: "center", editable: true, customType: "formTitle" });
-        
+
         // Email Input
         const l1 = new fabric.IText("Email", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: -80, originX: "left", originY: "center", editable: true, customType: "emailLabel" });
         const i1Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: -40, originX: "center", originY: "center", editable: true, customType: "emailInput" });
         const i1Txt = new fabric.IText("votre@email.com", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: -40, originX: "left", originY: "center", editable: true, customType: "emailPlaceholder" });
-        
+
         // Password Input
         const l2 = new fabric.IText("Mot de passe", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 80, top: 30, originX: "left", originY: "center", editable: true, customType: "passwordLabel" });
         const i2Bg = new fabric.Rect({ width: 340, height: 50, fill: "white", rx: 8, ry: 8, stroke: "#cbd5e1", strokeWidth: 1, left: 250, top: 70, originX: "center", originY: "center", editable: true, customType: "passwordInput" });
         const i2Txt = new fabric.IText("•••••••", { fontSize: 14, fill: "#94a3b8", fontFamily: "Inter", left: 100, top: 70, originX: "left", originY: "center", editable: true, customType: "passwordPlaceholder" });
-        
+
         // Submit
         const btnBg = new fabric.Rect({ width: 340, height: 50, fill: "#0f172a", rx: 8, ry: 8, left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitButton" });
         const btnTxt = new fabric.IText("Connexion", { fontSize: 15, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 250, top: 160, originX: "center", originY: "center", editable: true, customType: "submitText" });
-        
+
         const forgot = new fabric.IText("Mot de passe oublié ?", { fontSize: 13, fontWeight: "600", fill: "#6366f1", fontFamily: "Inter", left: 250, top: 220, originX: "center", originY: "center", editable: true, customType: "forgotLink" });
 
         elements = [bg, leftPanel, leftH1, leftP, logo, title, l1, i1Bg, i1Txt, l2, i2Bg, i2Txt, btnBg, btnTxt, forgot];
@@ -4697,32 +4698,32 @@ const DesignEditor = () => {
       case "tpl_cart": {
         const bg = new fabric.Rect({ width: 900, height: 700, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background" });
         const h1 = new fabric.IText("Votre Panier", { fontSize: 36, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -400, top: -300, originX: "left", originY: "center", editable: true, customType: "cartTitle" });
-        
+
         // Items list background
         const listBg = new fabric.Rect({ width: 560, height: 440, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: -120, top: -20, originX: "center", originY: "center", editable: true, customType: "itemsList" });
-        
+
         // Summary background
         const sumBg = new fabric.Rect({ width: 280, height: 350, fill: "white", rx: 16, ry: 16, stroke: "#e2e8f0", strokeWidth: 1, left: 320, top: -65, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetX: 0, offsetY: 4 }), editable: true, customType: "summaryBox" });
-        
+
         elements = [bg, h1, listBg, sumBg];
 
         // 3 products
-        for(let i=0; i<3; i++) {
+        for (let i = 0; i < 3; i++) {
           let y = -160 + (i * 140);
-          elements.push(new fabric.Rect({ width: 100, height: 100, fill: "#f1f5f9", rx: 12, ry: 12, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productImage${i+1}` }));
-          elements.push(new fabric.IText("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i+1}` }));
-          elements.push(new fabric.IText(`Produit Premium ${i+1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i+1}` }));
-          elements.push(new fabric.IText("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i+1}` }));
-          elements.push(new fabric.IText("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i+1}` }));
-          elements.push(new fabric.IText("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i+1}` }));
-          if(i < 2) elements.push(new fabric.Line([-380, y + 70, 140, y + 70], { stroke: "#e2e8f0", strokeWidth: 1 }));
+          elements.push(new fabric.Rect({ width: 100, height: 100, fill: "#f1f5f9", rx: 12, ry: 12, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productImage${i + 1}` }));
+          elements.push(new fabric.IText("📦", { fontSize: 32, left: -360, top: y, originX: "center", originY: "center", editable: true, customType: `productIcon${i + 1}` }));
+          elements.push(new fabric.IText(`Produit Premium ${i + 1}`, { fontSize: 16, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: y - 20, originX: "left", originY: "center", editable: true, customType: `productName${i + 1}` }));
+          elements.push(new fabric.IText("Couleur : Noir • Taille : M", { fontSize: 13, fill: "#64748b", fontFamily: "Inter", left: -280, top: y + 5, originX: "left", originY: "center", editable: true, customType: `productDetails${i + 1}` }));
+          elements.push(new fabric.IText("Quantité : 1", { fontSize: 13, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: -280, top: y + 30, originX: "left", originY: "center", editable: true, customType: `productQuantity${i + 1}` }));
+          elements.push(new fabric.IText("99,00 €", { fontSize: 18, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 100, top: y, originX: "center", originY: "center", editable: true, customType: `productPrice${i + 1}` }));
+          if (i < 2) elements.push(new fabric.Line([-380, y + 70, 140, y + 70], { stroke: "#e2e8f0", strokeWidth: 1 }));
         }
 
         // Summary details
         elements.push(new fabric.IText("Résumé", { fontSize: 20, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: 200, top: -200, originX: "left", originY: "center", editable: true, customType: "summaryTitle" }));
         elements.push(new fabric.IText("Sous-total", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -140, originX: "left", originY: "center", editable: true, customType: "subtotalLabel" }));
         elements.push(new fabric.IText("297,00 €", { fontSize: 14, fontWeight: "600", fill: "#0f172a", fontFamily: "Inter", left: 440, top: -140, originX: "right", originY: "center", editable: true, customType: "subtotalAmount" }));
-        
+
         elements.push(new fabric.IText("Livraison", { fontSize: 14, fill: "#475569", fontFamily: "Inter", left: 200, top: -100, originX: "left", originY: "center", editable: true, customType: "shippingLabel" }));
         elements.push(new fabric.IText("Gratuite", { fontSize: 14, fontWeight: "600", fill: "#10b981", fontFamily: "Inter", left: 440, top: -100, originX: "right", originY: "center", editable: true, customType: "shippingAmount" }));
 
@@ -4741,37 +4742,37 @@ const DesignEditor = () => {
       case "tpl_about": {
         // Page À Propos avec équipe et valeurs
         const bg = new fabric.Rect({ width: 1000, height: 800, fill: "#f8fafc", originX: "center", originY: "center", editable: true, customType: "background" });
-        
+
         // Header
         const headerBg = new fabric.Rect({ width: 1000, height: 80, fill: "white", left: 0, top: -360, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.05)", blur: 10, offsetY: 4 }), editable: true, customType: "header" });
         const logo = new fabric.IText("🏢 ENTREPRISE", { fontSize: 24, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", left: -420, top: -360, originX: "left", originY: "center", editable: true, customType: "logo" });
         const navLinks = new fabric.IText("Accueil        À Propos        Contact", { fontSize: 14, fontWeight: "600", fill: "#475569", fontFamily: "Inter", left: 0, top: -360, originX: "center", originY: "center", editable: true, customType: "navLinks" });
-        
+
         // Hero Section
         const heroH1 = new fabric.IText("Notre Histoire", { fontSize: 48, fontWeight: "900", fill: "#0f172a", fontFamily: "Inter", textAlign: "center", left: 0, top: -200, originX: "center", originY: "center", editable: true, customType: "heroHeading" });
         const heroSub = new fabric.IText("Depuis 2010, nous transformons les idées en expériences numériques exceptionnelles.", { fontSize: 18, fill: "#64748b", fontFamily: "Inter", textAlign: "center", left: 0, top: -120, originX: "center", originY: "center", lineHeight: 1.5, editable: true, customType: "heroSubtext" });
-        
+
         // Mission Section
         const missionBg = new fabric.Rect({ width: 900, height: 200, fill: "white", rx: 16, ry: 16, left: 0, top: 20, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.04)", blur: 12, offsetY: 4 }), editable: true, customType: "missionBox" });
         const missionTitle = new fabric.IText("Notre Mission", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 20, originX: "left", originY: "center", editable: true, customType: "missionTitle" });
         const missionText = new fabric.IText("Innover continuellement pour offrir des solutions web qui dépassent les attentes de nos clients.", { fontSize: 16, fill: "#475569", fontFamily: "Inter", left: -380, top: 60, originX: "left", originY: "center", lineHeight: 1.6, editable: true, customType: "missionText" });
-        
+
         // Values Section
         const valuesTitle = new fabric.IText("Nos Valeurs", { fontSize: 24, fontWeight: "800", fill: "#0f172a", fontFamily: "Inter", left: -380, top: 160, originX: "left", originY: "center", editable: true, customType: "valuesTitle" });
-        
+
         // Value cards
         const value1Bg = new fabric.Rect({ width: 250, height: 120, fill: "#f1f5f9", rx: 12, ry: 12, left: -280, top: 280, originX: "center", originY: "center", editable: true, customType: "value1Bg" });
         const value1Icon = new fabric.IText("💡", { fontSize: 32, left: -280, top: 250, originX: "center", originY: "center", editable: true, customType: "value1Icon" });
         const value1Title = new fabric.IText("Innovation", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: -280, top: 310, originX: "center", originY: "center", editable: true, customType: "value1Title" });
-        
+
         const value2Bg = new fabric.Rect({ width: 250, height: 120, fill: "#e0f2fe", rx: 12, ry: 12, left: 0, top: 280, originX: "center", originY: "center", editable: true, customType: "value2Bg" });
         const value2Icon = new fabric.IText("🤝", { fontSize: 32, left: 0, top: 250, originX: "center", originY: "center", editable: true, customType: "value2Icon" });
         const value2Title = new fabric.IText("Confiance", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 0, top: 310, originX: "center", originY: "center", editable: true, customType: "value2Title" });
-        
+
         const value3Bg = new fabric.Rect({ width: 250, height: 120, fill: "#fef3c7", rx: 12, ry: 12, left: 280, top: 280, originX: "center", originY: "center", editable: true, customType: "value3Bg" });
         const value3Icon = new fabric.IText("⭐", { fontSize: 32, left: 280, top: 250, originX: "center", originY: "center", editable: true, customType: "value3Icon" });
         const value3Title = new fabric.IText("Excellence", { fontSize: 18, fontWeight: "700", fill: "#0f172a", fontFamily: "Inter", left: 280, top: 310, originX: "center", originY: "center", editable: true, customType: "value3Title" });
-        
+
         // CTA Button
         const ctaBg = new fabric.Rect({ width: 200, height: 56, fill: "#6366f1", rx: 28, ry: 28, left: 0, top: 380, originX: "center", originY: "center", shadow: new fabric.Shadow({ color: "rgba(99,102,241,0.4)", blur: 16, offsetY: 8 }), editable: true, customType: "ctaButton" });
         const ctaText = new fabric.IText("Nous Contacter", { fontSize: 16, fontWeight: "700", fill: "white", fontFamily: "Inter", left: 0, top: 380, originX: "center", originY: "center", editable: true, customType: "ctaText" });
@@ -4785,11 +4786,11 @@ const DesignEditor = () => {
     }
 
     if (elements.length === 0) return null;
-    
+
     // Special handling for video and map components
     let groupProps = { left: x, top: y, originX: "center", originY: "center" };
     let customName = item.label;
-    
+
     if (item.variant === "video") {
       customName = "Lecteur Vidéo";
       groupProps = {
@@ -4813,12 +4814,12 @@ const DesignEditor = () => {
         showMarker: true
       };
     }
-    
+
     const group = new fabric.Group(elements, groupProps);
     group.customName = customName;
     group.customVariant = item.variant;
     group.componentData = componentData;
-    
+
     // Copy special properties to group for video/map
     if (item.variant === "video") {
       group.videoSrc = "";
@@ -4831,7 +4832,7 @@ const DesignEditor = () => {
       group.mapType = "m";
       group.showMarker = true;
     }
-    
+
     // Add interactivity for template groups
     if (componentData.templateType || item.variant.startsWith("chart_")) {
       interactivity = (grp) => {
@@ -4849,7 +4850,7 @@ const DesignEditor = () => {
               }
             });
           }
-          
+
           obj.on("selected", () => {
             if (fabricCanvas && obj.fill) {
               // Update color picker when element is selected
@@ -4860,7 +4861,7 @@ const DesignEditor = () => {
             }
           });
         });
-        
+
         // Make the whole group selectable
         grp.on("mousedown", () => {
           if (fabricCanvas) {
@@ -4870,7 +4871,7 @@ const DesignEditor = () => {
         });
       };
     }
-    
+
     if (interactivity) interactivity(group);
     return group;
   };
@@ -4878,7 +4879,7 @@ const DesignEditor = () => {
   // ── Drag & drop ────────────────────────────────────────────────────────────
   const handleSidebarClick = (item) => { addElementToCanvas(item); };
   const handleDragStart = (e, item) => { e.dataTransfer.setData("element-data", JSON.stringify(item)); };
-  const handleDragEnd = () => {};
+  const handleDragEnd = () => { };
 
   const handleCanvasDrop = (e) => {
     if (!isDesigner || !fabricCanvas) return;
@@ -4967,13 +4968,13 @@ const DesignEditor = () => {
         fabricCanvas.add(imgInstance);
         fabricCanvas.setActiveObject(imgInstance);
         fabricCanvas.renderAll();
-        
+
         // Add to image history
         const historyId = typeof f.target?.result === "string"
           ? addImageToHistory(f.target.result, file.name, imgEl.width, imgEl.height)
           : null;
         imgInstance.imageHistoryId = historyId;
-        
+
         debouncedSave(fabricCanvas, currentVersionIdRef.current);
         showToast("Image importée avec succès", "success");
       };
@@ -4987,12 +4988,12 @@ const DesignEditor = () => {
   // Professional design functions
   const handleMultiSelection = (e) => {
     if (!fabricCanvas || !isDesigner) return;
-    
+
     if (e.shiftKey && e.target) {
       // Shift+click for multi-selection
       const currentSelection = fabricCanvas.getActiveObjects() || [];
       const isSelected = currentSelection.includes(e.target);
-      
+
       if (isSelected) {
         // Remove from selection
         const newSelection = currentSelection.filter(obj => obj !== e.target);
@@ -5010,7 +5011,7 @@ const DesignEditor = () => {
           canvas: fabricCanvas
         }));
       }
-      
+
       fabricCanvas.renderAll();
       updateSelectedObjects();
     }
@@ -5025,7 +5026,7 @@ const DesignEditor = () => {
 
   const createSelectionBox = (pointer) => {
     if (!fabricCanvas) return;
-    
+
     const selectionBox = new fabric.Rect({
       left: pointer.x,
       top: pointer.y,
@@ -5039,7 +5040,7 @@ const DesignEditor = () => {
       evented: false,
       excludeFromExport: true
     });
-    
+
     setSelectionBox(selectionBox);
     fabricCanvas.add(selectionBox);
     setIsMultiSelecting(true);
@@ -5047,25 +5048,25 @@ const DesignEditor = () => {
 
   const updateSelectionBox = (pointer) => {
     if (!selectionBox || !fabricCanvas) return;
-    
+
     const startX = selectionBox.left;
     const startY = selectionBox.top;
     const width = pointer.x - startX;
     const height = pointer.y - startY;
-    
+
     selectionBox.set({
       width: Math.abs(width),
       height: Math.abs(height),
       left: width < 0 ? pointer.x : startX,
       top: height < 0 ? pointer.y : startY
     });
-    
+
     fabricCanvas.renderAll();
   };
 
   const finalizeSelectionBox = () => {
     if (!selectionBox || !fabricCanvas) return;
-    
+
     // Get objects within selection box
     const boxBounds = selectionBox.getBoundingRect();
     const objectsInSelection = fabricCanvas.getObjects().filter(obj => {
@@ -5078,12 +5079,12 @@ const DesignEditor = () => {
         objBounds.top + objBounds.height > boxBounds.top
       );
     });
-    
+
     // Remove selection box
     fabricCanvas.remove(selectionBox);
     setSelectionBox(null);
     setIsMultiSelecting(false);
-    
+
     // Set active selection
     if (objectsInSelection.length > 0) {
       fabricCanvas.discardActiveObject();
@@ -5097,12 +5098,12 @@ const DesignEditor = () => {
 
   const alignObjects = (alignment) => {
     if (!fabricCanvas || selectedObjects.length < 2) return;
-    
+
     const activeSelection = fabricCanvas.getActiveObject();
     if (!activeSelection || activeSelection.type !== 'activeSelection') return;
-    
+
     const bounds = activeSelection.getBoundingRect();
-    
+
     selectedObjects.forEach(obj => {
       switch (alignment) {
         case 'left':
@@ -5126,22 +5127,22 @@ const DesignEditor = () => {
       }
       obj.setCoords();
     });
-    
+
     fabricCanvas.renderAll();
     debouncedSave(fabricCanvas, currentVersionIdRef.current);
   };
 
   const distributeObjects = (distribution) => {
     if (!fabricCanvas || selectedObjects.length < 3) return;
-    
+
     const sortedObjects = [...selectedObjects].sort((a, b) => {
       return distribution === 'horizontal' ? a.left - b.left : a.top - b.top;
     });
-    
+
     if (distribution === 'horizontal') {
       const totalWidth = sortedObjects[sortedObjects.length - 1].left - sortedObjects[0].left;
       const spacing = totalWidth / (sortedObjects.length - 1);
-      
+
       sortedObjects.forEach((obj, index) => {
         obj.set({ left: sortedObjects[0].left + spacing * index });
         obj.setCoords();
@@ -5149,74 +5150,74 @@ const DesignEditor = () => {
     } else {
       const totalHeight = sortedObjects[sortedObjects.length - 1].top - sortedObjects[0].top;
       const spacing = totalHeight / (sortedObjects.length - 1);
-      
+
       sortedObjects.forEach((obj, index) => {
         obj.set({ top: sortedObjects[0].top + spacing * index });
         obj.setCoords();
       });
     }
-    
+
     fabricCanvas.renderAll();
     debouncedSave(fabricCanvas, currentVersionIdRef.current);
   };
 
   const groupObjects = () => {
     if (!fabricCanvas || selectedObjects.length < 2) return;
-    
+
     const activeSelection = fabricCanvas.getActiveObject();
     if (!activeSelection || activeSelection.type !== 'activeSelection') return;
-    
+
     const group = new fabric.Group(selectedObjects, {
       canvas: fabricCanvas
     });
-    
+
     fabricCanvas.remove(...selectedObjects);
     fabricCanvas.add(group);
     fabricCanvas.setActiveObject(group);
     fabricCanvas.renderAll();
-    
+
     updateSelectedObjects();
     debouncedSave(fabricCanvas, currentVersionIdRef.current);
   };
 
   const ungroupObjects = () => {
     if (!fabricCanvas || !selectedObj || selectedObj.type !== 'group') return;
-    
+
     const group = selectedObj;
     const items = [...group.getObjects()];
     const transforms = items.map(child => fabric.util.qrDecompose(child.calcTransformMatrix()));
-    
+
     fabricCanvas.remove(group);
-    
+
     items.forEach((child, i) => {
       const opt = transforms[i];
       child.set({
-          left: opt.translateX, top: opt.translateY,
-          scaleX: opt.scaleX, scaleY: opt.scaleY,
-          angle: opt.angle, skewX: opt.skewX, skewY: opt.skewY,
-          group: null,
-          editable: true,
-          selectable: true,
-          evented: true,
+        left: opt.translateX, top: opt.translateY,
+        scaleX: opt.scaleX, scaleY: opt.scaleY,
+        angle: opt.angle, skewX: opt.skewX, skewY: opt.skewY,
+        group: null,
+        editable: true,
+        selectable: true,
+        evented: true,
       });
       child.setCoords();
       fabricCanvas.add(child);
       restoreInteractivity(child);
     });
-    
+
     fabricCanvas.discardActiveObject();
     fabricCanvas.renderAll();
-    
+
     updateSelectedObjects();
     debouncedSave(fabricCanvas, currentVersionIdRef.current);
   };
 
   const duplicateObjects = () => {
     if (!fabricCanvas) return;
-    
+
     const objectsToDuplicate = selectedObjects.length > 0 ? selectedObjects : (selectedObj ? [selectedObj] : []);
     if (objectsToDuplicate.length === 0) return;
-    
+
     const duplicatedObjects = objectsToDuplicate.map(obj => {
       return fabric.util.object.clone(obj, (cloned) => {
         cloned.set({
@@ -5226,9 +5227,9 @@ const DesignEditor = () => {
         cloned.setCoords();
       });
     });
-    
+
     duplicatedObjects.forEach(obj => fabricCanvas.add(obj));
-    
+
     if (duplicatedObjects.length > 1) {
       fabricCanvas.setActiveObject(new fabric.ActiveSelection(duplicatedObjects, {
         canvas: fabricCanvas
@@ -5236,21 +5237,21 @@ const DesignEditor = () => {
     } else {
       fabricCanvas.setActiveObject(duplicatedObjects[0]);
     }
-    
+
     fabricCanvas.renderAll();
     updateSelectedObjects();
     debouncedSave(fabricCanvas, currentVersionIdRef.current);
   };
   const showTextToolbar = (obj) => {
     if (!obj || !fabricCanvas) return;
-    
+
     // Check if it's a text object
     if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
       const canvasRect = fabricCanvas.getElement().getBoundingClientRect();
       const objCenter = obj.getCenterPoint();
       const toolbarX = canvasRect.left + (objCenter.x * fabricCanvas.getZoom()) - 120; // Center toolbar above text
       const toolbarY = canvasRect.top + (objCenter.y * fabricCanvas.getZoom()) - 50;
-      
+
       setTextToolbarPosition({ x: toolbarX, y: toolbarY });
       setTextToolbarVisible(true);
     } else {
@@ -5264,7 +5265,7 @@ const DesignEditor = () => {
 
   const applyTextFormat = (format) => {
     if (!selectedObj || !fabricCanvas) return;
-    
+
     if (selectedObj.type === 'text' || selectedObj.type === 'i-text' || selectedObj.type === 'textbox') {
       switch (format) {
         case 'bold':
@@ -5296,7 +5297,7 @@ const DesignEditor = () => {
           selectedObj.set({ textAlign: 'justify' });
           break;
       }
-      
+
       fabricCanvas.renderAll();
       debouncedSave(fabricCanvas, currentVersionIdRef.current);
     }
@@ -5304,7 +5305,7 @@ const DesignEditor = () => {
 
   const changeTextColor = (color) => {
     if (!selectedObj || !fabricCanvas) return;
-    
+
     if (selectedObj.type === 'text' || selectedObj.type === 'i-text' || selectedObj.type === 'textbox') {
       selectedObj.set({ fill: color });
       fabricCanvas.renderAll();
@@ -5314,7 +5315,7 @@ const DesignEditor = () => {
 
   const changeTextBackgroundColor = (color) => {
     if (!selectedObj || !fabricCanvas) return;
-    
+
     if (selectedObj.type === 'text' || selectedObj.type === 'i-text' || selectedObj.type === 'textbox') {
       selectedObj.set({ backgroundColor: color === 'transparent' ? 'transparent' : color });
       fabricCanvas.renderAll();
@@ -5371,6 +5372,7 @@ const DesignEditor = () => {
     // Get fresh elements every time the modal opens
     const freshElements = getCurrentRejetElements();
     setRejetElements(freshElements);
+    setRejetJustification("");
     setRejetModal(true);
   };
 
@@ -5384,9 +5386,10 @@ const DesignEditor = () => {
     try {
       await API.post("/validations", {
         maquette_id: maquetteId, version_id: versionId, client_id: userId, statut: "à corriger",
+        justification: rejetJustification,
         commentaires: rejetElements.map(({ id_element, label_element, commentaire_client, _thumbnail }) => ({ id_element, label_element, commentaire_client, thumbnail: _thumbnail || "" })),
       });
-      setRejetModal(false); setValidationDone("à corriger");
+      setRejetModal(false); setValidationDone("à corriger"); setRejetJustification("");
       showToast("Rejet transmis avec succès", "info");
     } catch (err) {
       showToast("Erreur lors de l'envoi", "error");
@@ -5509,8 +5512,8 @@ const DesignEditor = () => {
               <div className="sidebar-scroll custom-scrollbar">
                 {SIDEBAR_MENU.map(category => (
                   <div key={category.id} className="menu-group">
-                    <button 
-                      className={`menu-trigger ${openMenu === category.id ? "active" : ""}`} 
+                    <button
+                      className={`menu-trigger ${openMenu === category.id ? "active" : ""}`}
                       onClick={() => {
                         setOpenMenu(openMenu === category.id ? "" : category.id);
                         if (!isSidebarOpen) setIsSidebarOpen(true);
@@ -5593,14 +5596,14 @@ const DesignEditor = () => {
                     )}
                   </div>
                 ))}
-                
+
                 {/* ── DRAWING TOOLS SECTION ── */}
                 <div className="menu-group tools-menu-group" style={{ position: "relative" }}>
-                  <button 
-                    className={`menu-trigger ${openMenu === "outils" ? "active" : ""}`} 
+                  <button
+                    className={`menu-trigger ${openMenu === "outils" ? "active" : ""}`}
                     onClick={() => {
-                       setOpenMenu(openMenu === "outils" ? "" : "outils");
-                       if (openMenu !== "outils" && !activeDrawingTool) setActiveDrawingTool("pen");
+                      setOpenMenu(openMenu === "outils" ? "" : "outils");
+                      if (openMenu !== "outils" && !activeDrawingTool) setActiveDrawingTool("pen");
                     }}
                     title={!isSidebarOpen ? "Outils de dessin" : ""}
                   >
@@ -5609,13 +5612,13 @@ const DesignEditor = () => {
                     </div>
                     {isSidebarOpen && <ChevronDown size={13} className={`chevron ${openMenu === "outils" ? "open" : ""}`} />}
                   </button>
-                  
+
                   {/* Popover when Sidebar is Collapsed */}
                   {!isSidebarOpen && openMenu === "outils" && (
                     <div className="drawing-tools-popover">
                       <button className="drawing-popover-close" onClick={() => { setOpenMenu(""); setActiveDrawingTool(null); }}><X size={12} /></button>
                       <button className={`draw-tool ${!activeDrawingTool ? "active" : ""}`} aria-label="Select" onClick={() => setActiveDrawingTool(null)}><MousePointer2 size={18} /></button>
-                      
+
                       <button className={`draw-tool draw-tool-color ${activeDrawingTool === "pen" ? "active" : ""}`} onClick={() => setActiveDrawingTool("pen")} title="Stylo">
                         <div className="tool-icon-wrap">
                           <PenTool size={18} />
@@ -5635,9 +5638,9 @@ const DesignEditor = () => {
                         </div>
                       </button>
                       <button className={`draw-tool ${activeDrawingTool === "eraser" ? "active" : ""}`} onClick={() => setActiveDrawingTool("eraser")} title="Gomme"><Eraser size={18} /></button>
-                      
+
                       <div className="draw-sep" />
-                      
+
                       <div className="draw-quick-tools" style={{ display: "flex", gap: "8px", justifyContent: "space-between" }}>
                         <button className="draw-tool draw-tool-sm" onClick={() => spawnToolElement("table")} title="Tableau"><Table size={16} /></button>
                         <button className="draw-tool draw-tool-sm" onClick={() => spawnToolElement("sticker")} title="Sticker"><Star size={16} /></button>
@@ -5645,15 +5648,15 @@ const DesignEditor = () => {
                       </div>
 
                       <div className="draw-sep" />
-                      
+
                       <div className="draw-color-pickers">
                         {["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#0f172a", "#ffffff"].map(c => (
                           <button key={c} className={`draw-color-swatch ${drawingColor === c ? "active" : ""}`} style={{ background: c }} onClick={() => setDrawingColor(c)} />
                         ))}
                       </div>
-                      
+
                       <div className="draw-sep" />
-                      
+
                       <div className="draw-width-wrap">
                         <input type="range" min="1" max="20" value={drawingWidth} onChange={(e) => setDrawingWidth(Number(e.target.value))} className="draw-range range-input" />
                       </div>
@@ -5662,34 +5665,34 @@ const DesignEditor = () => {
 
                   {/* Inline Panel when Sidebar is Expanded */}
                   {isSidebarOpen && openMenu === "outils" && (
-                     <div className="inline-tools-panel">
-                        <div className="tools-row-inline">
-                          <button className={`draw-tool-sm ${!activeDrawingTool ? "active" : ""}`} aria-label="Select" onClick={() => setActiveDrawingTool(null)}><MousePointer2 size={15} /></button>
-                          <button className={`draw-tool-sm ${activeDrawingTool === "pen" ? "active" : ""}`} onClick={() => setActiveDrawingTool("pen")} title="Stylo"><PenTool size={15} /></button>
-                          <button className={`draw-tool-sm ${activeDrawingTool === "marker" ? "active" : ""}`} onClick={() => setActiveDrawingTool("marker")} title="Marqueur"><Minus size={15} strokeWidth={4} /></button>
-                          <button className={`draw-tool-sm ${activeDrawingTool === "highlighter" ? "active" : ""}`} onClick={() => setActiveDrawingTool("highlighter")} title="Surligneur"><Highlighter size={15} /></button>
-                          <button className={`draw-tool-sm ${activeDrawingTool === "eraser" ? "active" : ""}`} onClick={() => setActiveDrawingTool("eraser")} title="Gomme"><Eraser size={15} /></button>
+                    <div className="inline-tools-panel">
+                      <div className="tools-row-inline">
+                        <button className={`draw-tool-sm ${!activeDrawingTool ? "active" : ""}`} aria-label="Select" onClick={() => setActiveDrawingTool(null)}><MousePointer2 size={15} /></button>
+                        <button className={`draw-tool-sm ${activeDrawingTool === "pen" ? "active" : ""}`} onClick={() => setActiveDrawingTool("pen")} title="Stylo"><PenTool size={15} /></button>
+                        <button className={`draw-tool-sm ${activeDrawingTool === "marker" ? "active" : ""}`} onClick={() => setActiveDrawingTool("marker")} title="Marqueur"><Minus size={15} strokeWidth={4} /></button>
+                        <button className={`draw-tool-sm ${activeDrawingTool === "highlighter" ? "active" : ""}`} onClick={() => setActiveDrawingTool("highlighter")} title="Surligneur"><Highlighter size={15} /></button>
+                        <button className={`draw-tool-sm ${activeDrawingTool === "eraser" ? "active" : ""}`} onClick={() => setActiveDrawingTool("eraser")} title="Gomme"><Eraser size={15} /></button>
+                      </div>
+                      <div className="tools-row-inline" style={{ marginTop: 12 }}>
+                        <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Couleur</span>
+                        <div className="color-picker-wrap" style={{ flex: 1, padding: "4px 8px" }}>
+                          <input type="color" value={drawingColor} onChange={(e) => setDrawingColor(e.target.value)} />
+                          <span>{drawingColor}</span>
                         </div>
-                        <div className="tools-row-inline" style={{ marginTop: 12 }}>
-                          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Couleur</span>
-                          <div className="color-picker-wrap" style={{ flex: 1, padding: "4px 8px" }}>
-                            <input type="color" value={drawingColor} onChange={(e) => setDrawingColor(e.target.value)} />
-                            <span>{drawingColor}</span>
-                          </div>
+                      </div>
+                      <div className="tools-row-inline" style={{ marginTop: 12 }}>
+                        <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Insérer</span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button className="draw-tool-sm" onClick={() => spawnToolElement("table")} title="Tableau"><Table size={15} /></button>
+                          <button className="draw-tool-sm" onClick={() => spawnToolElement("sticker")} title="Sticker"><Star size={15} /></button>
+                          <button className="draw-tool-sm" onClick={() => spawnToolElement("emoji")} title="Emoji"><Smile size={15} /></button>
                         </div>
-                        <div className="tools-row-inline" style={{ marginTop: 12 }}>
-                          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Insérer</span>
-                          <div style={{ display: "flex", gap: 6 }}>
-                             <button className="draw-tool-sm" onClick={() => spawnToolElement("table")} title="Tableau"><Table size={15} /></button>
-                             <button className="draw-tool-sm" onClick={() => spawnToolElement("sticker")} title="Sticker"><Star size={15} /></button>
-                             <button className="draw-tool-sm" onClick={() => spawnToolElement("emoji")} title="Emoji"><Smile size={15} /></button>
-                          </div>
-                        </div>
-                        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-                          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Épaisseur ({drawingWidth}px)</span>
-                          <input type="range" min="1" max="20" value={drawingWidth} onChange={(e) => setDrawingWidth(Number(e.target.value))} className="w-full range-input" />
-                        </div>
-                     </div>
+                      </div>
+                      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Épaisseur ({drawingWidth}px)</span>
+                        <input type="range" min="1" max="20" value={drawingWidth} onChange={(e) => setDrawingWidth(Number(e.target.value))} className="w-full range-input" />
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -5725,11 +5728,11 @@ const DesignEditor = () => {
 
             {/* Text Formatting Toolbar - Simplified Version */}
             {textToolbarVisible && (
-              <div 
-                className="text-formatting-toolbar" 
-                style={{ 
-                  position: 'fixed', 
-                  left: textToolbarPosition.x + 'px', 
+              <div
+                className="text-formatting-toolbar"
+                style={{
+                  position: 'fixed',
+                  left: textToolbarPosition.x + 'px',
                   top: textToolbarPosition.y + 'px',
                   zIndex: 1000,
                   background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
@@ -5744,15 +5747,15 @@ const DesignEditor = () => {
                 }}
               >
                 {/* Text Formatting */}
-                <button 
+                <button
                   onClick={() => applyTextFormat('bold')}
                   className="toolbar-btn-icon"
                   title="Gras"
-                  style={{ 
-                    padding: '6px', 
-                    border: 'none', 
-                    background: selectedObj?.fontWeight === 'bold' ? '#6366f1' : 'transparent', 
-                    borderRadius: '4px', 
+                  style={{
+                    padding: '6px',
+                    border: 'none',
+                    background: selectedObj?.fontWeight === 'bold' ? '#6366f1' : 'transparent',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     color: selectedObj?.fontWeight === 'bold' ? 'white' : '#334155',
                     transition: 'all 0.2s ease'
@@ -5760,15 +5763,15 @@ const DesignEditor = () => {
                 >
                   <Bold size={12} />
                 </button>
-                <button 
+                <button
                   onClick={() => applyTextFormat('italic')}
                   className="toolbar-btn-icon"
                   title="Italique"
-                  style={{ 
-                    padding: '6px', 
-                    border: 'none', 
-                    background: selectedObj?.fontStyle === 'italic' ? '#6366f1' : 'transparent', 
-                    borderRadius: '4px', 
+                  style={{
+                    padding: '6px',
+                    border: 'none',
+                    background: selectedObj?.fontStyle === 'italic' ? '#6366f1' : 'transparent',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     color: selectedObj?.fontStyle === 'italic' ? 'white' : '#334155',
                     transition: 'all 0.2s ease'
@@ -5776,15 +5779,15 @@ const DesignEditor = () => {
                 >
                   <Italic size={12} />
                 </button>
-                <button 
+                <button
                   onClick={() => applyTextFormat('underline')}
                   className="toolbar-btn-icon"
                   title="Souligner"
-                  style={{ 
-                    padding: '6px', 
-                    border: 'none', 
-                    background: selectedObj?.underline ? '#6366f1' : 'transparent', 
-                    borderRadius: '4px', 
+                  style={{
+                    padding: '6px',
+                    border: 'none',
+                    background: selectedObj?.underline ? '#6366f1' : 'transparent',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     color: selectedObj?.underline ? 'white' : '#334155',
                     transition: 'all 0.2s ease'
@@ -5792,15 +5795,15 @@ const DesignEditor = () => {
                 >
                   <Type size={12} style={{ textDecoration: 'underline' }} />
                 </button>
-                <button 
+                <button
                   onClick={() => applyTextFormat('strikethrough')}
                   className="toolbar-btn-icon"
                   title="Barrer"
-                  style={{ 
-                    padding: '6px', 
-                    border: 'none', 
-                    background: selectedObj?.linethrough ? '#6366f1' : 'transparent', 
-                    borderRadius: '4px', 
+                  style={{
+                    padding: '6px',
+                    border: 'none',
+                    background: selectedObj?.linethrough ? '#6366f1' : 'transparent',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     color: selectedObj?.linethrough ? 'white' : '#334155',
                     transition: 'all 0.2s ease'
@@ -5813,15 +5816,15 @@ const DesignEditor = () => {
                 <div style={{ width: '1px', height: '20px', background: '#e2e8f0', margin: '0 4px' }} />
 
                 {/* Alignment */}
-                <button 
+                <button
                   onClick={() => applyTextFormat('align-left')}
                   className="toolbar-btn-icon"
                   title="Aligner à gauche"
-                  style={{ 
-                    padding: '6px', 
-                    border: 'none', 
-                    background: selectedObj?.textAlign === 'left' ? '#6366f1' : 'transparent', 
-                    borderRadius: '4px', 
+                  style={{
+                    padding: '6px',
+                    border: 'none',
+                    background: selectedObj?.textAlign === 'left' ? '#6366f1' : 'transparent',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     color: selectedObj?.textAlign === 'left' ? 'white' : '#334155',
                     transition: 'all 0.2s ease'
@@ -5829,15 +5832,15 @@ const DesignEditor = () => {
                 >
                   <AlignLeft size={12} />
                 </button>
-                <button 
+                <button
                   onClick={() => applyTextFormat('align-center')}
                   className="toolbar-btn-icon"
                   title="Centrer"
-                  style={{ 
-                    padding: '6px', 
-                    border: 'none', 
-                    background: selectedObj?.textAlign === 'center' ? '#6366f1' : 'transparent', 
-                    borderRadius: '4px', 
+                  style={{
+                    padding: '6px',
+                    border: 'none',
+                    background: selectedObj?.textAlign === 'center' ? '#6366f1' : 'transparent',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     color: selectedObj?.textAlign === 'center' ? 'white' : '#334155',
                     transition: 'all 0.2s ease'
@@ -5845,15 +5848,15 @@ const DesignEditor = () => {
                 >
                   <AlignCenter size={12} />
                 </button>
-                <button 
+                <button
                   onClick={() => applyTextFormat('align-right')}
                   className="toolbar-btn-icon"
                   title="Aligner à droite"
-                  style={{ 
-                    padding: '6px', 
-                    border: 'none', 
-                    background: selectedObj?.textAlign === 'right' ? '#6366f1' : 'transparent', 
-                    borderRadius: '4px', 
+                  style={{
+                    padding: '6px',
+                    border: 'none',
+                    background: selectedObj?.textAlign === 'right' ? '#6366f1' : 'transparent',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     color: selectedObj?.textAlign === 'right' ? 'white' : '#334155',
                     transition: 'all 0.2s ease'
@@ -5861,15 +5864,15 @@ const DesignEditor = () => {
                 >
                   <AlignRight size={12} />
                 </button>
-                <button 
+                <button
                   onClick={() => applyTextFormat('align-justify')}
                   className="toolbar-btn-icon"
                   title="Justifier"
-                  style={{ 
-                    padding: '6px', 
-                    border: 'none', 
-                    background: selectedObj?.textAlign === 'justify' ? '#6366f1' : 'transparent', 
-                    borderRadius: '4px', 
+                  style={{
+                    padding: '6px',
+                    border: 'none',
+                    background: selectedObj?.textAlign === 'justify' ? '#6366f1' : 'transparent',
+                    borderRadius: '4px',
                     cursor: 'pointer',
                     color: selectedObj?.textAlign === 'justify' ? 'white' : '#334155',
                     transition: 'all 0.2s ease'
@@ -6044,14 +6047,14 @@ const DesignEditor = () => {
                           style={{ pointerEvents: item.isSelected ? 'auto' : 'none', background: "#e2e8f0", border: 'none' }}
                         />
                         {!item.isSelected && (
-                          <div 
+                          <div
                             style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'auto', cursor: 'pointer' }}
                             onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                            onClick={(e) => { 
-                              e.preventDefault(); 
-                              e.stopPropagation(); 
-                              fabricCanvas.setActiveObject(item.objectRef); 
-                              fabricCanvas.requestRenderAll(); 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              fabricCanvas.setActiveObject(item.objectRef);
+                              fabricCanvas.requestRenderAll();
                             }}
                           />
                         )}
@@ -6087,7 +6090,7 @@ const DesignEditor = () => {
                     setEditorData={setEditorData}
                   />
                 )}
-                
+
                 {editorVariant === "button" && (
                   <ButtonEditorModal isOpen={showComponentEditor} onClose={() => setShowComponentEditor(false)} component={editorData} onSave={handleComponentSave} />
                 )}
@@ -6149,66 +6152,76 @@ const DesignEditor = () => {
       {rejetModal && (() => {
         const currentElements = getCurrentRejetElements();
         return (
-        <div className="rejet-overlay" onClick={() => setRejetModal(false)}>
-          <div className="rejet-modal" onClick={e => e.stopPropagation()}>
-            <div className="rejet-modal__header">
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                <div className="rejet-modal__icon-wrap">!</div>
-                <div>
-                  <h3 className="rejet-modal__title">Rejeter la version {currentVersionNum}</h3>
-                  <p className="rejet-modal__subtitle">Indiquez vos remarques. Les champs vides ne seront pas transmis.</p>
-                </div>
-              </div>
-              <button onClick={() => setRejetModal(false)} className="rejet-modal__close">×</button>
-            </div>
-            {rejetElements.length > 0 && (
-              <div className="rejet-modal__counter">
-                <span>{rejetElements.length} élément{rejetElements.length > 1 ? "s" : ""}</span>
-                <span className="rejet-modal__counter-ok">{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length} remarqué{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""}</span>
-              </div>
-            )}
-            <div className="rejet-modal__body">
-              {rejetElements.length === 0
-                ? <div className="rejet-modal__empty"><span>!</span><p>Aucun élément détecté sur le design.</p></div>
-                : rejetElements.map((el, i) => (
-                  <div key={el.id_element} className={`rejet-el ${el.commentaire_client && el.commentaire_client.trim() ? "rejet-el--active" : ""}`}>
-                    <div className="rejet-el__head">
-                      <div className="rejet-el__thumb-wrap">
-                        {el._thumbnail ? <img src={el._thumbnail} alt={el.label_element} className="rejet-el__thumb" /> : <div className="rejet-el__thumb-fb">{el._typeIcon || "?"}</div>}
-                        {el.commentaire_client && el.commentaire_client.trim() && <span className="rejet-el__check">!</span>}
-                      </div>
-                      <div className="rejet-el__info">
-                        <span className="rejet-el__name">{el.label_element}</span>
-                        <span className="rejet-el__type">{el._type || "élément"}</span>
-                      </div>
-                    </div>
-                    <div className="rejet-el__body">
-                      <textarea 
-                        value={el.commentaire_client || ""} 
-                        onChange={e => setRejetElements(prev => prev.map((item, idx) => idx === i ? { ...item, commentaire_client: e.target.value } : item))} 
-                        placeholder="Décrivez la correction souhaitée pour cet élément..." 
-                        rows={3} 
-                        className="rejet-el__textarea"
-                      />
-                    </div>
+          <div className="rejet-overlay" onClick={() => setRejetModal(false)}>
+            <div className="rejet-modal" onClick={e => e.stopPropagation()}>
+              <div className="rejet-modal__header">
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div className="rejet-modal__icon-wrap">!</div>
+                  <div>
+                    <h3 className="rejet-modal__title">Rejeter la version {currentVersionNum}</h3>
+                    <p className="rejet-modal__subtitle">Indiquez vos remarques. Les champs vides ne seront pas transmis.</p>
                   </div>
-                ))}
-            </div>
-            <div className="rejet-modal__footer">
-              <div className="rejet-modal__footer-info">
-                {rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length === 0
-                  ? <span style={{ color: "var(--muted)" }}>Aucune remarque - rejet général</span>
-                  : <span style={{ color: "#059669" }}>! {rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length} remarque{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""} prête{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""}</span>}
+                </div>
+                <button onClick={() => setRejetModal(false)} className="rejet-modal__close">×</button>
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setRejetModal(false)} className="btn-cancel">Annuler</button>
-                <button onClick={handleRejetSubmit} disabled={rejetSubmitting} className="btn-submit-rejet">
-                  {rejetSubmitting ? <><Loader size={13} className="spin" /> Envoi...</> : <>! Justifier le rejet</>}
-                </button>
+              {rejetElements.length > 0 && (
+                <div className="rejet-modal__counter">
+                  <span>{rejetElements.length} élément{rejetElements.length > 1 ? "s" : ""}</span>
+                  <span className="rejet-modal__counter-ok">{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length} remarqué{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""}</span>
+                </div>
+              )}
+              <div className="rejet-modal__body">
+                <div className="rejet-general">
+                  <label className="rejet-general__label">Justification générale du rejet</label>
+                  <textarea
+                    value={rejetJustification}
+                    onChange={e => setRejetJustification(e.target.value)}
+                    placeholder="Expliquez brièvement la raison du rejet de cette version..."
+                    rows={3}
+                    className="rejet-general__textarea"
+                  ></textarea>
+                </div>
+                {rejetElements.length === 0
+                  ? <div className="rejet-modal__empty"><span>!</span><p>Aucun élément détecté sur le design.</p></div>
+                  : rejetElements.map((el, i) => (
+                    <div key={el.id_element} className={`rejet-el ${el.commentaire_client && el.commentaire_client.trim() ? "rejet-el--active" : ""}`}>
+                      <div className="rejet-el__head">
+                        <div className="rejet-el__thumb-wrap">
+                          {el._thumbnail ? <img src={el._thumbnail} alt={el.label_element} className="rejet-el__thumb" /> : <div className="rejet-el__thumb-fb">{el._typeIcon || "?"}</div>}
+                          {el.commentaire_client && el.commentaire_client.trim() && <span className="rejet-el__check">!</span>}
+                        </div>
+                        <div className="rejet-el__info">
+                          <span className="rejet-el__name">{el.label_element}</span>
+                          <span className="rejet-el__type">{el._type || "élément"}</span>
+                        </div>
+                      </div>
+                      <div className="rejet-el__body">
+                        <textarea
+                          value={el.commentaire_client || ""}
+                          onChange={e => setRejetElements(prev => prev.map((item, idx) => idx === i ? { ...item, commentaire_client: e.target.value } : item))}
+                          placeholder="Décrivez la correction souhaitée pour cet élément..."
+                          rows={3}
+                          className="rejet-el__textarea"
+                        ></textarea>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              <div className="rejet-modal__footer">
+                <div className="rejet-modal__footer-info">
+                  {rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length === 0
+                    ? <span style={{ color: "var(--muted)" }}>Aucune remarque - rejet général</span>
+                    : <span style={{ color: "#059669" }}>! {rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length} remarque{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""} prête{rejetElements.filter(e => e.commentaire_client && e.commentaire_client.trim()).length > 1 ? "s" : ""}</span>}
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setRejetModal(false)} className="btn-cancel">Annuler</button>
+                  <button onClick={handleRejetSubmit} disabled={rejetSubmitting} className="btn-submit-rejet">
+                    {rejetSubmitting ? <><Loader size={13} className="spin" /> Envoi...</> : <>! Justifier le rejet</>}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         );
       })()};
 
@@ -6551,7 +6564,7 @@ const DesignEditor = () => {
         .btn-add-row:hover { background: #e0e7ff; transform: translateY(-1px); }
 
         .rejet-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.85); backdrop-filter: blur(12px); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.3s ease; }
-        .rejet-modal { background: var(--surface); border-radius: 20px; width: 100%; max-width: 800px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1); animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1); border: 1px solid rgba(255,255,255,0.1); }
+        .rejet-modal { background: var(--surface); border-radius: 20px; width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1); animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1); border: 1px solid rgba(255,255,255,0.1); }
         .rejet-modal__header { padding: 20px 24px 16px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); background: linear-gradient(135deg,#fef2f2, #ffffff); flex-shrink: 0; position: relative; }
         .rejet-modal__icon-wrap { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#dc2626,#b91c1c); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: white; flex-shrink: 0; box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
         .rejet-modal__title { font-size: 18px; font-weight: 800; color: var(--text); margin: 0 0 4px; letter-spacing: -0.02em; }
@@ -6560,7 +6573,11 @@ const DesignEditor = () => {
         .rejet-modal__close:hover { background: rgba(0,0,0,0.1); transform: scale(1.05); }
         .rejet-modal__counter { display: flex; justify-content: space-between; align-items: center; padding: 8px 24px; background: linear-gradient(to right, #f8fafc, #f1f5f9); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-2); font-weight: 600; flex-shrink: 0; }
         .rejet-modal__counter-ok { color: var(--success); font-weight: 700; }
-        .rejet-modal__body { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; background: #fafbfc; }
+        .rejet-modal__body { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; background: #fafbfc; }
+        .rejet-general { background: white; border-radius: var(--r); border: 1px solid var(--border); padding: 16px; }
+        .rejet-general__label { display: block; font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+        .rejet-general__textarea { width: 100%; border: 1px solid var(--border-2); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.5; resize: vertical; font-family: var(--font); transition: border-color 0.2s; }
+        .rejet-general__textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
         .rejet-modal__footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); flex-shrink: 0; gap: 12px; }
         .rejet-modal__footer-info { font-size: 12px; font-weight: 500; }
         .rejet-modal__empty { text-align: center; color: var(--muted); padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; }

@@ -132,6 +132,7 @@ const validationSchema = new mongoose.Schema(
     version_id: { type: mongoose.Schema.Types.ObjectId, ref: "Version", required: true },
     client_id: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
     statut: { type: String, enum: ["validé", "à corriger"], required: true },
+    justification: { type: String, default: "" },
     transmis_designer: { type: Boolean, default: false },
     date_transmission: { type: Date },
     lu_designer: { type: Boolean, default: false },
@@ -770,7 +771,7 @@ apiRouter.get("/feedbacks/corrections", verifyToken, checkRole(['designer']), as
 
 apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, res) => {
   try {
-    const { maquette_id, version_id, statut, commentaires } = req.body;
+    const { maquette_id, version_id, statut, commentaires, justification } = req.body;
 
     if (!maquette_id || !version_id || !statut)
       return res.status(400).json({ message: "maquette_id, version_id et statut sont requis." });
@@ -786,6 +787,7 @@ apiRouter.post("/validations", verifyToken, checkRole(["client"]), async (req, r
       maquette_id, version_id,
       client_id: req.user.id,
       statut,
+      justification: justification || "",
       transmis_designer: false,
       lu_designer: false,
     });
