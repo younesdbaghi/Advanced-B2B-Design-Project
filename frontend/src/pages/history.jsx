@@ -203,7 +203,7 @@ function History() {
     });
   };
 
-  const userRole = user?.["r\u00f4le"] || user?.role || user?.["rÃ´le"] || "";
+  const userRole = user?.["r\u00f4le"] || user?.role || user?.["rôle"] || "";
   const visibleRapports = rapports.filter((item) => item && item._id);
 
   return (

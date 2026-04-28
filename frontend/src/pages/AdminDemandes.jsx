@@ -184,7 +184,7 @@ const AdminDemandes = () => {
     ? new Date(currentDemande.date_creation || currentDemande.createdAt || Date.now()).toLocaleDateString("fr-FR")
     : "";
   const demandeStartDate = currentDemande
-    ? currentDemande["date_début"] || currentDemande["date_dÃ©but"] || currentDemande.date_debut
+    ? currentDemande["date_début"] || currentDemande["date_début"] || currentDemande.date_debut
     : null;
 
   return (

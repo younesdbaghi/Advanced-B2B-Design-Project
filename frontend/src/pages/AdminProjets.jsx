@@ -112,7 +112,7 @@ const dangerButtonStyle = {
 };
 
 const getProjectStartDate = (project) =>
-  project?.["date_début"] || project?.["date_dÃ©but"] || project?.date_debut || "";
+  project?.["date_début"] || project?.["date_début"] || project?.date_debut || "";
 
 const validateDates = (start, end) => {
   const errors = { start: "", end: "" };

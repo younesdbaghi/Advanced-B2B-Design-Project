@@ -12,7 +12,6 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import editorPreview from "../assets/landing/interface-2.png";
 import "./Login.css";
 
 const Login = () => {
@@ -80,11 +79,7 @@ const Login = () => {
             <h1>Connecte-toi.</h1>
             <p className="auth-login-showcase-text">Reprends ton projet en quelques secondes.</p>
 
-            <div className="auth-login-preview">
-              <div className="auth-login-preview-screen">
-                <img src={editorPreview} alt="Apercu de l'editeur DevPortal" />
-              </div>
-            </div>
+
           </motion.div>
         </section>
 

@@ -197,9 +197,9 @@ const DashboardLayout = ({ children }) => {
   /*
 
   const roleLabel =
-    user.rÃ´le === 'admin'
+    user.rôle === 'admin'
       ? 'Espace Admin'
-      : user.rÃ´le === 'designer'
+      : user.rôle === 'designer'
         ? 'Espace Designer'
         : 'Espace Client';
 
@@ -207,7 +207,7 @@ const DashboardLayout = ({ children }) => {
   */
   return (
     /*
-    <div className={`layout-container dashboard-shell dashboard-shell--${user.rÃ´le}`}>
+    <div className={`layout-container dashboard-shell dashboard-shell--${user.rôle}`}>
 
     */
     <div className={`layout-container dashboard-shell dashboard-shell--${userRole}${isEditorRoute ? ' dashboard-shell--editor' : ''}`}>
