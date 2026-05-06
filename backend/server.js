@@ -1324,6 +1324,230 @@ apiRouter.patch("/notifications/designer/:id/read", verifyToken, checkRole(["des
 app.use("/Api_B2B", apiRouter);
 
 // ==========================================
+// SCHÉMAS CHAT (MongoDB)
+// ==========================================
+const conversationSchema = new mongoose.Schema({
+  nom: { type: String }, // Pour les groupes
+  isGroup: { type: Boolean, default: false },
+  participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur" }],
+  dernier_message: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+  createur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur" },
+}, { timestamps: true });
+
+const messageSchema = new mongoose.Schema({
+  id_conversation: { type: mongoose.Schema.Types.ObjectId, ref: "Conversation", required: true },
+  id_expediteur: { type: mongoose.Schema.Types.ObjectId, ref: "Utilisateur", required: true },
+  texte: { type: String },
+  type: { type: String, enum: ["text", "image", "file"], default: "text" },
+  fileUrl: { type: String },
+  fileName: { type: String },
+  lu: { type: Boolean, default: false },
+  modifie: { type: Boolean, default: false }, // NOUVEAU
+  supprime: { type: Boolean, default: false }, // NOUVEAU
+}, { timestamps: true });
+
+const Conversation = mongoose.model("Conversation", conversationSchema);
+const Message = mongoose.model("Message", messageSchema);
+
+// ==========================================
+// CONFIGURATION SOCKET.IO (Temps Réel)
+// ==========================================
+const http = require("http");
+const { Server } = require("socket.io");
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
+const usersOnline = new Map(); // userId -> socketId
+
+// 3. LOGIQUE SOCKET.IO AMÉLIORÉE
+// Serveur Node.js
+io.on("connection", (socket) => {
+  
+  socket.on("setup", (userId) => {
+    socket.join(userId);
+    console.log("User joined his own room:", userId);
+  });
+
+  socket.on("join_chat", (room) => {
+    socket.join(room);
+    console.log("User joined conversation room:", room);
+  });
+
+  socket.on("new_message", (newMessageReceived) => {
+    // On récupère la conversation
+    const chat = newMessageReceived.id_conversation;
+    if (!chat.participants) return console.log("Chat participants not defined");
+
+    // On envoie le message à tous les participants de la conversation
+    chat.participants.forEach((user) => {
+      const pId = user._id || user; // Gère si c'est un objet ou un ID
+      
+      // On n'envoie pas à l'expéditeur (optionnel, selon votre logique front)
+      // if (pId === newMessageReceived.id_expediteur._id) return;
+
+      // Envoyer à la room personnelle de chaque participant
+      socket.in(pId.toString()).emit("message_received", newMessageReceived);
+    });
+  });
+
+  // Pour le statut "En train d'écrire"
+  socket.on("typing", (room) => socket.in(room).emit("typing"));
+  socket.on("stop_typing", (room) => socket.in(room).emit("stop_typing"));
+});
+
+
+
+
+
+// ==========================================
+// ROUTES API CHAT
+// ==========================================
+const chatRouter = express.Router();
+
+// 4. NOUVELLES ROUTES API
+chatRouter.put("/messages/:msgId", verifyToken, async (req, res) => {
+  try {
+    const msg = await Message.findByIdAndUpdate(
+      req.params.msgId, 
+      { texte: req.body.texte, modifie: true }, 
+      { new: true }
+    ).populate("id_expediteur", "nom rôle").populate("id_conversation");
+    res.json(msg);
+  } catch (err) { res.status(500).json(err); }
+});
+
+chatRouter.delete("/messages/:msgId", verifyToken, async (req, res) => {
+  try {
+    const msg = await Message.findByIdAndUpdate(
+      req.params.msgId, 
+      { texte: "Message supprimé", supprime: true, type: "text", fileUrl: null }, 
+      { new: true }
+    ).populate("id_expediteur", "nom rôle").populate("id_conversation");
+    res.json(msg);
+  } catch (err) { res.status(500).json(err); }
+});
+
+// 3. API : Route pour marquer comme lu
+chatRouter.patch("/read/:convId", verifyToken, async (req, res) => {
+  await Message.updateMany(
+    { id_conversation: req.params.convId, id_expediteur: { $ne: req.user.id } },
+    { $set: { lu: true } }
+  );
+  res.json({ success: true });
+});
+
+// API : Récupérer les contacts autorisés selon le rôle
+chatRouter.get("/contacts", verifyToken, async (req, res) => {
+  try {
+    const monRole = req.user.rôle;
+    let filtre = { _id: { $ne: req.user.id } }; // Ne pas s'inclure soi-même
+
+    if (monRole === "client") {
+      // LE CLIENT NE DOIT COMMUNIQUER QU'AVEC ADMIN
+      filtre.rôle = "admin";
+    } 
+    else if (monRole === "designer") {
+      // LE DESIGNER NE DOIT COMMUNIQUER QU'AVEC ADMIN ET DESIGNER
+      filtre.rôle = { $in: ["admin", "designer"] };
+    }
+    // L'ADMIN peut voir tout le monde (donc pas de filtre supplémentaire)
+
+    const users = await Utilisateur.find(filtre).select("nom email rôle");
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Récupérer toutes les conversations de l'utilisateur
+chatRouter.get("/conversations", verifyToken, async (req, res) => {
+  try {
+    const convs = await Conversation.find({ participants: req.user.id })
+      .populate("participants", "nom email rôle")
+      .populate("dernier_message")
+      .sort({ updatedAt: -1 })
+      .lean(); // Utiliser lean pour pouvoir modifier l'objet
+
+    // Pour chaque conversation, compter les messages non lus
+    const enhancedConvs = await Promise.all(convs.map(async (c) => {
+      const unreadCount = await Message.countDocuments({
+        id_conversation: c._id,
+        id_expediteur: { $ne: req.user.id },
+        lu: false
+      });
+      return { ...c, unreadCount };
+    }));
+
+    res.json(enhancedConvs);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// Créer ou récupérer une conversation privée
+chatRouter.post("/privee", verifyToken, async (req, res) => {
+  try {
+    const { targetId } = req.body;
+    const targetUser = await Utilisateur.findById(targetId);
+
+    if (!targetUser) return res.status(404).json({ message: "Utilisateur non trouvé." });
+
+    // --- VÉRIFICATION DES DROITS ---
+    if (req.user.rôle === "client" && targetUser.rôle !== "admin") {
+      return res.status(403).json({ message: "Action interdite : vous ne pouvez contacter que l'administrateur." });
+    }
+    if (req.user.rôle === "designer" && targetUser.rôle === "client") {
+      return res.status(403).json({ message: "Action interdite : les designers ne peuvent pas contacter les clients." });
+    }
+
+    // --- LOGIQUE EXISTANTE ---
+    let conv = await Conversation.findOne({
+      isGroup: false,
+      participants: { $all: [req.user.id, targetId] }
+    }).populate("participants", "nom email rôle");
+
+    if (!conv) {
+      conv = await Conversation.create({ participants: [req.user.id, targetId], isGroup: false });
+      conv = await Conversation.findById(conv._id).populate("participants", "nom email rôle");
+    }
+    res.json(conv);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// Récupérer les messages d'une conversation
+chatRouter.get("/messages/:convId", verifyToken, async (req, res) => {
+  try {
+    const messages = await Message.find({ id_conversation: req.params.convId })
+      .populate("id_expediteur", "nom rôle")
+      .sort({ createdAt: 1 });
+    res.json(messages);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// Envoyer un message
+chatRouter.post("/messages", verifyToken, async (req, res) => {
+  try {
+    // On récupère toutes les infos du body, pas juste le texte
+    const { id_conversation, texte, type, fileUrl, fileName } = req.body;
+    
+    let msg = await Message.create({ 
+      id_conversation, 
+      texte, 
+      id_expediteur: req.user.id,
+      type: type || "text",
+      fileUrl: fileUrl || null,
+      fileName: fileName || null
+    });
+
+    await Conversation.findByIdAndUpdate(id_conversation, { dernier_message: msg._id });
+    msg = await msg.populate("id_expediteur", "nom rôle");
+    
+    res.status(201).json(msg);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+app.use("/Api_B2B/chat", chatRouter);
+
+
+// ==========================================
 // INITIALISATION
 // ==========================================
 const initAdmin = async () => {

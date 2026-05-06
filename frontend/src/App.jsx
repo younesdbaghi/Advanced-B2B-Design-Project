@@ -19,12 +19,14 @@ import History from './pages/history';
 import AdminFeedbacks from './pages/AdminFeedbacks';
 import ClientFeedbacks from './pages/ClientFeedbacks';
 import ChangePassword from './pages/ChangePassword';
+import ChatPage from './pages/ChatPage';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
+          <Route path="/chat" element={<ProtectedRoute allowedRoles={['admin', 'designer', 'client']}><ChatPage /></ProtectedRoute>} />
           {/* Website Creator Page Route */}
           <Route path="/" element={<WebsiteCreator />} />
           

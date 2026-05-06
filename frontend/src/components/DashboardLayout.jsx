@@ -156,21 +156,25 @@ const DashboardLayout = ({ children }) => {
 
   const userRole = user?.["r\u00f4le"] || user?.role || "";
 
+  // Mets à jour l'objet menuItems
   const menuItems = {
     admin: [
       { path: '/admin/utilisateurs', icon: <Users size={20} />, label: 'Utilisateurs' },
       { path: '/admin/projets', icon: <FolderOpen size={20} />, label: 'Projets' },
+      { path: '/chat', icon: <MessageSquare size={20} />, label: 'Messagerie' }, // AJOUT
       { path: '/admin/demandes', icon: <Bell size={20} />, label: 'Demandes' },
       { path: '/admin/feedbacks', icon: <MessageSquare size={20} />, label: 'Feedbacks' },
-      { path: '/admin/history', icon: <History size={20} />, label: 'Rapport Historique' },
+      { path: '/admin/history', icon: <History size={20} />, label: 'Historique' },
     ],
     client: [
       { path: '/client', icon: <Briefcase size={20} />, label: 'Mes Projets' },
+      { path: '/chat', icon: <MessageSquare size={20} />, label: 'Chat Support' }, // AJOUT
       { path: '/client/feedbacks', icon: <MessageSquare size={20} />, label: 'Feedbacks' },
     ],
     designer: [
-      { path: '/designer', icon: <FileSignature size={20} />, label: 'Tableau de bord' },
-      { path: '/designer/history', icon: <History size={20} />, label: 'Rapport Historique' },
+      { path: '/designer', icon: <FileSignature size={20} />, label: 'Dashboard' },
+      { path: '/chat', icon: <MessageSquare size={20} />, label: 'Messagerie' }, // AJOUT
+      { path: '/designer/history', icon: <History size={20} />, label: 'Historique' },
     ],
   };
 
@@ -452,12 +456,16 @@ const DashboardLayout = ({ children }) => {
           </div>
         </div>
 
-        <div className={`content-area dashboard-content${isEditorRoute ? " dashboard-content--full" : ""}`}>
+        <div className={`content-area dashboard-content ${location.pathname === '/chat' ? 'chat-active' : ''}`}>
           {children}
         </div>
       </div>
 
       <style>{`
+      .chat-active {
+        padding: 0 !important; /* On enlève le padding pour que le chat colle aux bords */
+        height: calc(100vh - 70px); /* Hauteur fixe */
+      }
         .logout-btn { color: var(--danger) !important; margin-top: 8px; border-top: 1px solid var(--border-light); padding-top: 16px; }
         .logout-btn:hover { background: var(--danger-bg) !important; color: var(--danger) !important; }
         .user-profile {
