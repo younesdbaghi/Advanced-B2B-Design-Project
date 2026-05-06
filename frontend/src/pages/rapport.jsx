@@ -31,6 +31,8 @@ function Rapport() {
         blocages: null
     });
 
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+
     const fetchProjet = async () => {
         try {
             await API.get("/affectations/mes-projets")
@@ -84,15 +86,43 @@ function Rapport() {
         setFormData({ ...formData, [field]: updated });
     };
 
+    const mergePendingInputsIntoFormData = () => {
+        const nextFormData = { ...formData };
+
+        ["travail_effectué", "tâches_restantes", "blocages"].forEach((field) => {
+            const rawValue = inputs[field] || "";
+            const values = rawValue.split(/[;\n]/).map((value) => value.trim()).filter(Boolean);
+
+            if (values.length === 0) return;
+
+            const updated = [...nextFormData[field]];
+
+            values.forEach((value) => {
+                if (!value) return;
+                if (editing[field] !== null && editing[field] < updated.length) {
+                    updated[editing[field]] = value;
+                } else {
+                    updated.push(value);
+                }
+            });
+
+            nextFormData[field] = updated;
+        });
+
+        return nextFormData;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault()
 
+        const nextFormData = mergePendingInputsIntoFormData();
+
         if (
-            !formData.date ||
-            !formData.id_projet ||
-            formData.travail_effectué.length === 0 ||
-            formData.tâches_restantes.length === 0 ||
-            formData.blocages.length === 0
+            !nextFormData.date ||
+            !nextFormData.id_projet ||
+            nextFormData.travail_effectué.length === 0 ||
+            nextFormData.tâches_restantes.length === 0 ||
+            nextFormData.blocages.length === 0
         ) {
             setError("Veuillez remplir tous les champs !");
             return;
@@ -100,7 +130,8 @@ function Rapport() {
 
         try {
             setError("");
-            await API.post("/rapport", formData)
+            await API.post("/rapport", nextFormData)
+            setFormData(nextFormData)
             setFormData({
                 date: "",
                 id_projet: "",
@@ -113,6 +144,11 @@ function Rapport() {
                 tâches_restantes: "",
                 blocages: ""
             })
+            setEditing({
+                travail_effectué: null,
+                tâches_restantes: null,
+                blocages: null
+            })
             navigate("/designer/history")
 
         } catch (err) {
@@ -121,8 +157,6 @@ function Rapport() {
         }
     }
 
-    let user = JSON.parse(localStorage.getItem("user"))
-    console.log(user)
     return (
         <div className='containerRapport'>
             <div className='header'>
@@ -165,10 +199,10 @@ function Rapport() {
                 >
                     <option value="">---choisis un projet----</option>
 
-                    {projets.filter(p => p.id_designer === user.id)
+                    {projets.filter((p) => p?.id_projet?._id)
                         .map((p) => {
                             return (
-                                <option value={p.id_projet._id}>
+                                <option key={p._id || p.id_projet._id} value={p.id_projet._id}>
                                     {p.id_projet.nom}
                                 </option>
                             )

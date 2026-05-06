@@ -1,192 +1,166 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import API from "../api";
-import { 
-  Clock, 
-  CheckCircle, 
-  AlertCircle, 
-  Loader, 
-  ChevronLeft,
-  ChevronRight,
-  Mail,
+import {
+  ArrowUpDown,
   Calendar,
   Check,
-  XCircle,
-  Filter,
-  ArrowUpDown,
   CheckCheck,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Filter,
+  Loader,
+  Mail,
   X,
-  Trash2
-} from 'lucide-react';
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
 
 const AdminDemandes = () => {
   const [demandes, setDemandes] = useState([]);
   const [filteredDemandes, setFilteredDemandes] = useState([]);
   const [fetching, setFetching] = useState(true);
-  const [msg, setMsg] = useState({ type: '', text: '' });
+  const [msg, setMsg] = useState({ type: "", text: "" });
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [slideDirection, setSlideDirection] = useState('');
-  const [sortOrder, setSortOrder] = useState('newest'); // 'newest' or 'oldest'
+  const [sortOrder, setSortOrder] = useState("newest");
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [processingBulk, setProcessingBulk] = useState(false);
-  
-  const sliderRef = useRef(null);
+
+  const menuRef = useRef(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
-  const menuRef = useRef(null);
 
   const fetchDemandes = async () => {
     setFetching(true);
     try {
       const { data } = await API.get("/projets");
-      const enAttente = Array.isArray(data)
-        ? data.filter(p => p.demanded && p.statut === 'En attente')
+      const pending = Array.isArray(data)
+        ? data.filter((p) => p.demanded && p.statut === "En attente")
         : [];
-      setDemandes(enAttente);
+      setDemandes(pending);
       setCurrentIndex(0);
-    } catch { 
-      console.error("Erreur demandes"); 
-    } finally { 
-      setFetching(false); 
+    } catch {
+      setMsg({ type: "error", text: "Impossible de charger les demandes." });
+    } finally {
+      setFetching(false);
     }
   };
 
-  useEffect(() => { fetchDemandes(); }, []);
+  useEffect(() => {
+    fetchDemandes();
+  }, []);
 
-  // Fermer le menu si on clique outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setShowSortMenu(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Trier les demandes quand l'ordre change ou que les demandes sont mises à jour
   useEffect(() => {
-    sortDemandes();
-  }, [demandes, sortOrder]);
-
-  const sortDemandes = () => {
     const sorted = [...demandes].sort((a, b) => {
       const dateA = new Date(a.date_creation || a.createdAt || Date.now());
       const dateB = new Date(b.date_creation || b.createdAt || Date.now());
-      
-      if (sortOrder === 'newest') {
-        return dateB - dateA; // Plus récent d'abord
-      } else {
-        return dateA - dateB; // Plus ancien d'abord
-      }
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
     });
+
     setFilteredDemandes(sorted);
-    
-    // Ajuster l'index courant si nécessaire
-    if (sorted.length > 0 && demandes.length > 0) {
-      const currentDemande = demandes[currentIndex];
-      const newIndex = sorted.findIndex(d => d._id === currentDemande._id);
-      setCurrentIndex(newIndex !== -1 ? newIndex : 0);
+
+    if (!sorted.length) {
+      setCurrentIndex(0);
+      return;
     }
-  };
+
+    const currentDemande = filteredDemandes[currentIndex];
+    const newIndex = sorted.findIndex((d) => d._id === currentDemande?._id);
+    setCurrentIndex(newIndex !== -1 ? newIndex : 0);
+  }, [demandes, sortOrder]);
 
   const handleAccepter = async (id) => {
     try {
       await API.patch(`/projets/${id}/accepter`);
-      setMsg({ type: 'success', text: 'Projet accepté !' });
+      setMsg({ type: "success", text: "Projet accepte." });
       fetchDemandes();
-    } catch { 
-      setMsg({ type: 'error', text: 'Erreur acceptation.' }); 
+    } catch {
+      setMsg({ type: "error", text: "Erreur acceptation." });
     }
   };
 
   const handleRefuser = async (id) => {
     try {
       await API.patch(`/projets/${id}/refuser`);
-      setMsg({ type: 'error', text: 'Demande refusée.' });
+      setMsg({ type: "error", text: "Demande refusee." });
       fetchDemandes();
-    } catch { 
-      setMsg({ type: 'error', text: 'Erreur refus.' }); 
+    } catch {
+      setMsg({ type: "error", text: "Erreur refus." });
     }
   };
 
   const handleAccepterTout = async () => {
-    if (filteredDemandes.length === 0) return;
-    
+    if (!filteredDemandes.length) return;
+
     setProcessingBulk(true);
     let successCount = 0;
     let errorCount = 0;
-    
+
     for (const demande of filteredDemandes) {
       try {
         await API.patch(`/projets/${demande._id}/accepter`);
-        successCount++;
+        successCount += 1;
       } catch {
-        errorCount++;
+        errorCount += 1;
       }
     }
-    
-    setMsg({ 
-      type: successCount > 0 ? 'success' : 'error', 
-      text: `${successCount} demande(s) acceptée(s)${errorCount > 0 ? `, ${errorCount} erreur(s)` : ''}` 
+
+    setMsg({
+      type: successCount > 0 ? "success" : "error",
+      text: `${successCount} demande(s) acceptee(s)${errorCount > 0 ? `, ${errorCount} erreur(s)` : ""}`,
     });
-    
+
     fetchDemandes();
     setProcessingBulk(false);
   };
 
   const handleRefuserTout = async () => {
-    if (filteredDemandes.length === 0) return;
-    
+    if (!filteredDemandes.length) return;
+
     setProcessingBulk(true);
     let successCount = 0;
     let errorCount = 0;
-    
+
     for (const demande of filteredDemandes) {
       try {
         await API.patch(`/projets/${demande._id}/refuser`);
-        successCount++;
+        successCount += 1;
       } catch {
-        errorCount++;
+        errorCount += 1;
       }
     }
-    
-    setMsg({ 
-      type: 'error', 
-      text: `${successCount} demande(s) refusée(s)${errorCount > 0 ? `, ${errorCount} erreur(s)` : ''}` 
+
+    setMsg({
+      type: "error",
+      text: `${successCount} demande(s) refusee(s)${errorCount > 0 ? `, ${errorCount} erreur(s)` : ""}`,
     });
-    
+
     fetchDemandes();
     setProcessingBulk(false);
   };
 
   const handlePrevious = () => {
-    if (isAnimating || filteredDemandes.length === 0) return;
-    setIsAnimating(true);
-    setSlideDirection('right');
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev > 0 ? prev - 1 : filteredDemandes.length - 1));
-      setTimeout(() => {
-        setIsAnimating(false);
-        setSlideDirection('');
-      }, 50);
-    }, 300);
+    if (!filteredDemandes.length) return;
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : filteredDemandes.length - 1));
   };
 
   const handleNext = () => {
-    if (isAnimating || filteredDemandes.length === 0) return;
-    setIsAnimating(true);
-    setSlideDirection('left');
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev < filteredDemandes.length - 1 ? prev + 1 : 0));
-      setTimeout(() => {
-        setIsAnimating(false);
-        setSlideDirection('');
-      }, 50);
-    }, 300);
+    if (!filteredDemandes.length) return;
+    setCurrentIndex((prev) => (prev < filteredDemandes.length - 1 ? prev + 1 : 0));
   };
 
-  // Touch handlers pour swipe
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -196,662 +170,459 @@ const AdminDemandes = () => {
   };
 
   const handleTouchEnd = () => {
-    const swipeThreshold = 50;
     const diff = touchStartX.current - touchEndX.current;
-    
-    if (Math.abs(diff) > swipeThreshold) {
-      if (diff > 0) {
-        handleNext();
-      } else {
-        handlePrevious();
-      }
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) handleNext();
+      if (diff < 0) handlePrevious();
     }
-    
     touchStartX.current = 0;
     touchEndX.current = 0;
   };
 
-  const styles = {
-    container: {
-      maxWidth: '900px',
-      margin: '0 auto',
-      padding: '1.5rem',
-    },
-    header: {
-      marginBottom: '1.5rem',
-    },
-    headerTop: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '0.5rem',
-    },
-    title: {
-      fontSize: '1.5rem',
-      fontWeight: '600',
-      color: '#1E293B',
-    },
-    subtitle: {
-      color: '#64748B',
-      fontSize: '0.875rem',
-    },
-    actionsBar: {
-      display: 'flex',
-      gap: '0.75rem',
-      marginBottom: '1rem',
-      flexWrap: 'wrap',
-    },
-    badge: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      padding: '0.375rem 1rem',
-      backgroundColor: '#FEF3C7',
-      color: '#D97706',
-      borderRadius: '20px',
-      fontSize: '0.75rem',
-      fontWeight: '600',
-    },
-    sortButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      padding: '0.375rem 1rem',
-      backgroundColor: 'white',
-      border: '1px solid #E2E8F0',
-      borderRadius: '20px',
-      fontSize: '0.75rem',
-      fontWeight: '500',
-      color: '#475569',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-    },
-    sortMenu: {
-      position: 'relative',
-    },
-    sortDropdown: {
-      position: 'absolute',
-      top: '100%',
-      right: 0,
-      marginTop: '0.5rem',
-      backgroundColor: 'white',
-      border: '1px solid #E2E8F0',
-      borderRadius: '12px',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-      zIndex: 50,
-      minWidth: '200px',
-      overflow: 'hidden',
-    },
-    sortOption: {
-      padding: '0.75rem 1rem',
-      cursor: 'pointer',
-      fontSize: '0.875rem',
-      color: '#1E293B',
-      transition: 'background 0.2s',
-      borderBottom: '1px solid #F1F5F9',
-    },
-    bulkActions: {
-      display: 'flex',
-      gap: '0.5rem',
-      marginLeft: 'auto',
-    },
-    bulkButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      padding: '0.375rem 1rem',
-      borderRadius: '20px',
-      fontSize: '0.75rem',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-      border: 'none',
-    },
-    acceptAllButton: {
-      backgroundColor: '#ECFDF5',
-      color: '#059669',
-      border: '1px solid #A7F3D0',
-    },
-    rejectAllButton: {
-      backgroundColor: '#FEF2F2',
-      color: '#DC2626',
-      border: '1px solid #FECACA',
-    },
-    message: {
-      base: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        padding: '0.75rem 1rem',
-        borderRadius: '8px',
-        marginBottom: '1rem',
-        fontSize: '0.875rem',
-      },
-      success: {
-        backgroundColor: '#ECFDF5',
-        color: '#059669',
-        border: '1px solid #A7F3D0',
-      },
-      error: {
-        backgroundColor: '#FEF2F2',
-        color: '#DC2626',
-        border: '1px solid #FECACA',
-      },
-    },
-    loaderContainer: {
-      display: 'flex',
-      justifyContent: 'center',
-      padding: '3rem',
-    },
-    emptyState: {
-      textAlign: 'center',
-      padding: '3rem 1rem',
-      backgroundColor: '#F8FAFC',
-      borderRadius: '12px',
-      border: '2px dashed #E2E8F0',
-    },
-    sliderWrapper: {
-      position: 'relative',
-      overflow: 'hidden',
-      borderRadius: '16px',
-      marginBottom: '1rem',
-    },
-    sliderContainer: {
-      display: 'flex',
-      transition: 'transform 0.3s ease-in-out',
-      transform: `translateX(${slideDirection === 'left' ? '-100%' : slideDirection === 'right' ? '100%' : '0%'})`,
-    },
-    slide: {
-      flex: '0 0 100%',
-      opacity: isAnimating ? 0 : 1,
-      transition: 'opacity 0.2s ease',
-    },
-    card: {
-      backgroundColor: 'white',
-      border: '1px solid #E2E8F0',
-      borderRadius: '16px',
-      overflow: 'hidden',
-      boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-    },
-    cardContent: {
-      padding: '1.25rem',
-    },
-    headerCard: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '1rem',
-    },
-    statusBadge: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.25rem',
-      padding: '0.25rem 0.75rem',
-      backgroundColor: '#FEF3C7',
-      color: '#D97706',
-      borderRadius: '20px',
-      fontSize: '0.7rem',
-      fontWeight: '600',
-    },
-    dateText: {
-      fontSize: '0.7rem',
-      color: '#94A3B8',
-    },
-    projectName: {
-      fontSize: '1.1rem',
-      fontWeight: '600',
-      color: '#1E293B',
-      marginBottom: '0.5rem',
-    },
-    description: {
-      fontSize: '0.8rem',
-      color: '#64748B',
-      lineHeight: '1.5',
-      marginBottom: '1rem',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-    },
-    clientInfo: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.75rem',
-      padding: '0.75rem',
-      backgroundColor: '#F8FAFC',
-      borderRadius: '10px',
-      marginBottom: '1rem',
-    },
-    clientAvatar: {
-      width: '32px',
-      height: '32px',
-      borderRadius: '50%',
-      background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)',
-      color: 'white',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '0.8rem',
-      fontWeight: '600',
-      flexShrink: 0,
-    },
-    clientName: {
-      fontSize: '0.8rem',
-      fontWeight: '600',
-      color: '#1E293B',
-    },
-    clientEmail: {
-      fontSize: '0.7rem',
-      color: '#64748B',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.25rem',
-    },
-    datesContainer: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '0.5rem',
-      marginBottom: '1rem',
-    },
-    dateBox: {
-      backgroundColor: '#F1F5F9',
-      borderRadius: '8px',
-      padding: '0.5rem',
-    },
-    dateLabel: {
-      fontSize: '0.6rem',
-      color: '#64748B',
-      textTransform: 'uppercase',
-      fontWeight: '600',
-      marginBottom: '0.15rem',
-    },
-    dateValue: {
-      fontSize: '0.75rem',
-      color: '#1E293B',
-      fontWeight: '600',
-    },
-    actions: {
-      display: 'flex',
-      gap: '0.5rem',
-    },
-    buttonAccept: {
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '0.25rem',
-      padding: '0.6rem',
-      backgroundColor: '#059669',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '0.75rem',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'background 0.2s',
-    },
-    buttonReject: {
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '0.25rem',
-      padding: '0.6rem',
-      backgroundColor: 'white',
-      color: '#DC2626',
-      border: '1px solid #FECACA',
-      borderRadius: '8px',
-      fontSize: '0.75rem',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-    },
-    navigationButtons: {
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '1rem',
-      marginTop: '1rem',
-    },
-    navButton: {
-      width: '36px',
-      height: '36px',
-      borderRadius: '50%',
-      backgroundColor: 'white',
-      border: '1px solid #E2E8F0',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-      transition: 'all 0.2s',
-    },
-    pagination: {
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: '0.5rem',
-      marginTop: '1rem',
-    },
-    dot: {
-      width: '6px',
-      height: '6px',
-      borderRadius: '50%',
-      backgroundColor: '#CBD5E1',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-    },
-    dotActive: {
-      width: '20px',
-      borderRadius: '3px',
-      backgroundColor: '#D97706',
-    },
-    counter: {
-      textAlign: 'center',
-      marginTop: '0.5rem',
-      fontSize: '0.7rem',
-      color: '#94A3B8',
-    },
-    processingOverlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(255,255,255,0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-    },
-  };
-
   const currentDemande = filteredDemandes[currentIndex] || null;
+  const demandeDate = currentDemande
+    ? new Date(currentDemande.date_creation || currentDemande.createdAt || Date.now()).toLocaleDateString("fr-FR")
+    : "";
+  const demandeStartDate = currentDemande
+    ? currentDemande["date_début"] || currentDemande["date_début"] || currentDemande.date_debut
+    : null;
 
   return (
-    <div style={styles.container}>
-      {/* Processing overlay */}
+    <div className="admin-page demandes-page">
       {processingBulk && (
-        <div style={styles.processingOverlay}>
-          <Loader size={48} color="#D97706" />
+        <div className="demandes-overlay">
+          <div className="demandes-overlay__content">
+            <Loader size={34} className="spin" />
+            <span>Traitement des demandes...</span>
+          </div>
         </div>
       )}
 
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <h1 style={styles.title}>Demandes clients</h1>
-          
-          {/* Menu de tri */}
-          <div style={styles.sortMenu} ref={menuRef}>
-            <button 
-              style={styles.sortButton}
-              onClick={() => setShowSortMenu(!showSortMenu)}
-            >
-              <Filter size={14} />
-              Trier par
+      <div className="admin-page-header">
+        <div className="admin-page-copy">
+          <span className="admin-page-sup">
+            <Clock size={14} />
+            Administration
+          </span>
+          <h1 className="admin-page-title">Demandes clients</h1>
+          <p className="admin-page-text">
+            Validez les demandes en attente plus vite.
+          </p>
+        </div>
+
+        <div className="admin-page-actions demandes-actions-wrap">
+          <div className="admin-chip">
+            <Clock size={15} />
+            {filteredDemandes.length} en attente
+          </div>
+
+          <div className="demandes-sort" ref={menuRef}>
+            <button className="admin-btn admin-btn--ghost" onClick={() => setShowSortMenu((prev) => !prev)}>
+              <Filter size={15} />
+              Trier
               <ArrowUpDown size={14} />
             </button>
-            
+
             {showSortMenu && (
-              <div style={styles.sortDropdown}>
-                <div 
-                  style={{
-                    ...styles.sortOption,
-                    backgroundColor: sortOrder === 'newest' ? '#FEF3C7' : 'white',
-                    fontWeight: sortOrder === 'newest' ? '600' : '400',
-                  }}
+              <div className="demandes-sort-menu">
+                <button
+                  className={sortOrder === "newest" ? "is-active" : ""}
                   onClick={() => {
-                    setSortOrder('newest');
+                    setSortOrder("newest");
                     setShowSortMenu(false);
                   }}
                 >
-                  🆕 Plus récent d'abord
-                </div>
-                <div 
-                  style={{
-                    ...styles.sortOption,
-                    backgroundColor: sortOrder === 'oldest' ? '#FEF3C7' : 'white',
-                    fontWeight: sortOrder === 'oldest' ? '600' : '400',
-                    borderBottom: 'none',
-                  }}
+                  Plus recent d abord
+                </button>
+                <button
+                  className={sortOrder === "oldest" ? "is-active" : ""}
                   onClick={() => {
-                    setSortOrder('oldest');
+                    setSortOrder("oldest");
                     setShowSortMenu(false);
                   }}
                 >
-                  📅 Plus ancien d'abord
-                </div>
+                  Plus ancien d abord
+                </button>
               </div>
             )}
           </div>
+
+          <button
+            className="admin-btn admin-btn--secondary"
+            onClick={handleAccepterTout}
+            disabled={processingBulk || !filteredDemandes.length}
+          >
+            <CheckCheck size={15} />
+            Tout accepter
+          </button>
+
+          <button
+            className="admin-btn admin-btn--danger"
+            onClick={handleRefuserTout}
+            disabled={processingBulk || !filteredDemandes.length}
+          >
+            <X size={15} />
+            Tout refuser
+          </button>
         </div>
-        <p style={styles.subtitle}>Gérez les demandes en attente</p>
       </div>
 
-      {/* Barre d'actions */}
-      {!fetching && filteredDemandes.length > 0 && (
-        <div style={styles.actionsBar}>
-          <div style={styles.badge}>
-            <Clock size={14} />
-            <span>{filteredDemandes.length} en attente</span>
-          </div>
-
-          <div style={styles.bulkActions}>
-            <button
-              style={{
-                ...styles.bulkButton,
-                ...styles.acceptAllButton,
-                opacity: processingBulk ? 0.5 : 1,
-              }}
-              onClick={handleAccepterTout}
-              disabled={processingBulk}
-              onMouseEnter={e => !processingBulk && (e.currentTarget.style.backgroundColor = '#D1FAE5')}
-              onMouseLeave={e => !processingBulk && (e.currentTarget.style.backgroundColor = '#ECFDF5')}
-            >
-              <CheckCheck size={14} />
-              Tout accepter
-            </button>
-            <button
-              style={{
-                ...styles.bulkButton,
-                ...styles.rejectAllButton,
-                opacity: processingBulk ? 0.5 : 1,
-              }}
-              onClick={handleRefuserTout}
-              disabled={processingBulk}
-              onMouseEnter={e => !processingBulk && (e.currentTarget.style.backgroundColor = '#FEE2E2')}
-              onMouseLeave={e => !processingBulk && (e.currentTarget.style.backgroundColor = '#FEF2F2')}
-            >
-              <X size={14} />
-              Tout refuser
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Message */}
       {msg.text && (
-        <div style={{
-          ...styles.message.base,
-          ...(msg.type === 'success' ? styles.message.success : styles.message.error),
-        }}>
-          {msg.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+        <div className={`admin-alert ${msg.type === "success" ? "admin-alert--success" : "admin-alert--error"}`}>
+          {msg.type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
           {msg.text}
         </div>
       )}
 
-      {/* Loading */}
       {fetching && (
-        <div style={styles.loaderContainer}>
-          <Loader size={32} color="#D97706" />
+        <div className="card">
+          <div className="admin-empty-state">
+            <Loader size={32} className="spin" />
+            <div>Chargement des demandes...</div>
+          </div>
         </div>
       )}
 
-      {/* Empty */}
-      {!fetching && filteredDemandes.length === 0 && (
-        <div style={styles.emptyState}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📭</div>
-          <div style={{ fontWeight: '600', color: '#475569' }}>Aucune demande</div>
+      {!fetching && !filteredDemandes.length && (
+        <div className="card">
+          <div className="admin-empty-state">
+            <Clock size={34} />
+            <div>Aucune demande en attente.</div>
+          </div>
         </div>
       )}
 
-      {/* Slider avec effet de glissement */}
-      {!fetching && filteredDemandes.length > 0 && currentDemande && (
-        <>
-          <div 
-            style={styles.sliderWrapper}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <div style={styles.sliderContainer} ref={sliderRef}>
-              <div style={styles.slide}>
-                <div style={styles.card}>
-                  <div style={styles.cardContent}>
-                    {/* Header */}
-                    <div style={styles.headerCard}>
-                      <span style={styles.statusBadge}>
-                        <Clock size={12} />
-                        En attente
-                      </span>
-                      <span style={styles.dateText}>
-                        {new Date(currentDemande.date_creation || currentDemande.createdAt || Date.now()).toLocaleDateString('fr-FR')}
-                      </span>
-                    </div>
+      {!fetching && currentDemande && (
+        <div
+          className="card demande-card"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="admin-section-head">
+            <div>
+              <div className="admin-section-title">Demande en cours de revue</div>
+              <p className="admin-section-text">
+                Carte {currentIndex + 1} / {filteredDemandes.length}
+              </p>
+            </div>
 
-                    {/* Project name */}
-                    <h3 style={styles.projectName}>{currentDemande.nom}</h3>
-                    
-                    {/* Description */}
-                    {currentDemande.description && (
-                      <p style={styles.description}>{currentDemande.description}</p>
-                    )}
+            <div className="demande-stage">
+              <Clock size={14} />
+              En attente
+            </div>
+          </div>
 
-                    {/* Client */}
-                    <div style={styles.clientInfo}>
-                      <div style={styles.clientAvatar}>
-                        {currentDemande.id_client?.nom?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                      <div>
-                        <div style={styles.clientName}>
-                          {currentDemande.id_client?.nom || 'Client'}
-                        </div>
-                        <div style={styles.clientEmail}>
-                          <Mail size={10} />
-                          {currentDemande.id_client?.email || 'Email'}
-                        </div>
-                      </div>
-                    </div>
+          <div className="demande-card__content">
+            <div className="demande-main">
+              <div className="demande-date">{demandeDate}</div>
+              <h2>{currentDemande.nom}</h2>
+              {currentDemande.description && <p>{currentDemande.description}</p>}
 
-                    {/* Dates */}
-                    <div style={styles.datesContainer}>
-                      <div style={styles.dateBox}>
-                        <div style={styles.dateLabel}>Début</div>
-                        <div style={styles.dateValue}>
-                          {new Date(currentDemande.date_début).toLocaleDateString('fr-FR')}
-                        </div>
-                      </div>
-                      <div style={styles.dateBox}>
-                        <div style={styles.dateLabel}>Fin</div>
-                        <div style={styles.dateValue}>
-                          {new Date(currentDemande.date_fin).toLocaleDateString('fr-FR')}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div style={styles.actions}>
-                      <button
-                        onClick={() => handleAccepter(currentDemande._id)}
-                        style={styles.buttonAccept}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#047857'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#059669'}
-                        disabled={processingBulk}
-                      >
-                        <Check size={14} />
-                        Accepter
-                      </button>
-                      <button
-                        onClick={() => handleRefuser(currentDemande._id)}
-                        style={styles.buttonReject}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.backgroundColor = '#DC2626';
-                          e.currentTarget.style.color = 'white';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.backgroundColor = 'white';
-                          e.currentTarget.style.color = '#DC2626';
-                        }}
-                        disabled={processingBulk}
-                      >
-                        <XCircle size={14} />
-                        Refuser
-                      </button>
-                    </div>
-                  </div>
+              <div className="demande-client">
+                <div className="demande-client__avatar">
+                  {currentDemande.id_client?.nom?.charAt(0)?.toUpperCase() || "?"}
                 </div>
+                <div>
+                  <strong>{currentDemande.id_client?.nom || "Client"}</strong>
+                  <span>
+                    <Mail size={12} />
+                    {currentDemande.id_client?.email || "Email non renseigne"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="demande-meta-grid">
+              <div className="demande-meta">
+                <span>Debut</span>
+                <strong>
+                  <Calendar size={14} />
+                  {demandeStartDate ? new Date(demandeStartDate).toLocaleDateString("fr-FR") : "-"}
+                </strong>
+              </div>
+              <div className="demande-meta">
+                <span>Fin</span>
+                <strong>
+                  <Calendar size={14} />
+                  {new Date(currentDemande.date_fin).toLocaleDateString("fr-FR")}
+                </strong>
               </div>
             </div>
           </div>
 
-          {/* Navigation buttons */}
-          <div style={styles.navigationButtons}>
+          <div className="demande-actions">
             <button
-              onClick={handlePrevious}
-              style={styles.navButton}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
-              disabled={isAnimating || processingBulk}
+              className="admin-btn admin-btn--secondary"
+              onClick={() => handleAccepter(currentDemande._id)}
+              disabled={processingBulk}
             >
-              <ChevronLeft size={18} color="#4B5563" />
+              <Check size={15} />
+              Accepter
             </button>
+
             <button
-              onClick={handleNext}
-              style={styles.navButton}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
-              disabled={isAnimating || processingBulk}
+              className="admin-btn admin-btn--danger"
+              onClick={() => handleRefuser(currentDemande._id)}
+              disabled={processingBulk}
             >
-              <ChevronRight size={18} color="#4B5563" />
+              <XCircle size={15} />
+              Refuser
             </button>
           </div>
 
-          {/* Pagination */}
-          <div style={styles.pagination}>
-            {filteredDemandes.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  if (index > currentIndex) {
-                    setSlideDirection('left');
-                  } else if (index < currentIndex) {
-                    setSlideDirection('right');
-                  }
-                  setIsAnimating(true);
-                  setTimeout(() => {
-                    setCurrentIndex(index);
-                    setTimeout(() => {
-                      setIsAnimating(false);
-                      setSlideDirection('');
-                    }, 50);
-                  }, 300);
-                }}
-                style={{
-                  ...styles.dot,
-                  ...(index === currentIndex ? styles.dotActive : {}),
-                }}
-                disabled={isAnimating || processingBulk}
-              />
-            ))}
-          </div>
+          <div className="demande-navigation">
+            <button className="demande-nav-btn" onClick={handlePrevious} disabled={processingBulk}>
+              <ChevronLeft size={18} />
+            </button>
 
-          {/* Counter */}
-          <div style={styles.counter}>
-            {currentIndex + 1} / {filteredDemandes.length}
+            <div className="demande-dots">
+              {filteredDemandes.map((demande, index) => (
+                <button
+                  key={demande._id || index}
+                  className={index === currentIndex ? "is-active" : ""}
+                  onClick={() => setCurrentIndex(index)}
+                  disabled={processingBulk}
+                />
+              ))}
+            </div>
+
+            <button className="demande-nav-btn" onClick={handleNext} disabled={processingBulk}>
+              <ChevronRight size={18} />
+            </button>
           </div>
-        </>
+        </div>
       )}
+
+      <style>{`
+        .demandes-page { max-width: none; }
+        .demandes-actions-wrap { align-items: center; }
+        .demandes-sort { position: relative; }
+        .demandes-sort-menu {
+          position: absolute;
+          top: calc(100% + 10px);
+          right: 0;
+          min-width: 220px;
+          padding: 8px;
+          border-radius: 20px;
+          border: 1px solid rgba(148,163,184,0.18);
+          background: rgba(255,255,255,0.96);
+          box-shadow: 0 24px 60px rgba(15,23,42,0.12);
+          backdrop-filter: blur(16px);
+          z-index: 5;
+        }
+        .demandes-sort-menu button {
+          width: 100%;
+          border: none;
+          background: transparent;
+          padding: 11px 14px;
+          border-radius: 14px;
+          text-align: left;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 600;
+          color: #0f172a;
+          cursor: pointer;
+        }
+        .demandes-sort-menu button.is-active {
+          background: rgba(37,99,235,0.08);
+          color: #2563eb;
+        }
+        .demandes-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1200;
+          background: rgba(15,23,42,0.28);
+          backdrop-filter: blur(6px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .demandes-overlay__content {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          padding: 18px 22px;
+          border-radius: 22px;
+          background: rgba(255,255,255,0.94);
+          border: 1px solid rgba(148,163,184,0.18);
+          box-shadow: 0 24px 60px rgba(15,23,42,0.14);
+          color: #0f172a;
+          font-weight: 700;
+        }
+        .demande-card__content {
+          display: grid;
+          grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.9fr);
+          gap: 18px;
+          align-items: start;
+        }
+        .demande-main h2 {
+          margin: 12px 0 0;
+          font-size: clamp(1.8rem, 2.8vw, 2.5rem);
+          line-height: 1.02;
+          letter-spacing: -0.05em;
+          color: #0f172a;
+        }
+        .demande-main p {
+          margin: 14px 0 0;
+          color: #526277;
+          line-height: 1.75;
+          font-size: 15px;
+        }
+        .demande-date {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 999px;
+          background: rgba(37,99,235,0.08);
+          color: #2563eb;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .demande-stage {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 14px;
+          border-radius: 999px;
+          background: rgba(245,158,11,0.12);
+          color: #b45309;
+          border: 1px solid rgba(245,158,11,0.18);
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .demande-client {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 20px;
+          padding: 16px;
+          border-radius: 22px;
+          background: rgba(248,250,252,0.78);
+          border: 1px solid rgba(148,163,184,0.14);
+        }
+        .demande-client__avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #2563eb, #06b6d4);
+          color: #fff;
+          font-weight: 800;
+          box-shadow: 0 14px 32px rgba(37,99,235,0.18);
+        }
+        .demande-client strong {
+          display: block;
+          color: #0f172a;
+          font-size: 14px;
+        }
+        .demande-client span {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 4px;
+          color: #64748b;
+          font-size: 13px;
+        }
+        .demande-meta-grid {
+          display: grid;
+          gap: 12px;
+        }
+        .demande-meta {
+          padding: 18px;
+          border-radius: 22px;
+          background: rgba(248,250,252,0.78);
+          border: 1px solid rgba(148,163,184,0.14);
+        }
+        .demande-meta span {
+          display: block;
+          margin-bottom: 10px;
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .demande-meta strong {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: #0f172a;
+          font-size: 15px;
+        }
+        .demande-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 22px;
+          flex-wrap: wrap;
+        }
+        .demande-navigation {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          margin-top: 22px;
+        }
+        .demande-nav-btn {
+          width: 44px;
+          height: 44px;
+          border: 1px solid rgba(148,163,184,0.18);
+          border-radius: 16px;
+          background: rgba(255,255,255,0.86);
+          color: #0f172a;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 14px 30px rgba(15,23,42,0.06);
+        }
+        .demande-dots {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .demande-dots button {
+          width: 8px;
+          height: 8px;
+          border: none;
+          border-radius: 999px;
+          background: rgba(148,163,184,0.4);
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .demande-dots button.is-active {
+          width: 24px;
+          background: linear-gradient(135deg, #2563eb, #06b6d4);
+        }
+        @media (max-width: 900px) {
+          .demande-card__content {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 768px) {
+          .demandes-actions-wrap {
+            width: 100%;
+          }
+          .demandes-sort {
+            width: 100%;
+          }
+          .demandes-sort > button {
+            width: 100%;
+          }
+          .demande-actions {
+            flex-direction: column;
+          }
+          .demande-actions .admin-btn {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,0 +1,31 @@
+<svg width="800" height="520" viewBox="0 0 800 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="520" rx="36" fill="#F2F7FF"/>
+  <rect x="24" y="24" width="752" height="472" rx="28" fill="#FFFFFF"/>
+  <rect x="24" y="24" width="752" height="472" rx="28" stroke="#D9E6F5" stroke-width="2"/>
+  <rect x="48" y="52" width="122" height="18" rx="9" fill="#0F172A"/>
+  <rect x="48" y="90" width="196" height="14" rx="7" fill="#CBD5E1"/>
+  <rect x="48" y="134" width="704" height="94" rx="24" fill="#0F172A"/>
+  <rect x="74" y="164" width="160" height="14" rx="7" fill="#FFFFFF"/>
+  <rect x="74" y="192" width="114" height="10" rx="5" fill="#475569"/>
+  <rect x="610" y="160" width="114" height="40" rx="16" fill="#2563EB"/>
+  <rect x="48" y="254" width="214" height="206" rx="24" fill="#F8FBFF"/>
+  <rect x="48" y="254" width="214" height="206" rx="24" stroke="#D9E6F5" stroke-width="2"/>
+  <rect x="72" y="282" width="98" height="12" rx="6" fill="#0F172A"/>
+  <rect x="72" y="318" width="166" height="20" rx="10" fill="#E0EDFF"/>
+  <rect x="72" y="354" width="166" height="20" rx="10" fill="#DBEAFE"/>
+  <rect x="72" y="390" width="128" height="20" rx="10" fill="#D1FAE5"/>
+  <rect x="286" y="254" width="240" height="206" rx="24" fill="#FFFFFF"/>
+  <rect x="286" y="254" width="240" height="206" rx="24" stroke="#D9E6F5" stroke-width="2"/>
+  <rect x="310" y="282" width="90" height="12" rx="6" fill="#0F172A"/>
+  <rect x="310" y="320" width="192" height="116" rx="18" fill="#EFF6FF"/>
+  <rect x="544" y="254" width="208" height="206" rx="24" fill="#F8FBFF"/>
+  <rect x="544" y="254" width="208" height="206" rx="24" stroke="#D9E6F5" stroke-width="2"/>
+  <rect x="568" y="282" width="92" height="12" rx="6" fill="#0F172A"/>
+  <circle cx="594" cy="334" r="10" fill="#2563EB"/>
+  <rect x="614" y="328" width="108" height="12" rx="6" fill="#CBD5E1"/>
+  <circle cx="594" cy="382" r="10" fill="#0EA5E9"/>
+  <rect x="614" y="376" width="86" height="12" rx="6" fill="#CBD5E1"/>
+  <circle cx="594" cy="430" r="10" fill="#22C55E"/>
+  <rect x="614" y="424" width="98" height="12" rx="6" fill="#CBD5E1"/>
+  <text x="48" y="480" fill="#64748B" font-family="Arial, sans-serif" font-size="18">Client portal maquette</text>
+</svg>
